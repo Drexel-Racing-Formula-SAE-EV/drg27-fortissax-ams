@@ -12,6 +12,7 @@ target_sources(app PRIVATE
     src/ams_threads.c
     ${DRG27_AMS_ROOT}/drivers/ams/current_adc_zephyr.c
     ${DRG27_AMS_ROOT}/drivers/ams/fan_pwm_zephyr.c
+    ${DRG27_AMS_ROOT}/drivers/ams/imd_capture_zephyr.c
 )
 
 target_include_directories(app PRIVATE

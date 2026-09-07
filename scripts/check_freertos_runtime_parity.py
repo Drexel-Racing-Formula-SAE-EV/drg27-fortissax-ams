@@ -27,7 +27,7 @@ EXPECTED = {
     "AMS_ADBMS_MUTEX_TIMEOUT_MS": 500,
     "AMS_CURRENT_WINDOW_MUTEX_TIMEOUT_MS": 20,
     "AMS_RUNTIME_AIR_ENABLED": 0,
-    "AMS_RUNTIME_IMD_ENABLED": 0,
+    "AMS_RUNTIME_IMD_ENABLED": 1,
     "AMS_RUNTIME_ESTIMATOR_SAFETY_REQUIRED": 0,
 }
 
@@ -88,7 +88,7 @@ def main() -> int:
     kconfig = repo / "app" / "Kconfig"
     prj = repo / "app" / "prj.conf"
     defconfig = repo / "boards" / "drexel" / "der26_ams" / "der26_ams_defconfig"
-    doc = repo / "docs" / "migration" / "Z012_DEEP_SAFETY_PARITY_REVIEW.md"
+    doc = repo / "docs" / "migration" / "Z013_IMD_CAPTURE_PARITY.md"
 
     for path in (runtime, safety, kconfig, prj, defconfig, doc):
         require(path.is_file(), f"missing {path}")
@@ -169,21 +169,32 @@ def main() -> int:
     require("__DSB();" in direct and "__ISB();" in direct,
             "direct fail-low path must complete with DSB+ISB barriers")
 
-    # A disabled placeholder must never look like a live physical safety source.
+    # AIR remains a disabled placeholder. Z-013 promotes IMD to a real
+    # workload, but that is no-authority migration evidence only and does not
+    # claim the source's AMS_IMD_TARGET_VALIDATED vehicle gate.
     require(".enabled = AMS_RUNTIME_AIR_ENABLED != 0U" in r,
             "AIR placeholder is not gated")
     require(".enabled = AMS_RUNTIME_IMD_ENABLED != 0U" in r,
-            "IMD placeholder is not gated")
+            "IMD runtime enable is not explicit")
     require("if (!thread->enabled || (thread->stale_deadline_ms == 0U))" in r,
             "disabled/non-heartbeat stale suppression missing")
     fan_start = r.find("[AMS_THREAD_FAN]")
     air_start = r.find("[AMS_THREAD_AIR]")
+    imd_start = r.find("[AMS_THREAD_IMD]")
+    diag_start = r.find("[AMS_THREAD_DIAGNOSTICS]")
     require((fan_start >= 0) and (air_start > fan_start), "fan descriptor missing")
+    require((imd_start >= 0) and (diag_start > imd_start), "IMD descriptor missing")
     fan_block = r[fan_start:air_start]
+    imd_block = r[imd_start:diag_start]
     require(".safety_evidence_ready = true" in fan_block,
-            "real Z-012 fan workload is not safety-liveness evidence")
-    require(".safety_evidence_ready = true" not in (r[:fan_start] + r[air_start:]),
-            "non-fan placeholder runtime cycle is treated as safety evidence")
+            "real fan workload is not safety-liveness evidence")
+    require(".safety_evidence_ready = true" in imd_block,
+            "real Z-013 IMD workload is not safety-liveness evidence")
+    require(".safety_heartbeat_required = AMS_RUNTIME_IMD_ENABLED != 0U" in imd_block,
+            "IMD heartbeat membership drift")
+    non_real = r[:fan_start] + r[air_start:imd_start] + r[diag_start:]
+    require(".safety_evidence_ready = true" not in non_real,
+            "unmigrated placeholder runtime cycle is treated as safety evidence")
 
     # v2.6.27 initializes heartbeat grace before its safety-critical RTOS
     # objects, then lets the highest-priority supervisor run first.
@@ -216,16 +227,28 @@ def main() -> int:
     require("skip missed historical releases" in r.lower(),
             "placeholder missed-release policy is no longer explicit")
 
-    # Z-011 current remains deferred. Z-012 promotes only the real fan worker;
+    # Current remains deferred. Z-013 promotes fan and IMD only;
     # current/ADBMS/CAN/estimator placeholders remain non-safety evidence.
     require("ams_current_adc_read_pair" not in r,
-            "Z-011 scope drift: runtime current thread already acquires ADC")
+            "scope drift: runtime current thread already acquires ADC")
     require("reads current ADCs" in r,
             "runtime source no longer documents deferred current integration")
     require(".safety_evidence_ready = false" in r,
             "placeholder safety-evidence lock missing")
 
-    print("PASS: Z-012 FreeRTOS v2.6.27 runtime/safety parity contract")
+    imd_worker_start = r.find("static void imd_thread_entry")
+    imd_worker_end = r.find("static void runtime_update_stale_flags", imd_worker_start)
+    imd_worker = r[imd_worker_start:imd_worker_end]
+    require("ams_imd_capture_read_at" in imd_worker,
+            "real IMD worker does not read the capture adapter")
+    fail_low = imd_worker.find("ams_bms_ok_force_low_direct();")
+    heartbeat = imd_worker.find("runtime_publish_complete(")
+    require((fail_low >= 0) and (heartbeat > fail_low),
+            "IMD heartbeat must be published after fail-low handling")
+    require("next_release_ms = start_ms + thread->period_ms;" in imd_worker,
+            "IMD osDelayUntil(entry+100ms) parity drift")
+
+    print("PASS: Z-013 FreeRTOS v2.6.27 runtime/safety parity contract")
     return 0
 
 

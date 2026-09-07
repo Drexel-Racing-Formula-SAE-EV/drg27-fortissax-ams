@@ -11,6 +11,7 @@ add_library(ams_core STATIC
     sop/ams_sop.c
     sop/ams_fuse_observer.c
     fan/ams_fan_control.c
+    imd/ams_imd.c
 )
 
 target_include_directories(ams_core

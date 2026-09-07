@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <ams_core/ams_imd.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,6 +22,24 @@ enum ams_thread_id {
     AMS_THREAD_IMD,
     AMS_THREAD_DIAGNOSTICS,
     AMS_THREAD_COUNT
+};
+
+
+struct ams_imd_runtime_snapshot {
+    uint32_t sequence;
+    bool valid;
+    bool ok;
+    bool fault;
+    ams_imd_status_t status;
+    uint32_t duty_centipercent;
+    uint32_t frequency_millihz;
+    uint32_t last_valid_ms;
+    uint32_t last_update_ms;
+    bool capture_started;
+    int capture_start_error;
+    bool capture_callback_fault;
+    uint32_t capture_callback_count;
+    uint32_t capture_callback_error_count;
 };
 
 struct ams_thread_snapshot {
@@ -63,6 +83,8 @@ int ams_threads_start(void);
 
 int ams_thread_snapshot_get(enum ams_thread_id id,
                             struct ams_thread_snapshot *snapshot);
+
+int ams_imd_runtime_snapshot_get(struct ams_imd_runtime_snapshot *snapshot);
 
 void ams_threads_request_diagnostics(void);
 

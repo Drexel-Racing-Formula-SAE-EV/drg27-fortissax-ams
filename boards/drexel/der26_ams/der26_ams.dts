@@ -4,6 +4,7 @@
 #include <st/f7/stm32f767zitx-pinctrl.dtsi>
 #include <zephyr/dt-bindings/gpio/gpio.h>
 #include <zephyr/dt-bindings/adc/adc.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
 
 / {
     model = "Drexel Racing DER26 AMS";
@@ -34,6 +35,15 @@
          */
         io-channels = <&adc1 3>, <&adc2 10>;
         io-channel-names = "current-high", "current-low";
+    };
+
+    /*
+     * Z-013 IMD contract. M_HS PWM is PA5/TIM2_CH1. OK_HS is PC5 and is
+     * active high. The PWM spec period cell is unused for capture.
+     */
+    imd_capture: imd-capture {
+        pwms = <&pwm2 1 0 PWM_POLARITY_NORMAL>;
+        status-gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>;
     };
 };
 
@@ -169,6 +179,30 @@
         zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 480)>;
         zephyr,resolution = <12>;
         zephyr,oversampling = <0>;
+    };
+};
+
+/*
+ * Z-013 IMD PWM-input capture.
+ *
+ * v2.6.27 TIM2 uses no prescaling, 32-bit up-counting, CH1 direct rising
+ * capture for the period, CH2 indirect falling capture for high time, and
+ * hardware slave RESET mode on TI1FP1. Zephyr STM32 two-channel PWM capture
+ * configures that same topology when channel 1 capture is requested and
+ * four-channel-capture-support is left disabled.
+ */
+&timers2 {
+    /* v2.6.27 CubeMX sets TIM2_IRQn preemption priority to 5. Keep the
+     * capture interrupt at the same NVIC priority rather than inheriting the
+     * STM32 SoC DTS default. */
+    interrupts = <28 5>;
+    st,prescaler = <0>;
+    status = "okay";
+
+    pwm2: pwm {
+        pinctrl-0 = <&tim2_ch1_pa5>;
+        pinctrl-names = "default";
+        status = "okay";
     };
 };
 

@@ -64,9 +64,10 @@ EXPECTED_MACROS = {
     "AMS_ADBMS_MUTEX_TIMEOUT_MS": 500,
     "AMS_CURRENT_WINDOW_MUTEX_TIMEOUT_MS": 20,
 
-    # Current migration profile has no validated AIR/IMD adapter authority.
+    # Z-013 promotes the real IMD workload for no-authority capture testing.
+    # AIR remains absent. Physical IMD target validation is still a separate gate.
     "AMS_RUNTIME_AIR_ENABLED": 0,
-    "AMS_RUNTIME_IMD_ENABLED": 0,
+    "AMS_RUNTIME_IMD_ENABLED": 1,
     "AMS_RUNTIME_ESTIMATOR_SAFETY_REQUIRED": 0,
 
     # Conservative Zephyr allocations.
@@ -251,15 +252,34 @@ def main() -> int:
     require("bool safety_evidence_ready;" in header,
             "runtime snapshot must expose safety-evidence readiness")
     fan_block = source[source.find("[AMS_THREAD_FAN]"):source.find("[AMS_THREAD_AIR]")]
+    imd_block = source[source.find("[AMS_THREAD_IMD]"):source.find("[AMS_THREAD_DIAGNOSTICS]")]
     require(".safety_evidence_ready = true" in fan_block,
-            "Z-012 real fan workload must be eligible fan liveness evidence")
-    non_fan = source.replace(fan_block, "")
-    require(".safety_evidence_ready = true" not in non_fan,
-            "only the real Z-012 fan workload may claim safety evidence")
+            "real fan workload must be eligible fan liveness evidence")
+    require(".safety_evidence_ready = true" in imd_block,
+            "Z-013 real IMD workload must be eligible IMD liveness evidence")
+    require(".safety_heartbeat_required = AMS_RUNTIME_IMD_ENABLED != 0U" in imd_block,
+            "IMD heartbeat membership must track the enabled real workload")
+    non_real = source.replace(fan_block, "").replace(imd_block, "")
+    require(".safety_evidence_ready = true" not in non_real,
+            "unmigrated placeholder is being treated as safety evidence")
     require("fan_thread_entry" in source,
-            "Z-012 fan worker missing")
+            "fan worker missing")
     require("ams_fan_pwm_set_percent" in source,
-            "Z-012 fan worker does not actuate production PWM adapter")
+            "fan worker does not actuate production PWM adapter")
+    require("imd_thread_entry" in source,
+            "Z-013 real IMD worker missing")
+    require("ams_imd_capture_read_at" in source,
+            "Z-013 IMD worker does not evaluate production capture adapter")
+
+    imd_worker_start = source.find("static void imd_thread_entry")
+    stale_start = source.find("static void runtime_update_stale_flags", imd_worker_start)
+    imd_worker = source[imd_worker_start:stale_start]
+    fail_low = imd_worker.find("ams_bms_ok_force_low_direct();")
+    heartbeat = imd_worker.find("runtime_publish_complete(")
+    require((fail_low >= 0) and (heartbeat > fail_low),
+            "IMD worker heartbeat must follow fail-low handling")
+    require("next_release_ms = start_ms + thread->period_ms;" in imd_worker,
+            "IMD overrun scheduling must match v2.6.27 entry-relative delay")
 
     # v2.6.27 starts heartbeat grace before RTOS object/thread construction.
     # The Zephyr epoch must likewise precede create_thread(), and the supervisor
@@ -274,7 +294,7 @@ def main() -> int:
     require((safety_start >= 0) and (current_start > safety_start),
             "safety supervisor must start before worker threads")
 
-    print("PASS: AMS runtime contract (v2.6.27 safety-policy parity, Z-012 fan live)")
+    print("PASS: AMS runtime contract (v2.6.27 safety-policy parity, Z-013 fan+IMD live)")
     return 0
 
 

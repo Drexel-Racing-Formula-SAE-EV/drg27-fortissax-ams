@@ -24,4 +24,13 @@ config AMS_BALANCE_AUTHORITY
       This MUST remain disabled during the early Zephyr migration.
       Z-003 also enforces this with a C BUILD_ASSERT.
 
+config AMS_IMD_TARGET_VALIDATED
+    bool "Claim physical IMD target validation"
+    default n
+    help
+      Release-evidence gate corresponding to the v2.6.27
+      AMS_IMD_TARGET_VALIDATED build gate. Z-013 must remain disabled:
+      this stage proves source/SIL/target-build behavior only and does not
+      claim physical PWM/status validation of the installed IMD.
+
 endmenu

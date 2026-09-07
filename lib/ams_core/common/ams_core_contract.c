@@ -15,6 +15,7 @@
 #include <ams_core/ams_fuse_observer.h>
 #include <ams_core/ams_core_types.h>
 #include <ams_core/ams_fan_control.h>
+#include <ams_core/ams_imd.h>
 
 typedef char ams_time_ms_must_be_32_bits[
     (sizeof(ams_time_ms_t) == 4U) ? 1 : -1
@@ -300,6 +301,21 @@ int ams_core_contract_check(void)
     if ((fan_percent != 100.0f) ||
         (fan_reason != AMS_FAN_CONTROL_REASON_TEMP_INVALID)) {
         return -23;
+    }
+
+    /* Z-013 portable IMD smoke: one coherent 10 Hz / 50% tuple with OK_HS
+     * high must decode to NORMAL and remain fresh at the exact 250 ms edge. */
+    ams_imd_t imd;
+
+    ams_imd_init(&imd, 108000000U, true);
+    ams_imd_capture_publish(&imd, 5400000U, 10800000U, 100U);
+
+    if ((ams_imd_read_at(&imd, true, true, 350U) != 0) ||
+        !ams_imd_is_ok(&imd) ||
+        (imd.status != AMS_IMD_NORMAL) ||
+        (imd.duty_percent != 50.0f) ||
+        (imd.frequency_hz != 10.0f)) {
+        return -24;
     }
 
     return 0;

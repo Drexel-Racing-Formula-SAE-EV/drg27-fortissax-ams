@@ -1,8 +1,11 @@
 #include "ams_threads.h"
 
 #include <ams_core/ams_fan_control.h>
+#include <ams_core/ams_imd.h>
 
 #include "fan_pwm_zephyr.h"
+#include "imd_capture_zephyr.h"
+#include "ams_safety.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -15,13 +18,13 @@
 
 /*
  * --------------------------------------------------------------------------
- * Z-012 AMS runtime contract
+ * Z-013 AMS runtime contract
  * --------------------------------------------------------------------------
  *
- * Z-012 promotes the fan worker from a placeholder to the real 5 Hz thermal
- * cooling workload. Current ADC hardware remains initialized but the current
- * worker still does not acquire samples until Z-022 proves mutex/publication
- * ordering.
+ * Z-013 keeps the real 5 Hz fan workload and promotes IMD from a placeholder
+ * to the real 10 Hz PA5/TIM2 PWM-input + PC5 OK_HS workload. Current ADC
+ * hardware remains initialized but the current worker still does not acquire
+ * samples until Z-022 proves mutex/publication ordering.
  *
  * No thread below currently:
  * - reads current ADCs
@@ -79,7 +82,7 @@
  * AIR has no heartbeat bit in the oracle. Diagnostics here is not the legacy
  * logger task, so neither is allowed to masquerade as safety-liveness proof.
  * The separate temperature heartbeat belongs to the future ADBMS acquisition
- * integration and is frozen here even though Z-012 does not yet produce it.
+ * integration and is frozen here even though Z-013 does not yet produce it.
  */
 #define AMS_HEARTBEAT_STARTUP_GRACE_MS       3000U
 #define AMS_HEARTBEAT_ADBMS_TIMEOUT_MS       3000U
@@ -120,21 +123,19 @@
 #define AMS_CURRENT_WINDOW_MUTEX_TIMEOUT_MS  20U
 
 /*
- * Current Z-012 migration profile is stricter than the FreeRTOS vehicle
- * profile: physical authority is compile-time disabled and the physical IMD
- * and AIR auxiliary adapters do not exist yet.
- *
- * The v2.6.27 default/bench behavior does not start the legacy AIR task when
- * AMS_ENABLE_AIR_AUX_FEEDBACK=0.  Likewise, IMD is not started in the bench
- * profile.  Keep those placeholder objects present for topology/stack review,
- * but do not run them or count their no-op loops as liveness evidence.
+ * Z-013 remains compile-time no-authority. AIR auxiliary feedback still does
+ * not exist on this hardware revision, so AIR stays disabled. IMD is now a
+ * real migrated workload: enabling it here does NOT claim
+ * AMS_IMD_TARGET_VALIDATED; it permits no-authority capture/diagnostic parity
+ * testing only. Vehicle authority remains blocked until the physical IMD gate
+ * is independently validated.
  */
 #define AMS_RUNTIME_AIR_ENABLED 0U
-#define AMS_RUNTIME_IMD_ENABLED 0U
+#define AMS_RUNTIME_IMD_ENABLED 1U
 
 /*
  * Estimator heartbeat is safety-critical in v2.6.27 only when SoP authority
- * is required. Z-012 has no BMS/SoP authority, so it remains diagnostic only.
+ * is required. Z-013 has no BMS/SoP authority, so it remains diagnostic only.
  */
 #define AMS_RUNTIME_ESTIMATOR_SAFETY_REQUIRED 0U
 
@@ -290,6 +291,19 @@ static atomic_t fan_command_on;
 static atomic_t fan_control_reason;
 static atomic_t fan_last_update_ms;
 
+/* Z-013 IMD process snapshot. The sequence brackets a coherent publication
+ * equivalent to the v2.6.27 critical section in imd_task_update(). */
+static ams_imd_t imd_state;
+static atomic_t imd_publish_sequence;
+static atomic_t imd_valid;
+static atomic_t imd_ok;
+static atomic_t imd_fault;
+static atomic_t imd_status;
+static atomic_t imd_duty_centipercent;
+static atomic_t imd_frequency_millihz;
+static atomic_t imd_last_valid_ms;
+static atomic_t imd_last_update_ms;
+
 K_SEM_DEFINE(diagnostics_request, 0, 1);
 
 static atomic_t runtime_started;
@@ -424,7 +438,7 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .startup_grace_ms = AMS_STARTUP_IMD_MS,
         .enabled = AMS_RUNTIME_IMD_ENABLED != 0U,
         .safety_heartbeat_required = AMS_RUNTIME_IMD_ENABLED != 0U,
-        .safety_evidence_ready = false,
+        .safety_evidence_ready = true,
         .thread = &imd_thread,
         .stack = imd_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(imd_stack),
@@ -729,6 +743,105 @@ static void fan_thread_entry(void *p1,
 }
 
 
+static void imd_publish_snapshot(bool valid,
+                                 bool ok,
+                                 ams_imd_status_t status,
+                                 uint32_t now_ms)
+{
+    uint32_t sequence = (uint32_t)atomic_get(&imd_publish_sequence);
+    uint32_t duty_centipercent = 0U;
+    uint32_t frequency_millihz = 0U;
+
+    if ((sequence & 1U) != 0U) {
+        sequence++;
+    }
+
+    if (valid) {
+        duty_centipercent =
+            (uint32_t)(imd_state.duty_percent * 100.0f);
+        frequency_millihz =
+            (uint32_t)(imd_state.frequency_hz * 1000.0f);
+    }
+
+    /* Zephyr atomic operations provide the barriers needed for this short
+     * thread/diagnostic seqlock. This preserves the coherent state publication
+     * that v2.6.27 performed inside taskENTER_CRITICAL(). */
+    atomic_set(&imd_publish_sequence, (atomic_val_t)(sequence + 1U));
+    atomic_set(&imd_valid, valid ? 1 : 0);
+    atomic_set(&imd_ok, ok ? 1 : 0);
+    atomic_set(&imd_fault, ok ? 0 : 1);
+    atomic_set(&imd_status, (atomic_val_t)status);
+    atomic_set(&imd_duty_centipercent, (atomic_val_t)duty_centipercent);
+    atomic_set(&imd_frequency_millihz, (atomic_val_t)frequency_millihz);
+    if (valid) {
+        atomic_set(&imd_last_valid_ms, (atomic_val_t)now_ms);
+    }
+    atomic_set(&imd_last_update_ms, (atomic_val_t)now_ms);
+    atomic_set(&imd_publish_sequence, (atomic_val_t)(sequence + 2U));
+}
+
+
+static void imd_thread_entry(void *p1,
+                             void *p2,
+                             void *p3)
+{
+    struct ams_thread_descriptor *thread = p1;
+    int64_t release_ms = k_uptime_get();
+
+    ARG_UNUSED(p2);
+    ARG_UNUSED(p3);
+
+    for (;;) {
+        bool valid;
+        bool ok;
+        ams_imd_status_t status;
+        int64_t start_ms;
+        int64_t complete_ms;
+        int64_t next_release_ms;
+        uint32_t start_cycles;
+        uint32_t elapsed_cycles;
+        uint32_t exec_us;
+
+        k_sleep(K_TIMEOUT_ABS_MS(release_ms));
+
+        start_ms = k_uptime_get();
+        start_cycles = k_cycle_get_32();
+        runtime_publish_start(thread, release_ms, start_ms);
+
+        valid =
+            (ams_imd_capture_read_at(&imd_state, (uint32_t)start_ms) == 0);
+        status = valid ? imd_state.status : AMS_IMD_UNKNOWN;
+        ok = valid && imd_state.ok_hs && (status == AMS_IMD_NORMAL);
+
+        /* Match v2.6.27 imd_task_update(): publish a coherent process snapshot
+         * first, then independently force BMS_OK low for any non-normal IMD
+         * result. Assertion remains compile-time impossible at Z-013. */
+        imd_publish_snapshot(valid, ok, status, (uint32_t)start_ms);
+
+        if (!ok) {
+            ams_bms_ok_force_low_direct();
+        }
+
+        elapsed_cycles = k_cycle_get_32() - start_cycles;
+        exec_us = k_cyc_to_us_floor32(elapsed_cycles);
+        complete_ms = k_uptime_get();
+
+        /* v2.6.27 kicks the IMD heartbeat after fail-low handling. Therefore a
+         * bad IMD process value is distinct from a dead IMD software task. */
+        runtime_publish_complete(thread, complete_ms, exec_us);
+
+        /* Match osDelayUntil(entry + 100 ms): re-anchor from the current
+         * iteration entry and retry immediately after an overrun. */
+        next_release_ms = start_ms + thread->period_ms;
+        if (complete_ms >= next_release_ms) {
+            atomic_inc(&thread->stat->overrun_count);
+            release_ms = complete_ms;
+        } else {
+            release_ms = next_release_ms;
+        }
+    }
+}
+
 static void runtime_update_stale_flags(void)
 {
     uint32_t now_ms;
@@ -889,7 +1002,7 @@ static void diagnostics_thread_entry(void *p1,
 
         start_cycles = k_cycle_get_32();
 
-        printk("\nAMS Z-012 runtime snapshot\n");
+        printk("\nAMS Z-013 runtime snapshot\n");
         printk("thread           en sf ev p  per age stale late maxL exec wcet stack-used\n");
 
         for (size_t i = 0U;
@@ -929,6 +1042,19 @@ static void diagnostics_thread_entry(void *p1,
                ams_fan_control_reason_str((uint8_t)atomic_get(&fan_control_reason)),
                (unsigned int)atomic_get(&fan_last_update_ms));
 
+        struct ams_imd_runtime_snapshot imd_snapshot;
+        if (ams_imd_runtime_snapshot_get(&imd_snapshot) == 0) {
+            printk("imd              valid=%u ok=%u fault=%u status=%u duty=%.2f%% freq=%.3fHz cap=%u err=%u last=%u\n",
+                   imd_snapshot.valid ? 1U : 0U,
+                   imd_snapshot.ok ? 1U : 0U,
+                   imd_snapshot.fault ? 1U : 0U,
+                   (unsigned int)imd_snapshot.status,
+                   (double)imd_snapshot.duty_centipercent / 100.0,
+                   (double)imd_snapshot.frequency_millihz / 1000.0,
+                   (unsigned int)imd_snapshot.capture_callback_count,
+                   (unsigned int)imd_snapshot.capture_callback_error_count,
+                   (unsigned int)imd_snapshot.last_valid_ms);
+        }
         elapsed_cycles =
             k_cycle_get_32() - start_cycles;
 
@@ -1011,6 +1137,25 @@ int ams_threads_start(void)
         return -EALREADY;
     }
 
+    /* v2.6.27 board_init()/imd_init() completes before ams_heartbeat_init().
+     * Preserve that order: timer/GPIO configuration failures are still startup
+     * integrity failures, while capture-enable failure is retained as a soft
+     * fail-closed IMD process fault by the adapter. */
+    int imd_init_ret = ams_imd_capture_init(&imd_state);
+    if (imd_init_ret != 0) {
+        return imd_init_ret;
+    }
+
+    atomic_set(&imd_publish_sequence, 0);
+    atomic_set(&imd_valid, 0);
+    atomic_set(&imd_ok, 0);
+    atomic_set(&imd_fault, 1);
+    atomic_set(&imd_status, AMS_IMD_UNKNOWN);
+    atomic_set(&imd_duty_centipercent, 0);
+    atomic_set(&imd_frequency_millihz, 0);
+    atomic_set(&imd_last_valid_ms, 0);
+    atomic_set(&imd_last_update_ms, 0);
+
     /*
      * Start the heartbeat/startup-grace epoch before creating application
      * threads. v2.6.27 calls ams_heartbeat_init() before its safety-critical
@@ -1071,7 +1216,7 @@ int ams_threads_start(void)
 
     if (create_thread(
             &threads[AMS_THREAD_IMD],
-            periodic_placeholder_thread) == NULL) {
+            imd_thread_entry) == NULL) {
         return -ENOMEM;
     }
 
@@ -1107,7 +1252,7 @@ int ams_threads_start(void)
      * Match the safety architecture rather than the historical creation order:
      * the supervisor is the highest-priority application thread and is active
      * before lower-priority work begins.  BMS_OK still cannot be asserted in
-     * Z-012 because assertion authority is compile-time forbidden.
+     * Z-013 because assertion authority is compile-time forbidden.
      */
     start_thread_if_enabled(AMS_THREAD_SAFETY);
 
@@ -1264,6 +1409,50 @@ int ams_thread_snapshot_get(enum ams_thread_id id,
     return 0;
 }
 
+
+int ams_imd_runtime_snapshot_get(struct ams_imd_runtime_snapshot *snapshot)
+{
+    if (snapshot == NULL) {
+        return -EINVAL;
+    }
+
+    for (uint8_t attempt = 0U; attempt < 3U; ++attempt) {
+        uint32_t before = (uint32_t)atomic_get(&imd_publish_sequence);
+
+        if ((before & 1U) != 0U) {
+            continue;
+        }
+
+        snapshot->valid = atomic_get(&imd_valid) != 0;
+        snapshot->ok = atomic_get(&imd_ok) != 0;
+        snapshot->fault = atomic_get(&imd_fault) != 0;
+        snapshot->status = (ams_imd_status_t)atomic_get(&imd_status);
+        snapshot->duty_centipercent =
+            (uint32_t)atomic_get(&imd_duty_centipercent);
+        snapshot->frequency_millihz =
+            (uint32_t)atomic_get(&imd_frequency_millihz);
+        snapshot->last_valid_ms =
+            (uint32_t)atomic_get(&imd_last_valid_ms);
+        snapshot->last_update_ms =
+            (uint32_t)atomic_get(&imd_last_update_ms);
+        snapshot->capture_started = ams_imd_capture_started();
+        snapshot->capture_start_error = ams_imd_capture_start_error();
+        snapshot->capture_callback_fault =
+            ams_imd_capture_callback_faulted();
+        snapshot->capture_callback_count =
+            ams_imd_capture_callback_count();
+        snapshot->capture_callback_error_count =
+            ams_imd_capture_callback_error_count();
+
+        uint32_t after = (uint32_t)atomic_get(&imd_publish_sequence);
+        if ((before == after) && ((after & 1U) == 0U)) {
+            snapshot->sequence = after;
+            return 0;
+        }
+    }
+
+    return -EAGAIN;
+}
 
 void ams_threads_request_diagnostics(void)
 {

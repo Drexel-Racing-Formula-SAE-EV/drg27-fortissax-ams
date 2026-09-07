@@ -135,3 +135,17 @@ The PWM adapter reproduces the original TIM3/TIM4/TIM5 channel mapping,
 108 MHz timer clock, prescaler 0, ARR=3360 period, active-high PWM1 polarity,
 and legacy percent-to-CCR mapping. See `fan/ORACLE_PROVENANCE.md` and
 `docs/migration/Z012_FAN_PWM_PARITY.md`.
+
+## Z-013 IMD capture core
+
+Z-013 ports the v2.6.27 insulation-monitoring-device status/freshness logic
+into `ams_core` and connects it to a narrow Zephyr TIM2 PWM-capture + PC5
+`OK_HS` adapter. The portable core preserves coherent period/high-time tuples,
+250 ms capture freshness, unsigned tick-wrap behavior, duty/frequency checks
+and the original 10 Hz status encoding.
+
+The real Zephyr IMD thread runs at 10 Hz and forces BMS_OK low on any invalid,
+stale, non-NORMAL, or low-`OK_HS` result before publishing its software
+heartbeat. Z-013 deliberately keeps `CONFIG_AMS_IMD_TARGET_VALIDATED=n`; real
+hardware polarity/status validation remains a release gate. See
+`imd/ORACLE_PROVENANCE.md` and `docs/migration/Z013_IMD_CAPTURE_PARITY.md`.

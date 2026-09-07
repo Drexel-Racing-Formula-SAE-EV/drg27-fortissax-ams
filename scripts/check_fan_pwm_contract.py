@@ -196,10 +196,10 @@ def main() -> int:
             "real fan worker not eligible as software-liveness evidence")
 
     # Missing temperature input in Z-012 must fail conservatively to max cooling.
-    require("input.temp_valid = false;" in r, "Z-012 temperature absence not explicit")
-    require("input.temp_read_fault = true;" in r, "Z-012 temperature absence not fail-max")
+    require("input.temp_valid = false;" in r, "temperature absence not explicit")
+    require("input.temp_read_fault = true;" in r, "temperature absence not fail-max")
     require("input.temp_usable_sensor_count = 0U;" in r,
-            "Z-012 temperature absence fabricates usable sensors")
+            "temperature absence fabricates usable sensors")
 
     # Platform init failure is fatal; per-channel startup failures are reported
     # but do not panic, matching HAL timer init vs fan_init failure distinction.
@@ -223,9 +223,9 @@ def main() -> int:
     # Target build contract.
     require("CONFIG_PWM=y" in cfg, "Zephyr PWM support disabled")
     require("# CONFIG_AMS_BMS_AUTHORITY is not set" in cfg,
-            "Z-012 BMS authority must remain disabled")
+            "BMS authority must remain disabled during fan migration")
     require("# CONFIG_AMS_BALANCE_AUTHORITY is not set" in cfg,
-            "Z-012 balance authority must remain disabled")
+            "balance authority must remain disabled during fan migration")
     require("CONFIG_HEAP_MEM_POOL_SIZE=0" in cfg,
             "fan migration must remain application-heap-free")
 
@@ -240,10 +240,18 @@ def main() -> int:
     ):
         require(pin in gd, f"generated DTS missing fan pin {pin}")
 
-    # Unrelated hardware stays outside Z-012.
-    require('status = "disabled"' in get_block(gd, "can1:"), "CAN1 enabled during Z-012")
-    require('status = "disabled"' in get_block(gd, "spi6:"), "SPI6 enabled during Z-012")
-    require('status = "disabled"' in get_block(gd, "timers2:"), "IMD TIM2 enabled during Z-012")
+    # CAN and ADBMS SPI remain outside the basic-driver migration. TIM2 is
+    # allowed to become active in the subsequent Z-013 IMD capture stage; the
+    # dedicated IMD contract owns its exact semantics.
+    require('status = "disabled"' in get_block(gd, "can1:"), "CAN1 enabled during basic-driver migration")
+    require('status = "disabled"' in get_block(gd, "spi6:"), "SPI6 enabled during basic-driver migration")
+    timer2 = get_block(gd, "timers2:")
+    if "CONFIG_PWM_CAPTURE=y" in cfg:
+        require('status = "okay"' in timer2,
+                "TIM2 must be enabled when the later IMD capture stage is active")
+    else:
+        require('status = "disabled"' in timer2,
+                "TIM2 unexpectedly enabled before IMD capture migration")
 
     for symbol in (
         "ams_fan_percent_from_temp",

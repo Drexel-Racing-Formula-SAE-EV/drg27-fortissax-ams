@@ -7,6 +7,7 @@
 #include "ams_threads.h"
 #include "current_adc_zephyr.h"
 #include "fan_pwm_zephyr.h"
+#include "imd_capture_zephyr.h"
 
 
 int main(void)
@@ -67,7 +68,7 @@ int main(void)
     } else {
         printk("AMS fan PWM adapter: READY (all zones initialized off)\n");
     }
-    printk("DRG27 Fortissax AMS - Zephyr Z-012\n");
+    printk("DRG27 Fortissax AMS - Zephyr Z-013\n");
     printk("BMS_OK: forced LOW\n");
     printk("BMS authority: DISABLED\n");
     printk("Balance authority: DISABLED\n");
@@ -82,6 +83,13 @@ int main(void)
     if (ret != 0) {
         printk("AMS runtime start failed: %d\n", ret);
         k_panic();
+    }
+
+    if (ams_imd_capture_started()) {
+        printk("AMS IMD capture: ACTIVE (physical validation still pending)\n");
+    } else {
+        printk("AMS IMD capture: FAIL-CLOSED start error=%d\n",
+               ams_imd_capture_start_error());
     }
 
     printk("AMS runtime threads: %u active / %u defined\n",
