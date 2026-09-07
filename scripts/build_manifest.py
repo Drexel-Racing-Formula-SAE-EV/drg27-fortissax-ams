@@ -86,7 +86,7 @@ def main() -> int:
 
     manifest = {
         "schema_version": 1,
-        "migration_stage": "Z-007",
+        "migration_stage": "Z-008",
         "oracle": {
             "package": "v2.6.27",
             "firmware": "0.5.30",
@@ -154,6 +154,15 @@ def main() -> int:
             "reader_pinning": True,
             "copy_outside_lock": True,
             "injected_metadata_lock": True,
+            "heap_required": False,
+        },
+        "current_window": {
+            "max_sample_age_ms": 100,
+            "max_integration_gap_ms": 100,
+            "out_of_order_boundary_rejected": True,
+            "carried_sensor_metadata": True,
+            "sticky_mixed_range": True,
+            "calibration_provenance_carried": True,
             "heap_required": False,
         },
         "peripheral_state": {

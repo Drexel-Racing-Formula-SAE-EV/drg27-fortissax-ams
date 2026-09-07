@@ -3,6 +3,7 @@
 #include <ams_core/ams_core_config.h>
 #include <ams_core/ams_core_contract.h>
 #include <ams_core/ams_core_time.h>
+#include <ams_core/ams_current_window.h>
 #include <ams_core/ams_measurement.h>
 #include <ams_core/ams_core_types.h>
 
@@ -95,6 +96,38 @@ int ams_core_contract_check(void)
     if (ams_measurement_store_size_bytes() >
         AMS_MEASUREMENT_STORE_MAX_BYTES) {
         return -10;
+    }
+
+    /*
+     * Z-008 link/runtime smoke for the frozen current-window producer.
+     * The deeper parity corpus remains host-side; this keeps the target build
+     * from garbage-collecting the portable producer implementation.
+     */
+    ams_current_window_accumulator_t current_acc;
+    ams_current_window_t current_window;
+
+    ams_current_window_init(&current_acc, 0U);
+    ams_current_window_set_sensor_metadata(&current_acc, 100U, 1U);
+    ams_current_window_update(&current_acc,
+                              10U,
+                              10.0f,
+                              10.0f,
+                              true,
+                              true,
+                              42U);
+
+    if (!ams_current_window_rotate(&current_acc, 20U, &current_window)) {
+        return -11;
+    }
+
+    if ((current_window.sequence != 1U) ||
+        (current_window.uncertainty_mA != 100U) ||
+        (current_window.selected_range != 1U) ||
+        !current_window.calibration_record_confident ||
+        (current_window.calibration_id != 42U) ||
+        (current_window.charge_As < 0.19999) ||
+        (current_window.charge_As > 0.20001)) {
+        return -12;
     }
 
     return 0;

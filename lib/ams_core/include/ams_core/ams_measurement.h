@@ -40,8 +40,9 @@ extern "C" {
 /*
  * Immutable current-window result carried by a measurement epoch.
  *
- * Z-008 will port the producer/integration algorithm. Z-007 only freezes the
- * publication representation needed by downstream snapshot consumers.
+ * Z-008 ports the producer/integration algorithm in the separate
+ * ams_current_window module while this header remains the immutable published
+ * representation consumed by snapshots.
  * selected_range == 0 is the published mixed/unknown state. Z-008 must keep
  * producer initialization state separate so a window that becomes mixed cannot
  * silently return to single-range before rotation. Consumers must not treat
