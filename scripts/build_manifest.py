@@ -9,16 +9,19 @@ import sys
 
 
 THREADS = [
-    ("ams_safety", 0, 50, 150, 150, 2048),
-    ("ams_current", 2, 20, 60, 60, 2048),
-    ("ams_adbms", 3, 100, 300, 300, 8192),
-    ("ams_can", 4, 100, 300, 300, 8192),
-    ("ams_estimator", 6, 100, 300, 300, 8192),
-    ("ams_fan", 8, 200, 600, 600, 1536),
-    ("ams_air", 8, 500, 1500, 1500, 1536),
-    ("ams_imd", 9, 100, 300, 300, 1536),
-    ("ams_diag", 12, 0, 0, 0, 4096),
+    # name, priority, period, stale timeout, startup grace, stack,
+    # enabled, safety-heartbeat-required, safety-evidence-ready, v2.6.27 stack lower bound
+    ("ams_safety", 0, 50, 0, 0, 2048, True, False, False, 1024),
+    ("ams_current", 2, 20, 200, 3000, 2048, True, True, False, 1024),
+    ("ams_adbms", 3, 100, 3000, 3000, 8192, True, True, False, 6144),
+    ("ams_can", 4, 100, 2000, 3000, 8192, True, True, False, 6144),
+    ("ams_estimator", 6, 100, 500, 3000, 8192, True, False, False, 6144),
+    ("ams_fan", 8, 200, 1000, 3000, 1536, True, True, False, 768),
+    ("ams_air", 8, 500, 0, 0, 1536, False, False, False, 768),
+    ("ams_imd", 9, 100, 500, 3000, 1536, False, False, False, 768),
+    ("ams_diag", 12, 0, 0, 0, 4096, True, False, False, 2048),
 ]
+
 
 
 def read_config_string(config: str, symbol: str):
@@ -137,6 +140,10 @@ def main() -> int:
                 "stale_deadline_ms": stale,
                 "startup_grace_ms": grace,
                 "nominal_stack_bytes": stack,
+                "enabled": enabled,
+                "safety_heartbeat_required": safety_required,
+                "safety_evidence_ready": safety_evidence_ready,
+                "v2627_stack_lower_bound_bytes": oracle_stack,
             }
             for (
                 name,
@@ -145,8 +152,38 @@ def main() -> int:
                 stale,
                 grace,
                 stack,
+                enabled,
+                safety_required,
+                safety_evidence_ready,
+                oracle_stack,
             ) in THREADS
         ],
+        "freertos_runtime_parity": {
+            "oracle": "DER26 AMS v2.6.27 / FW0.5.30",
+            "normal_periods_matched": True,
+            "relative_priority_order_matched": True,
+            "heartbeat_startup_grace_ms": 3000,
+            "heartbeat_timeouts_ms": {
+                "adbms": 3000,
+                "current": 200,
+                "temperature": 3000,
+                "can": 2000,
+                "logger": 2000,
+                "imd": 500,
+                "fan": 1000,
+                "estimator": 500,
+            },
+            "current_window_mutex_timeout_ms": 20,
+            "adbms_mutex_timeout_ms": 500,
+            "air_placeholder_started": False,
+            "imd_placeholder_started": False,
+            "temperature_heartbeat_integrated": False,
+            "watchdog_policy_integrated": False,
+            "bms_authority_enabled": False,
+            "balance_authority_enabled": False,
+            "placeholder_runtime_cycles_are_safety_evidence": False,
+            "absolute_release_scheduling_is_intentional_zephyr_divergence": True,
+        },
         "measurement_store": {
             "buffer_count": 2,
             "snapshot_max_bytes": 2048,

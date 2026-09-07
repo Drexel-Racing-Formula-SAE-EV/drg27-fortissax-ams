@@ -31,6 +31,10 @@ struct ams_thread_snapshot {
     uint32_t stale_deadline_ms;
     uint32_t startup_grace_ms;
 
+    bool enabled;
+    bool safety_heartbeat_required;
+    bool safety_evidence_ready;
+
     uint32_t heartbeat_seq;
     uint32_t heartbeat_age_ms;
 
@@ -65,6 +69,8 @@ void ams_threads_request_diagnostics(void);
 void ams_threads_print_manifest(void);
 
 size_t ams_threads_count(void);
+
+size_t ams_threads_active_count(void);
 
 uint32_t ams_threads_runtime_start_ms(void);
 

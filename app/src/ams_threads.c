@@ -11,7 +11,7 @@
 
 /*
  * --------------------------------------------------------------------------
- * Z-005 AMS runtime contract
+ * Z-010 AMS runtime contract
  * --------------------------------------------------------------------------
  *
  * This remains a PLATFORM/RUNTIME skeleton only.
@@ -28,9 +28,24 @@
 
 
 /*
- * Numerically smaller non-negative Zephyr priorities are higher-priority
- * preemptible threads.
+ * --------------------------------------------------------------------------
+ * v2.6.27 / FW0.5.30 runtime-policy parity
+ * --------------------------------------------------------------------------
+ *
+ * The numeric priority values differ because Zephyr uses a smaller number for
+ * a higher preemptible priority, while FreeRTOS uses a larger number for a
+ * higher priority.  The relative safety ordering is intentionally identical:
+ *
+ *   safety > current > ADBMS > CAN > estimator > fan/AIR > IMD > diagnostics
+ *
+ * The release periods and heartbeat timeouts below are copied from the frozen
+ * v2.6.27 app.h policy.  Do not replace them with generic "N periods" rules:
+ * several oracle heartbeat windows are intentionally much wider than their
+ * task periods to tolerate bounded diagnostic/acquisition work without
+ * fabricating a software-liveness fault.
  */
+
+/* Zephyr preemptible priority ordering. */
 #define AMS_PRIO_SAFETY       0
 #define AMS_PRIO_CURRENT      2
 #define AMS_PRIO_ADBMS        3
@@ -41,10 +56,7 @@
 #define AMS_PRIO_IMD          9
 #define AMS_PRIO_DIAGNOSTICS 12
 
-
-/*
- * Nominal release periods.
- */
+/* Exact normal-rate task periods from the v2.6.27 oracle. */
 #define AMS_PERIOD_SAFETY_MS       50U
 #define AMS_PERIOD_CURRENT_MS      20U
 #define AMS_PERIOD_ADBMS_MS       100U
@@ -53,48 +65,88 @@
 #define AMS_PERIOD_FAN_MS         200U
 #define AMS_PERIOD_AIR_MS         500U
 #define AMS_PERIOD_IMD_MS         100U
-#define AMS_PERIOD_DIAGNOSTICS_MS 0U
-
+#define AMS_PERIOD_DIAGNOSTICS_MS   0U
 
 /*
- * Initial liveness deadlines.
+ * Exact v2.6.27 heartbeat policy.
  *
- * Z-005 uses three nominal periods as a conservative runtime-skeleton
- * deadline. These are migration/runtime deadlines, not final vehicle safety
- * policy thresholds.
+ * AIR has no heartbeat bit in the oracle. Diagnostics here is not the legacy
+ * logger task, so neither is allowed to masquerade as safety-liveness proof.
+ * The separate temperature heartbeat belongs to the future ADBMS acquisition
+ * integration and is frozen here even though Z-010 does not yet produce it.
  */
-#define AMS_STALE_SAFETY_MS       150U
-#define AMS_STALE_CURRENT_MS       60U
-#define AMS_STALE_ADBMS_MS        300U
-#define AMS_STALE_CAN_MS          300U
-#define AMS_STALE_ESTIMATOR_MS    300U
-#define AMS_STALE_FAN_MS          600U
-#define AMS_STALE_AIR_MS         1500U
-#define AMS_STALE_IMD_MS          300U
-#define AMS_STALE_DIAGNOSTICS_MS    0U
+#define AMS_HEARTBEAT_STARTUP_GRACE_MS       3000U
+#define AMS_HEARTBEAT_ADBMS_TIMEOUT_MS       3000U
+#define AMS_HEARTBEAT_CURRENT_TIMEOUT_MS      200U
+#define AMS_HEARTBEAT_TEMP_TIMEOUT_MS        3000U
+#define AMS_HEARTBEAT_CAN_TIMEOUT_MS         2000U
+#define AMS_HEARTBEAT_LOGGER_TIMEOUT_MS      2000U
+#define AMS_HEARTBEAT_IMD_TIMEOUT_MS          500U
+#define AMS_HEARTBEAT_FAN_TIMEOUT_MS         1000U
+#define AMS_HEARTBEAT_ESTIMATOR_TIMEOUT_MS    500U
 
+#define AMS_STALE_SAFETY_MS          0U
+#define AMS_STALE_CURRENT_MS         200U
+#define AMS_STALE_ADBMS_MS          3000U
+#define AMS_STALE_CAN_MS            2000U
+#define AMS_STALE_ESTIMATOR_MS       500U
+#define AMS_STALE_FAN_MS            1000U
+#define AMS_STALE_AIR_MS             0U
+#define AMS_STALE_IMD_MS             500U
+#define AMS_STALE_DIAGNOSTICS_MS     0U
+
+#define AMS_STARTUP_SAFETY_MS        0U
+#define AMS_STARTUP_CURRENT_MS      3000U
+#define AMS_STARTUP_ADBMS_MS        3000U
+#define AMS_STARTUP_CAN_MS          3000U
+#define AMS_STARTUP_ESTIMATOR_MS    3000U
+#define AMS_STARTUP_FAN_MS          3000U
+#define AMS_STARTUP_AIR_MS           0U
+#define AMS_STARTUP_IMD_MS          3000U
+#define AMS_STARTUP_DIAGNOSTICS_MS   0U
 
 /*
- * Startup grace prevents a legitimate thread from being declared stale
- * before it has had a reasonable opportunity to execute its first cycle.
+ * Lock wait bounds are not used until the corresponding adapters are wired,
+ * but freezing them now prevents a later migration from silently converting
+ * a bounded fail-low wait into an unbounded deadlock.
  */
-#define AMS_STARTUP_SAFETY_MS       150U
-#define AMS_STARTUP_CURRENT_MS       60U
-#define AMS_STARTUP_ADBMS_MS        300U
-#define AMS_STARTUP_CAN_MS          300U
-#define AMS_STARTUP_ESTIMATOR_MS    300U
-#define AMS_STARTUP_FAN_MS          600U
-#define AMS_STARTUP_AIR_MS         1500U
-#define AMS_STARTUP_IMD_MS          300U
-#define AMS_STARTUP_DIAGNOSTICS_MS    0U
-
+#define AMS_ADBMS_MUTEX_TIMEOUT_MS          500U
+#define AMS_CURRENT_WINDOW_MUTEX_TIMEOUT_MS  20U
 
 /*
- * Initial stack allocations.
+ * Current Z-010 migration profile is stricter than the FreeRTOS vehicle
+ * profile: physical authority is compile-time disabled and the physical IMD
+ * and AIR auxiliary adapters do not exist yet.
  *
- * These remain deliberately generous until hardware/runtime stack-watermark
- * evidence exists.
+ * The v2.6.27 default/bench behavior does not start the legacy AIR task when
+ * AMS_ENABLE_AIR_AUX_FEEDBACK=0.  Likewise, IMD is not started in the bench
+ * profile.  Keep those placeholder objects present for topology/stack review,
+ * but do not run them or count their no-op loops as liveness evidence.
  */
+#define AMS_RUNTIME_AIR_ENABLED 0U
+#define AMS_RUNTIME_IMD_ENABLED 0U
+
+/*
+ * Estimator heartbeat is safety-critical in v2.6.27 only when SoP authority
+ * is required. Z-010 has no BMS/SoP authority, so it remains diagnostic only.
+ */
+#define AMS_RUNTIME_ESTIMATOR_SAFETY_REQUIRED 0U
+
+/*
+ * Zephyr stacks remain intentionally larger than the FreeRTOS byte counts
+ * until target stack-watermark evidence exists.  The oracle sizes are kept as
+ * lower-bound contracts, not as targets to shrink toward during migration.
+ */
+#define AMS_ORACLE_STACK_SAFETY_BYTES       1024U
+#define AMS_ORACLE_STACK_CURRENT_BYTES      1024U
+#define AMS_ORACLE_STACK_ADBMS_BYTES        6144U
+#define AMS_ORACLE_STACK_CAN_BYTES          6144U
+#define AMS_ORACLE_STACK_ESTIMATOR_BYTES    6144U
+#define AMS_ORACLE_STACK_FAN_BYTES           768U
+#define AMS_ORACLE_STACK_AIR_BYTES           768U
+#define AMS_ORACLE_STACK_IMD_BYTES           768U
+#define AMS_ORACLE_STACK_DIAGNOSTICS_BYTES  2048U
+
 #define AMS_STACK_SAFETY       2048U
 #define AMS_STACK_CURRENT      2048U
 #define AMS_STACK_ADBMS        8192U
@@ -105,10 +157,46 @@
 #define AMS_STACK_IMD          1536U
 #define AMS_STACK_DIAGNOSTICS  4096U
 
-
 BUILD_ASSERT(CONFIG_NUM_PREEMPT_PRIORITIES > AMS_PRIO_DIAGNOSTICS,
              "AMS runtime requires at least 13 preemptible priorities");
 
+/* Preserve the v2.6.27 relative safety-priority policy. */
+BUILD_ASSERT(AMS_PRIO_SAFETY < AMS_PRIO_CURRENT,
+             "safety supervisor must outrank current");
+BUILD_ASSERT(AMS_PRIO_CURRENT < AMS_PRIO_ADBMS,
+             "current must outrank ADBMS");
+BUILD_ASSERT(AMS_PRIO_ADBMS < AMS_PRIO_CAN,
+             "ADBMS must outrank CAN");
+BUILD_ASSERT(AMS_PRIO_CAN < AMS_PRIO_ESTIMATOR,
+             "CAN must outrank estimator");
+BUILD_ASSERT(AMS_PRIO_ESTIMATOR < AMS_PRIO_FAN,
+             "estimator must outrank fan");
+BUILD_ASSERT(AMS_PRIO_FAN == AMS_PRIO_AIR,
+             "fan and AIR must retain equal priority");
+BUILD_ASSERT(AMS_PRIO_FAN < AMS_PRIO_IMD,
+             "fan/AIR must outrank IMD");
+BUILD_ASSERT(AMS_PRIO_IMD < AMS_PRIO_DIAGNOSTICS,
+             "IMD must outrank diagnostics");
+
+/* Never shrink below the reviewed FreeRTOS allocations without evidence. */
+BUILD_ASSERT(AMS_STACK_SAFETY >= AMS_ORACLE_STACK_SAFETY_BYTES,
+             "safety stack below v2.6.27 allocation");
+BUILD_ASSERT(AMS_STACK_CURRENT >= AMS_ORACLE_STACK_CURRENT_BYTES,
+             "current stack below v2.6.27 allocation");
+BUILD_ASSERT(AMS_STACK_ADBMS >= AMS_ORACLE_STACK_ADBMS_BYTES,
+             "ADBMS stack below v2.6.27 allocation");
+BUILD_ASSERT(AMS_STACK_CAN >= AMS_ORACLE_STACK_CAN_BYTES,
+             "CAN stack below v2.6.27 allocation");
+BUILD_ASSERT(AMS_STACK_ESTIMATOR >= AMS_ORACLE_STACK_ESTIMATOR_BYTES,
+             "estimator stack below v2.6.27 allocation");
+BUILD_ASSERT(AMS_STACK_FAN >= AMS_ORACLE_STACK_FAN_BYTES,
+             "fan stack below v2.6.27 allocation");
+BUILD_ASSERT(AMS_STACK_AIR >= AMS_ORACLE_STACK_AIR_BYTES,
+             "AIR stack below v2.6.27 allocation");
+BUILD_ASSERT(AMS_STACK_IMD >= AMS_ORACLE_STACK_IMD_BYTES,
+             "IMD stack below v2.6.27 allocation");
+BUILD_ASSERT(AMS_STACK_DIAGNOSTICS >= AMS_ORACLE_STACK_DIAGNOSTICS_BYTES,
+             "diagnostics stack below v2.6.27 CLI allocation");
 
 struct ams_runtime_stat {
     atomic_t heartbeat_seq;
@@ -140,6 +228,10 @@ struct ams_thread_descriptor {
     uint32_t period_ms;
     uint32_t stale_deadline_ms;
     uint32_t startup_grace_ms;
+
+    bool enabled;
+    bool safety_heartbeat_required;
+    bool safety_evidence_ready;
 
     struct k_thread *thread;
     k_thread_stack_t *stack;
@@ -202,6 +294,9 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .period_ms = AMS_PERIOD_SAFETY_MS,
         .stale_deadline_ms = AMS_STALE_SAFETY_MS,
         .startup_grace_ms = AMS_STARTUP_SAFETY_MS,
+        .enabled = true,
+        .safety_heartbeat_required = false,
+        .safety_evidence_ready = false,
         .thread = &safety_thread,
         .stack = safety_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(safety_stack),
@@ -215,6 +310,9 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .period_ms = AMS_PERIOD_CURRENT_MS,
         .stale_deadline_ms = AMS_STALE_CURRENT_MS,
         .startup_grace_ms = AMS_STARTUP_CURRENT_MS,
+        .enabled = true,
+        .safety_heartbeat_required = true,
+        .safety_evidence_ready = false,
         .thread = &current_thread,
         .stack = current_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(current_stack),
@@ -228,6 +326,9 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .period_ms = AMS_PERIOD_ADBMS_MS,
         .stale_deadline_ms = AMS_STALE_ADBMS_MS,
         .startup_grace_ms = AMS_STARTUP_ADBMS_MS,
+        .enabled = true,
+        .safety_heartbeat_required = true,
+        .safety_evidence_ready = false,
         .thread = &adbms_thread,
         .stack = adbms_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(adbms_stack),
@@ -241,6 +342,9 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .period_ms = AMS_PERIOD_CAN_MS,
         .stale_deadline_ms = AMS_STALE_CAN_MS,
         .startup_grace_ms = AMS_STARTUP_CAN_MS,
+        .enabled = true,
+        .safety_heartbeat_required = true,
+        .safety_evidence_ready = false,
         .thread = &can_thread,
         .stack = can_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(can_stack),
@@ -254,6 +358,9 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .period_ms = AMS_PERIOD_ESTIMATOR_MS,
         .stale_deadline_ms = AMS_STALE_ESTIMATOR_MS,
         .startup_grace_ms = AMS_STARTUP_ESTIMATOR_MS,
+        .enabled = true,
+        .safety_heartbeat_required = AMS_RUNTIME_ESTIMATOR_SAFETY_REQUIRED != 0U,
+        .safety_evidence_ready = false,
         .thread = &estimator_thread,
         .stack = estimator_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(estimator_stack),
@@ -267,6 +374,9 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .period_ms = AMS_PERIOD_FAN_MS,
         .stale_deadline_ms = AMS_STALE_FAN_MS,
         .startup_grace_ms = AMS_STARTUP_FAN_MS,
+        .enabled = true,
+        .safety_heartbeat_required = true,
+        .safety_evidence_ready = false,
         .thread = &fan_thread,
         .stack = fan_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(fan_stack),
@@ -280,6 +390,9 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .period_ms = AMS_PERIOD_AIR_MS,
         .stale_deadline_ms = AMS_STALE_AIR_MS,
         .startup_grace_ms = AMS_STARTUP_AIR_MS,
+        .enabled = AMS_RUNTIME_AIR_ENABLED != 0U,
+        .safety_heartbeat_required = false,
+        .safety_evidence_ready = false,
         .thread = &air_thread,
         .stack = air_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(air_stack),
@@ -293,6 +406,9 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .period_ms = AMS_PERIOD_IMD_MS,
         .stale_deadline_ms = AMS_STALE_IMD_MS,
         .startup_grace_ms = AMS_STARTUP_IMD_MS,
+        .enabled = AMS_RUNTIME_IMD_ENABLED != 0U,
+        .safety_heartbeat_required = AMS_RUNTIME_IMD_ENABLED != 0U,
+        .safety_evidence_ready = false,
         .thread = &imd_thread,
         .stack = imd_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(imd_stack),
@@ -306,6 +422,9 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .period_ms = AMS_PERIOD_DIAGNOSTICS_MS,
         .stale_deadline_ms = AMS_STALE_DIAGNOSTICS_MS,
         .startup_grace_ms = AMS_STARTUP_DIAGNOSTICS_MS,
+        .enabled = true,
+        .safety_heartbeat_required = false,
+        .safety_evidence_ready = false,
         .thread = &diagnostics_thread,
         .stack = diagnostics_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(diagnostics_stack),
@@ -488,6 +607,11 @@ static void runtime_update_stale_flags(void)
 
         thread = &threads[i];
 
+        if (!thread->enabled || (thread->stale_deadline_ms == 0U)) {
+            atomic_set(&thread->stat->stale, 0);
+            continue;
+        }
+
         heartbeat =
             (uint32_t)atomic_get(
                 &thread->stat->heartbeat_seq);
@@ -615,8 +739,8 @@ static void diagnostics_thread_entry(void *p1,
 
         start_cycles = k_cycle_get_32();
 
-        printk("\nAMS Z-005 runtime snapshot\n");
-        printk("thread           p  per age stale late maxL exec wcet stack-used\n");
+        printk("\nAMS Z-010 runtime snapshot\n");
+        printk("thread           en sf ev p  per age stale late maxL exec wcet stack-used\n");
 
         for (size_t i = 0U;
              i < AMS_THREAD_COUNT;
@@ -630,8 +754,11 @@ static void diagnostics_thread_entry(void *p1,
             }
 
             printk(
-                "%-16s %2d %4u %4u %5u %4u %4u %4u %4u %5u/%u\n",
+                "%-16s %2u %2u %2u %2d %4u %4u %5u %4u %4u %4u %4u %5u/%u\n",
                 snapshot.name,
+                snapshot.enabled ? 1U : 0U,
+                snapshot.safety_heartbeat_required ? 1U : 0U,
+                snapshot.safety_evidence_ready ? 1U : 0U,
                 snapshot.priority,
                 snapshot.period_ms,
                 snapshot.heartbeat_age_ms,
@@ -688,7 +815,7 @@ static k_tid_t create_thread(struct ams_thread_descriptor *thread,
 void ams_threads_print_manifest(void)
 {
     printk("\nAMS runtime manifest\n");
-    printk("thread           prio period stale grace stack\n");
+    printk("thread           en sf ev prio period stale grace stack\n");
 
     for (size_t i = 0U;
          i < AMS_THREAD_COUNT;
@@ -697,13 +824,25 @@ void ams_threads_print_manifest(void)
 
         thread = &threads[i];
 
-        printk("%-16s %4d %6u %5u %5u %5u\n",
+        printk("%-16s %2u %2u %2u %4d %6u %5u %5u %5u\n",
                thread->name,
+               thread->enabled ? 1U : 0U,
+               thread->safety_heartbeat_required ? 1U : 0U,
+               thread->safety_evidence_ready ? 1U : 0U,
                thread->priority,
                thread->period_ms,
                thread->stale_deadline_ms,
                thread->startup_grace_ms,
                (unsigned int)thread->stack_size);
+    }
+}
+
+
+static void start_thread_if_enabled(enum ams_thread_id id)
+{
+    if (((unsigned int)id < (unsigned int)AMS_THREAD_COUNT) &&
+        threads[id].enabled) {
+        k_thread_start(threads[id].thread);
     }
 }
 
@@ -775,46 +914,33 @@ int ams_threads_start(void)
     }
 
     /*
-     * Record the single runtime epoch before application workers begin.
+     * Record the single runtime epoch before any application thread runs.
+     * v2.6.27 applies one 3000 ms startup grace to the monitored heartbeat
+     * set, so the highest-priority supervisor can safely start first without
+     * fabricating stale-worker faults during deterministic startup.
      */
     atomic_set(
         &runtime_start_ms,
         (atomic_val_t)k_uptime_get_32());
 
-    /*
-     * Start worker threads first.
-     */
-    k_thread_start(
-        threads[AMS_THREAD_CURRENT].thread);
-
-    k_thread_start(
-        threads[AMS_THREAD_ADBMS].thread);
-
-    k_thread_start(
-        threads[AMS_THREAD_CAN].thread);
-
-    k_thread_start(
-        threads[AMS_THREAD_ESTIMATOR].thread);
-
-    k_thread_start(
-        threads[AMS_THREAD_FAN].thread);
-
-    k_thread_start(
-        threads[AMS_THREAD_AIR].thread);
-
-    k_thread_start(
-        threads[AMS_THREAD_IMD].thread);
-
-    k_thread_start(
-        threads[AMS_THREAD_DIAGNOSTICS].thread);
-
     atomic_set(&runtime_started, 1);
 
     /*
-     * Supervisor starts only after the worker topology is complete.
+     * Match the safety architecture rather than the historical creation order:
+     * the supervisor is the highest-priority application thread and is active
+     * before lower-priority work begins.  BMS_OK still cannot be asserted in
+     * Z-010 because assertion authority is compile-time forbidden.
      */
-    k_thread_start(
-        threads[AMS_THREAD_SAFETY].thread);
+    start_thread_if_enabled(AMS_THREAD_SAFETY);
+
+    start_thread_if_enabled(AMS_THREAD_CURRENT);
+    start_thread_if_enabled(AMS_THREAD_ADBMS);
+    start_thread_if_enabled(AMS_THREAD_CAN);
+    start_thread_if_enabled(AMS_THREAD_ESTIMATOR);
+    start_thread_if_enabled(AMS_THREAD_FAN);
+    start_thread_if_enabled(AMS_THREAD_AIR);
+    start_thread_if_enabled(AMS_THREAD_IMD);
+    start_thread_if_enabled(AMS_THREAD_DIAGNOSTICS);
 
     return 0;
 }
@@ -863,6 +989,15 @@ int ams_thread_snapshot_get(enum ams_thread_id id,
 
     snapshot->startup_grace_ms =
         thread->startup_grace_ms;
+
+    snapshot->enabled =
+        thread->enabled;
+
+    snapshot->safety_heartbeat_required =
+        thread->safety_heartbeat_required;
+
+    snapshot->safety_evidence_ready =
+        thread->safety_evidence_ready;
 
     snapshot->heartbeat_seq =
         (uint32_t)atomic_get(
@@ -929,7 +1064,10 @@ int ams_thread_snapshot_get(enum ams_thread_id id,
         (uint32_t)atomic_get(
             &runtime_start_ms);
 
-    if (snapshot->heartbeat_seq == 0U) {
+    if (!thread->enabled || (thread->stale_deadline_ms == 0U)) {
+        snapshot->heartbeat_age_ms = 0U;
+        snapshot->startup_grace_active = false;
+    } else if (snapshot->heartbeat_seq == 0U) {
         snapshot->heartbeat_age_ms =
             now_ms - runtime_epoch_ms;
 
@@ -958,6 +1096,20 @@ void ams_threads_request_diagnostics(void)
 size_t ams_threads_count(void)
 {
     return ARRAY_SIZE(threads);
+}
+
+
+size_t ams_threads_active_count(void)
+{
+    size_t active = 0U;
+
+    for (size_t i = 0U; i < AMS_THREAD_COUNT; ++i) {
+        if (threads[i].enabled) {
+            active++;
+        }
+    }
+
+    return active;
 }
 
 

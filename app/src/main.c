@@ -44,7 +44,8 @@ int main(void)
         k_panic();
     }
 
-    printk("AMS runtime threads: %u\n",
+    printk("AMS runtime threads: %u active / %u defined\n",
+           (unsigned int)ams_threads_active_count(),
            (unsigned int)ams_threads_count());
 
     /*
