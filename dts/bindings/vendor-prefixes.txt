@@ -1,0 +1,2 @@
+# Local project vendor prefix registry.
+drexel	Drexel University

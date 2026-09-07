@@ -1,0 +1,22 @@
+title: Drexel AMS dual-range current sense
+
+description: |
+  Two ADC inputs used by the DER26 dual-range DHAB current sensor. The
+  io-channel-names order is part of the acquisition contract: high range first,
+  then low range.
+
+compatible: "drexel,ams-current-sense"
+
+include: base.yaml
+
+properties:
+  io-channels:
+    type: phandle-array
+    required: true
+    description: ADC channels in high-range then low-range order.
+
+  io-channel-names:
+    type: string-array
+    required: true
+    const: ["high", "low"]
+    description: Must contain "high" and "low" in that order.

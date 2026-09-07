@@ -1,4 +1,4 @@
-#include "fan_pwm_zephyr.h"
+#include <ams_platform/fan_pwm.h>
 
 #include <math.h>
 #include <stdbool.h>

@@ -85,7 +85,7 @@ def main() -> int:
 
     core_h = repo / "lib/ams_core/include/ams_core/ams_fan_control.h"
     core_c = repo / "lib/ams_core/fan/ams_fan_control.c"
-    driver_h = repo / "drivers/ams/fan_pwm_zephyr.h"
+    driver_h = repo / "include/ams_platform/fan_pwm.h"
     driver_c = repo / "drivers/ams/fan_pwm_zephyr.c"
     runtime_c = repo / "app/src/ams_threads.c"
     main_c = repo / "app/src/main.c"
@@ -150,17 +150,17 @@ def main() -> int:
     ):
         require(token in dh, f"fan PWM contract drift: {token}")
 
-    mappings = (
-        "DEVICE_DT_GET(DT_NODELABEL(pwm3)), 2U",
-        "DEVICE_DT_GET(DT_NODELABEL(pwm3)), 4U",
-        "DEVICE_DT_GET(DT_NODELABEL(pwm4)), 3U",
-        "DEVICE_DT_GET(DT_NODELABEL(pwm4)), 4U",
-        "DEVICE_DT_GET(DT_NODELABEL(pwm5)), 1U",
-        "DEVICE_DT_GET(DT_NODELABEL(pwm5)), 2U",
-    )
-    for mapping in mappings:
-        require(mapping in d, f"fan hardware mapping missing: {mapping}")
-
+    require("#define AMS_FAN_NODE DT_NODELABEL(ams_fans)" in d,
+            "fan adapter must consume typed AMS fan-bank node")
+    for name in ("fan1", "fan2", "fan3", "fan4", "fan5", "fan6"):
+        require(f"PWM_DT_SPEC_GET_BY_NAME(AMS_FAN_NODE, {name})" in d,
+                f"fan adapter missing named Devicetree PWM: {name}")
+    require("DT_PWMS_CTLR_BY_NAME" in d,
+            "fan compile-time controller mapping checks missing")
+    require("DT_PWMS_CHANNEL_BY_NAME" in d,
+            "fan compile-time channel mapping checks missing")
+    require("DT_PWMS_FLAGS_BY_NAME" in d,
+            "fan compile-time polarity checks missing")
     require("PWM_POLARITY_NORMAL" in d, "fan polarity must remain active high")
     require("pwm_set_cycles" in d, "fan adapter must use cycle-exact PWM API")
     require("pwm_get_cycles_per_sec" in d, "fan adapter must validate timer clock")
@@ -210,6 +210,14 @@ def main() -> int:
             "fan startup fatal/soft failure separation drifted")
 
     # Source DTS contract.
+    fan_node = get_block(bd, "ams_fans: ams-fan-bank")
+    require('compatible = "drexel,ams-fan-bank"' in fan_node,
+            "typed AMS fan-bank binding missing")
+    require('pwm-names = "fan1", "fan2", "fan3", "fan4", "fan5", "fan6"' in fan_node,
+            "fan PWM names/order drift")
+    require("PWM_HZ(32133) PWM_POLARITY_NORMAL" in fan_node,
+            "fan consumer PWM metadata/polarity drift")
+
     for label, pins in (
         ("&timers3", "&tim3_ch2_pa7 &tim3_ch4_pb1"),
         ("&timers4", "&tim4_ch3_pd14 &tim4_ch4_pd15"),
@@ -228,6 +236,12 @@ def main() -> int:
             "balance authority must remain disabled during fan migration")
     require("CONFIG_HEAP_MEM_POOL_SIZE=0" in cfg,
             "fan migration must remain application-heap-free")
+
+    generated_fan = get_block(gd, "ams_fans:")
+    require('compatible = "drexel,ams-fan-bank"' in generated_fan,
+            "generated typed fan-bank node missing")
+    require("pwm-names" in generated_fan,
+            "generated fan PWM names missing")
 
     for label in ("timers3:", "timers4:", "timers5:"):
         block = get_block(gd, label)

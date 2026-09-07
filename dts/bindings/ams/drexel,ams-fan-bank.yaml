@@ -1,0 +1,23 @@
+title: Drexel AMS six-zone cooling fan bank
+
+description: |
+  Six PWM outputs used by the AMS cooling fans. The pwms property supplies the
+  Zephyr controller/channel/polarity description; the production adapter still
+  uses cycle-exact pwm_set_cycles() to preserve the frozen v2.6.27 ARR/CCR
+  behavior without nanosecond rounding.
+
+compatible: "drexel,ams-fan-bank"
+
+include: base.yaml
+
+properties:
+  pwms:
+    type: phandle-array
+    required: true
+    description: Six fan PWM outputs in fan1 through fan6 order.
+
+  pwm-names:
+    type: string-array
+    required: true
+    const: ["fan1", "fan2", "fan3", "fan4", "fan5", "fan6"]
+    description: Must contain fan1 through fan6.

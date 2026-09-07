@@ -33,4 +33,108 @@ config AMS_IMD_TARGET_VALIDATED
       this stage proves source/SIL/target-build behavior only and does not
       claim physical PWM/status validation of the installed IMD.
 
+config AMS_FAN_TARGET_VALIDATED
+    bool "Claim physical fan PWM target validation"
+    default n
+    help
+      Release-evidence gate for physical fan PWM validation. Z-013 must remain
+      disabled until reset/pinctrl behavior, frequency, polarity and all six
+      physical outputs have been verified on the installed target.
+
+endmenu
+menu "DRG27 AMS migration capabilities"
+
+# Hidden migration facts.  These are intentionally not user-selectable: code
+# presence, actor liveness, safety evidence, and physical validation are four
+# different states and must never be inferred from one another.
+config AMS_CAP_BMS_OK_PLATFORM_ADAPTER_PRESENT
+    bool
+    default y
+
+config AMS_CAP_CURRENT_ADC_ADAPTER_PRESENT
+    bool
+    default y
+
+config AMS_CAP_CURRENT_ACTOR_LIVE
+    bool
+    default n
+
+config AMS_CAP_CURRENT_SAFETY_EVIDENCE
+    bool
+    default n
+
+config AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT
+    bool
+    default n
+
+config AMS_CAP_ADBMS_ACTOR_LIVE
+    bool
+    default n
+
+config AMS_CAP_ADBMS_SAFETY_EVIDENCE
+    bool
+    default n
+
+config AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE
+    bool
+    default n
+
+config AMS_CAP_CAN_ADAPTER_PRESENT
+    bool
+    default n
+
+config AMS_CAP_CAN_ACTOR_LIVE
+    bool
+    default n
+
+config AMS_CAP_CAN_SAFETY_EVIDENCE
+    bool
+    default n
+
+config AMS_CAP_FAN_PWM_ADAPTER_PRESENT
+    bool
+    default y
+
+config AMS_CAP_FAN_ACTOR_LIVE
+    bool
+    default y
+
+config AMS_CAP_FAN_SAFETY_EVIDENCE
+    bool
+    default y
+
+config AMS_CAP_FAN_PHYSICAL_VALIDATED
+    bool
+    default y if AMS_FAN_TARGET_VALIDATED
+    default n
+
+config AMS_CAP_IMD_CAPTURE_ADAPTER_PRESENT
+    bool
+    default y
+
+config AMS_CAP_IMD_ACTOR_LIVE
+    bool
+    default y
+
+config AMS_CAP_IMD_SAFETY_EVIDENCE
+    bool
+    default y
+
+config AMS_CAP_IMD_PHYSICAL_VALIDATED
+    bool
+    default y if AMS_IMD_TARGET_VALIDATED
+    default n
+
+config AMS_CAP_WATCHDOG_ADAPTER_PRESENT
+    bool
+    default n
+
+config AMS_CAP_WATCHDOG_ACTIVE
+    bool
+    default n
+
+config AMS_CAP_WATCHDOG_FULL_ORACLE_COVERAGE
+    bool
+    default n
+
 endmenu

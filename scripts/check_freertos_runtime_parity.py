@@ -85,16 +85,20 @@ def main() -> int:
     repo = args.repo_root.resolve()
     runtime = repo / "app" / "src" / "ams_threads.c"
     safety = repo / "app" / "src" / "ams_safety.c"
+    fail_low = repo / "boards" / "drexel" / "der26_ams" / "ams_fail_low_stm32.c"
+    bms_adapter = repo / "drivers" / "ams" / "bms_ok_zephyr.c"
     kconfig = repo / "app" / "Kconfig"
     prj = repo / "app" / "prj.conf"
     defconfig = repo / "boards" / "drexel" / "der26_ams" / "der26_ams_defconfig"
     doc = repo / "docs" / "migration" / "Z013_IMD_CAPTURE_PARITY.md"
 
-    for path in (runtime, safety, kconfig, prj, defconfig, doc):
+    for path in (runtime, safety, fail_low, bms_adapter, kconfig, prj, defconfig, doc):
         require(path.is_file(), f"missing {path}")
 
     r = runtime.read_text(encoding="utf-8")
     s = safety.read_text(encoding="utf-8")
+    f = fail_low.read_text(encoding="utf-8")
+    b = bms_adapter.read_text(encoding="utf-8")
     k = kconfig.read_text(encoding="utf-8")
     pconf = prj.read_text(encoding="utf-8")
     dconf = defconfig.read_text(encoding="utf-8")
@@ -163,11 +167,20 @@ def main() -> int:
     halt = s.find("k_fatal_halt(reason);", fatal)
     require((force >= 0) and (halt > force),
             "fatal path must force BMS_OK low before halt")
-    direct_start = s.find("void ams_bms_ok_force_low_direct")
-    direct_end = s.find("static int ams_bms_ok_early_init", direct_start)
-    direct = s[direct_start:direct_end]
+    direct_start = f.find("void ams_bms_ok_force_low_direct")
+    direct = f[direct_start:]
+    require(direct_start >= 0,
+            "board-specific direct fail-low implementation missing")
     require("__DSB();" in direct and "__ISB();" in direct,
             "direct fail-low path must complete with DSB+ISB barriers")
+    require("RCC->" not in s and "GPIOE->" not in s and "<soc.h>" not in s,
+            "application safety policy regained direct STM32 register ownership")
+    require("zephyr/drivers/" not in s and "DT_NODELABEL" not in s,
+            "application safety policy regained normal hardware mapping ownership")
+    require("SYS_INIT(ams_bms_ok_early_init, PRE_KERNEL_1, 0);" in f,
+            "pre-kernel fail-low registration left the board safety layer")
+    require("GPIO_DT_SPEC_GET(AMS_SAFETY_NODE, bms_ok_gpios)" in b,
+            "normal BMS_OK path is not isolated behind typed Zephyr GPIO adapter")
 
     # AIR remains a disabled placeholder. Z-013 promotes IMD to a real
     # workload, but that is no-authority migration evidence only and does not

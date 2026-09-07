@@ -1,0 +1,21 @@
+title: Drexel AMS insulation monitoring device interface
+
+description: |
+  IMD M_HS PWM capture and independent OK_HS digital status input. The PWM
+  period cell is descriptive consumer metadata only; capture timing is measured
+  from the hardware counter and is not configured from that period value.
+
+compatible: "drexel,ams-imd"
+
+include: base.yaml
+
+properties:
+  pwms:
+    type: phandle-array
+    required: true
+    description: PWM capture source for IMD M_HS.
+
+  status-gpios:
+    type: phandle-array
+    required: true
+    description: Active-high independent IMD OK_HS input.

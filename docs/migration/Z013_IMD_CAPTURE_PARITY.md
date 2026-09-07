@@ -158,3 +158,54 @@ Before any vehicle-authority profile may rely on IMD evidence:
 - confirm no interaction/regression with fan PWM timers or current ADCs.
 
 Until that evidence exists, `AMS_IMD_TARGET_VALIDATED` remains false.
+
+## Reproducible production-adapter host harness
+
+The final Z-013 repository includes `tests/unit/imd/imd_capture_adapter_test.c`
+and a minimal fake Zephyr header surface. The harness compiles the actual
+`drivers/ams/imd_capture_zephyr.c`; it does not duplicate the adapter algorithm
+in a test-only implementation.
+
+The closeout run executed 100,000 randomized adapter operations plus directed
+failure/race cases and reported:
+
+- production adapter: **776,535 checks, 0 failures**;
+- portable IMD core: **57 checks, 0 failures**;
+- GCC `-fanalyzer`: PASS for production core and adapter;
+- AddressSanitizer + UndefinedBehaviorSanitizer: PASS for production core and
+  adapter;
+- Clang static analyzer: PASS for production core and adapter.
+
+The four Z-013 production files remain byte-identical to the original working
+candidate used for the existing differential evidence. The closeout change only
+adds reproducible host-test infrastructure and documentation.
+
+## Closeout limitation
+
+The repository still requires the STM32F767 Zephyr target build and generated
+DTS/map/config contract suite in the real west workspace before Z-013 may be
+committed. Host validation cannot substitute for that target gate, and no
+physical IMD validation is claimed by this closeout.
+
+
+### Zephyr 4.4 target-build binding correction
+
+The first target build exposed a devicetree API issue rather than a hardware or
+policy defect. The original Z-013 candidate placed `pwms` and `status-gpios` on
+an unbound `imd-capture` pseudo-node, so Zephyr generated the node itself but
+not the typed phandle/cell macros required by `PWM_DT_SPEC_GET()` and
+`GPIO_DT_SPEC_GET()`. The first target-build correction made the properties consumable, and the
+subsequent Z-013 architecture hardening formalized them in the typed
+`drexel,ams-imd` node.  The production adapter now consumes a `pwm_dt_spec`
+for M_HS (TIM2_CH1/PA5) and a `gpio_dt_spec` for OK_HS (PC5 active high).
+This changes no IMD algorithm, timing, pin, polarity, or safety semantics.
+
+
+## First STM32 target-build corrections
+
+The first Zephyr 4.4 target build found two compile-time devicetree integration defects, not algorithm or safety-policy defects.
+
+1. The Z-011 ADC adapter used `0U`/`1U` as arguments to Zephyr `*_BY_IDX` macros. Those macros paste the index token into generated identifiers, producing nonexistent `IDX_0U`/`IDX_1U` names. The indexes are now bare `0` and `1`; HIGH remains ADC1_IN3 and LOW remains ADC2_IN10.
+2. The initial IMD DTS used `pwms`/`status-gpios` on an unbound pseudo-node. Zephyr emitted the node but not the typed phandle-cell macros required by `PWM_DT_SPEC_GET()`. The architecture-hardened form now places both properties on the typed `drexel,ams-imd` consumer node: M_HS references `pwm2` CH1/PA5 and OK_HS references PC5 active high.  The adapter consumes both through Zephyr `dt_spec` helpers.
+
+No current-sensor algorithm, IMD decode logic, pin assignment, timer clock, IRQ priority, polarity, timeout, or fail-low policy changed.

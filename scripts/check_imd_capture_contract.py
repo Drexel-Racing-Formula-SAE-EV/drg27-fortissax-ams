@@ -19,8 +19,8 @@ ORACLE_HASHES = {
 PORTABLE_HASHES = {
     "ams_imd.h": "c9fcadb1b75cfb303c4e8431deae1344d1c8b2e4f6df26909835652b072bdeea",
     "ams_imd.c": "7ddab208b068b49e27a1d1e252761868874caef960a1eaef4f5809ffdba8c2d7",
-    "imd_capture_zephyr.h": "df7f82524aee620136fa82f349127e8c2504c080d84cb3d93ccb6ed7a2ae8800",
-    "imd_capture_zephyr.c": "ffacacbdf5391c62841239c428821195be17b8cf4f7dc696e6548628883f1677",
+    "imd_capture.h": "6774284eeb6a14262f12bea562f9cb02fa483df45f364c16bc59efadc1226cc3",
+    "imd_capture_zephyr.c": "8a6f31bdd5aef5261a3fcbcb07b3272b638a4a12a9c657e5f5f075402f2a2353",
 }
 
 
@@ -62,7 +62,7 @@ def main() -> int:
 
     ph = repo / "lib/ams_core/include/ams_core/ams_imd.h"
     pc = repo / "lib/ams_core/imd/ams_imd.c"
-    ah = repo / "drivers/ams/imd_capture_zephyr.h"
+    ah = repo / "include/ams_platform/imd_capture.h"
     ac = repo / "drivers/ams/imd_capture_zephyr.c"
     runtime = repo / "app/src/ams_threads.c"
     dts = repo / "boards/drexel/der26_ams/der26_ams.dts"
@@ -79,8 +79,12 @@ def main() -> int:
 
     files = {p.name: p for p in (ph, pc, ah, ac)}
     for name, expected in PORTABLE_HASHES.items():
-        require(normalized_sha(files[name]) == expected,
-                f"{name} drifted from reviewed Z-013 implementation")
+        require(not expected.startswith("__"),
+                f"{name} reviewed hash was not finalized in the contract")
+        actual = normalized_sha(files[name])
+        require(actual == expected,
+                f"{name} drifted from reviewed Z-013 implementation "
+                f"(expected {expected}, got {actual})")
 
     prov_text = prov.read_text(encoding="utf-8")
     for name, digest in ORACLE_HASHES.items():
@@ -134,6 +138,15 @@ def main() -> int:
         require(token in (a + ah.read_text(encoding="utf-8")),
                 f"IMD adapter contract drift: {token}")
 
+    require("#define IMD_NODE DT_NODELABEL(ams_imd)" in a,
+            "IMD adapter must consume typed AMS IMD node")
+    require("PWM_DT_SPEC_GET(IMD_NODE)" in a,
+            "IMD M_HS must use Zephyr pwm_dt_spec from typed node")
+    require("GPIO_DT_SPEC_GET(IMD_NODE, status_gpios)" in a,
+            "IMD OK_HS must use typed GPIO spec from AMS IMD node")
+    require("DT_PWMS_CTLR(IMD_NODE)" in a and "DT_PWMS_CHANNEL(IMD_NODE)" in a,
+            "IMD compile-time PWM controller/channel checks missing")
+
     for forbidden in ("malloc(", "calloc(", "realloc(", "free(", "k_work_", "can_", "spi_", "ams_sop", "ams_soh"):
         require(forbidden not in a, f"forbidden IMD-adapter coupling: {forbidden}")
 
@@ -173,9 +186,13 @@ def main() -> int:
     require("&tim2_ch1_pa5" in t2, "IMD PWM pin is not PA5/TIM2_CH1")
     require("four-channel-capture-support" not in t2,
             "four-channel capture would remove source-equivalent reset-mode topology")
-    root_imd = block(bd, "imd_capture:")
-    require("<&pwm2 1 0 PWM_POLARITY_NORMAL>" in root_imd, "IMD PWM spec drift")
-    require("<&gpioc 5 GPIO_ACTIVE_HIGH>" in root_imd, "IMD OK_HS PC5 polarity drift")
+    imd_node = block(bd, "ams_imd: ams-imd")
+    require('compatible = "drexel,ams-imd"' in imd_node,
+            "typed AMS IMD binding missing")
+    require("status-gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>;" in imd_node,
+            "IMD OK_HS PC5 polarity drift")
+    require("pwms = <&pwm2 1 PWM_HZ(10) PWM_POLARITY_NORMAL>;" in imd_node,
+            "IMD M_HS typed PWM consumer mapping drift")
 
     require("CONFIG_PWM=y" in cfgtxt, "PWM support disabled")
     require("CONFIG_PWM_CAPTURE=y" in cfgtxt, "PWM capture support disabled")
@@ -184,6 +201,12 @@ def main() -> int:
     require("# CONFIG_AMS_IMD_TARGET_VALIDATED is not set" in cfgtxt,
             "Z-013 falsely claims physical IMD target validation")
     require("CONFIG_HEAP_MEM_POOL_SIZE=0" in cfgtxt, "IMD migration introduced application heap")
+
+    generated_imd = block(g, "ams_imd:")
+    require('compatible = "drexel,ams-imd"' in generated_imd,
+            "generated typed AMS IMD node missing")
+    require("pwms" in generated_imd and "status-gpios" in generated_imd,
+            "generated IMD consumer properties missing")
 
     gt2 = block(g, "timers2:")
     require('status = "okay"' in gt2, "generated TIM2 disabled")

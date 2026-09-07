@@ -1,4 +1,4 @@
-#include "current_adc_zephyr.h"
+#include <ams_platform/current_adc.h>
 
 #include <errno.h>
 #include <stddef.h>
@@ -11,28 +11,25 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 
-#define CURRENT_ADC_USER_NODE DT_PATH(zephyr_user)
-#define CURRENT_ADC_HIGH_INDEX 0U
-#define CURRENT_ADC_LOW_INDEX 1U
+#define CURRENT_ADC_NODE DT_NODELABEL(ams_current_sense)
 
-BUILD_ASSERT(DT_NODE_HAS_PROP(CURRENT_ADC_USER_NODE, io_channels),
-             "DER26 current ADC io-channels property missing");
-BUILD_ASSERT(DT_PROP_LEN(CURRENT_ADC_USER_NODE, io_channels) == 2,
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_CURRENT_ADC_ADAPTER_PRESENT),
+             "current ADC adapter capability must remain present at Z-013");
+
+BUILD_ASSERT(DT_NODE_HAS_PROP(CURRENT_ADC_NODE, io_channels),
+             "typed AMS current-sense node must define io-channels");
+BUILD_ASSERT(DT_PROP_LEN(CURRENT_ADC_NODE, io_channels) == 2,
              "DER26 current ADC must expose exactly two io-channels");
-BUILD_ASSERT(DT_SAME_NODE(DT_IO_CHANNELS_CTLR_BY_IDX(CURRENT_ADC_USER_NODE,
-                                                     CURRENT_ADC_HIGH_INDEX),
+BUILD_ASSERT(DT_SAME_NODE(DT_IO_CHANNELS_CTLR_BY_NAME(CURRENT_ADC_NODE, high),
                           DT_NODELABEL(adc1)),
              "current high range must use ADC1");
-BUILD_ASSERT(DT_SAME_NODE(DT_IO_CHANNELS_CTLR_BY_IDX(CURRENT_ADC_USER_NODE,
-                                                     CURRENT_ADC_LOW_INDEX),
+BUILD_ASSERT(DT_SAME_NODE(DT_IO_CHANNELS_CTLR_BY_NAME(CURRENT_ADC_NODE, low),
                           DT_NODELABEL(adc2)),
              "current low range must use ADC2");
-BUILD_ASSERT(DT_IO_CHANNELS_INPUT_BY_IDX(CURRENT_ADC_USER_NODE,
-                                         CURRENT_ADC_HIGH_INDEX) ==
+BUILD_ASSERT(DT_IO_CHANNELS_INPUT_BY_NAME(CURRENT_ADC_NODE, high) ==
                  AMS_CURRENT_ADC_HIGH_CHANNEL,
              "current high range must be ADC1_IN3");
-BUILD_ASSERT(DT_IO_CHANNELS_INPUT_BY_IDX(CURRENT_ADC_USER_NODE,
-                                         CURRENT_ADC_LOW_INDEX) ==
+BUILD_ASSERT(DT_IO_CHANNELS_INPUT_BY_NAME(CURRENT_ADC_NODE, low) ==
                  AMS_CURRENT_ADC_LOW_CHANNEL,
              "current low range must be ADC2_IN10");
 BUILD_ASSERT(DT_PROP(DT_NODELABEL(adc1), st_adc_prescaler) ==
@@ -43,9 +40,9 @@ BUILD_ASSERT(DT_PROP(DT_NODELABEL(adc2), st_adc_prescaler) ==
              "ADC2 prescaler must preserve v2.6.27 /6 configuration");
 
 static const struct adc_dt_spec current_adc_high =
-    ADC_DT_SPEC_GET_BY_IDX(CURRENT_ADC_USER_NODE, CURRENT_ADC_HIGH_INDEX);
+    ADC_DT_SPEC_GET_BY_NAME(CURRENT_ADC_NODE, high);
 static const struct adc_dt_spec current_adc_low =
-    ADC_DT_SPEC_GET_BY_IDX(CURRENT_ADC_USER_NODE, CURRENT_ADC_LOW_INDEX);
+    ADC_DT_SPEC_GET_BY_NAME(CURRENT_ADC_NODE, low);
 
 typedef struct {
     uint16_t sample;

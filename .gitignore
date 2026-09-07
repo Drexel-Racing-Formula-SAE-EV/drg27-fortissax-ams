@@ -14,3 +14,13 @@ __pycache__/
 /tests/unit/fan/*_asan
 /tests/unit/fan/*_an.o
 *.plist
+/tests/unit/imd/imd_core_test
+/tests/unit/imd/imd_capture_adapter_test
+/tests/unit/imd/*_asan
+/tests/unit/imd/*_an.o
+/tests/unit/power_core/sop_metamorphic_oracle
+/tests/unit/power_core/soh_core_test
+/tests/unit/power_core/fuse_oracle_test
+/tests/unit/bms_ok/bms_ok_adapter_test
+/tests/unit/bms_ok/*_asan
+/tests/unit/bms_ok/*_an.o

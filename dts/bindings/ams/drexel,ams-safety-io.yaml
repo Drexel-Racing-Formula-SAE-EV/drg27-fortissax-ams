@@ -1,0 +1,16 @@
+title: Drexel AMS safety I/O
+
+description: |
+  Board-level safety I/O used by the AMS. The BMS_OK line is intentionally
+  described in Devicetree even though the emergency fail-low implementation
+  also owns a direct STM32 register path for pre-kernel and fatal handling.
+
+compatible: "drexel,ams-safety-io"
+
+include: base.yaml
+
+properties:
+  bms-ok-gpios:
+    type: phandle-array
+    required: true
+    description: Active-high BMS_OK output. Physical inactive state is LOW.

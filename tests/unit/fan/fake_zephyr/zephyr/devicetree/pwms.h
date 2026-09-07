@@ -1,0 +1,18 @@
+#ifndef ZEPHYR_DEVICETREE_PWMS_H_
+#define ZEPHYR_DEVICETREE_PWMS_H_
+#define DT_PWMS_CTLR_BY_NAME(node, name) DT_PWMS_CTLR_BY_NAME_##name
+#define DT_PWMS_CTLR_BY_NAME_fan1 pwm3
+#define DT_PWMS_CTLR_BY_NAME_fan2 pwm3
+#define DT_PWMS_CTLR_BY_NAME_fan3 pwm4
+#define DT_PWMS_CTLR_BY_NAME_fan4 pwm4
+#define DT_PWMS_CTLR_BY_NAME_fan5 pwm5
+#define DT_PWMS_CTLR_BY_NAME_fan6 pwm5
+#define DT_PWMS_CHANNEL_BY_NAME(node, name) DT_PWMS_CHANNEL_BY_NAME_##name
+#define DT_PWMS_CHANNEL_BY_NAME_fan1 2U
+#define DT_PWMS_CHANNEL_BY_NAME_fan2 4U
+#define DT_PWMS_CHANNEL_BY_NAME_fan3 3U
+#define DT_PWMS_CHANNEL_BY_NAME_fan4 4U
+#define DT_PWMS_CHANNEL_BY_NAME_fan5 1U
+#define DT_PWMS_CHANNEL_BY_NAME_fan6 2U
+#define DT_PWMS_FLAGS_BY_NAME(node, name) 0U
+#endif

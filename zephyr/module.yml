@@ -1,5 +1,10 @@
 name: drg27-fortissax-ams
 
 build:
+  # Keep ordinary AMS platform drivers in a real Zephyr module so their
+  # zephyr_library_named() targets are created in kernel CMake mode.
+  cmake: zephyr
+
   settings:
     board_root: .
+    dts_root: .

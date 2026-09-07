@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import re
 from pathlib import Path
 import sys
 
@@ -44,6 +45,19 @@ def get_block(text: str, label: str) -> str:
 
 def require_contains(block: str, value: str, description: str) -> None:
     require(value in block, f"{description}: expected '{value}'")
+
+
+def string_list_property(block: str, name: str) -> list[str]:
+    # Zephyr's generated zephyr.dts is semantically stable but its pretty-
+    # printing may place string-list entries on separate lines. Parse the
+    # property instead of coupling a safety contract to whitespace/layout.
+    match = re.search(
+        rf"(?:^|\n)\s*{re.escape(name)}\s*=\s*((?:\"[^\"]*\"\s*,?\s*)+);",
+        block,
+        flags=re.MULTILINE,
+    )
+    require(match is not None, f"missing devicetree string-list property: {name}")
+    return re.findall(r'\"([^\"]*)\"', match.group(1))
 
 
 def main() -> int:
@@ -106,20 +120,26 @@ def main() -> int:
     require_contains(rcc, "apb1-prescaler = < 0x4 >", "APB1 prescaler")
     require_contains(rcc, "apb2-prescaler = < 0x2 >", "APB2 prescaler")
 
-    user = get_block(text, "zephyr,user")
+    safety_io = get_block(text, "ams_safety_io:")
+    require_contains(safety_io, 'compatible = "drexel,ams-safety-io"',
+                     "typed BMS safety node")
     require_contains(
-        user,
+        safety_io,
         "bms-ok-gpios = < &gpioe 0x0 0x0 >",
         "BMS_OK PE0"
     )
+
+    adbms_if = get_block(text, "ams_adbms_interface:")
+    require_contains(adbms_if, 'compatible = "drexel,ams-adbms-interface"',
+                     "typed ADBMS interface node")
     require_contains(
-        user,
-        "adbms-cs-a-gpios = < &gpioe 0x2 0x1 >",
+        adbms_if,
+        "cs-a-gpios = < &gpioe 0x2 0x1 >",
         "ADBMS CS_A PE2"
     )
     require_contains(
-        user,
-        "adbms-cs-b-gpios = < &gpioe 0x4 0x1 >",
+        adbms_if,
+        "cs-b-gpios = < &gpioe 0x4 0x1 >",
         "ADBMS CS_B PE4"
     )
 
@@ -152,7 +172,14 @@ def main() -> int:
     # CAN/SPI remain disabled and authority remains impossible. Exact channel
     # acquisition-time/resolution properties are additionally checked by the
     # dedicated current-ADC contract against both source and generated DTS.
-    require_contains(user, "io-channels", "current ADC io-channels")
+    current = get_block(text, "ams_current_sense:")
+    require_contains(current, 'compatible = "drexel,ams-current-sense"',
+                     "typed current-sense node")
+    require_contains(current, "io-channels", "current ADC io-channels")
+    require(
+        string_list_property(current, "io-channel-names") == ["high", "low"],
+        "current ADC named order drift",
+    )
 
     adc1 = get_block(text, "adc1:")
     require_contains(
@@ -185,6 +212,24 @@ def main() -> int:
         require_contains(timer, 'status = "okay"', f"{label} Z-012 enabled")
         require_contains(timer, "st,prescaler = < 0x0 >", f"{label} prescaler 0")
         require(pins in timer, f"{label} fan pin mapping drift")
+
+    fan_bank = get_block(text, "ams_fans:")
+    require_contains(fan_bank, 'compatible = "drexel,ams-fan-bank"',
+                     "typed fan-bank node")
+    require(
+        string_list_property(fan_bank, "pwm-names")
+        == ["fan1", "fan2", "fan3", "fan4", "fan5", "fan6"],
+        "fan PWM names/order drift",
+    )
+
+    imd = get_block(text, "ams_imd:")
+    require_contains(imd, 'compatible = "drexel,ams-imd"',
+                     "typed IMD node")
+    require_contains(imd, "status-gpios = < &gpioc 0x5 0x0 >",
+                     "IMD OK_HS PC5")
+
+    require("zephyr,user" not in text,
+            "application hardware contracts must not regress to /zephyr,user")
 
     print("PASS: DER26 board contract")
     return 0

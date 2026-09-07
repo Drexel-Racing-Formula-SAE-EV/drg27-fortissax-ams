@@ -1,4 +1,4 @@
-#include "fan_pwm_zephyr.h"
+#include <ams_platform/fan_pwm.h>
 
 #include <errno.h>
 #include <math.h>
@@ -6,21 +6,63 @@
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
+#include <zephyr/devicetree/pwms.h>
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/sys/util.h>
 
-struct fan_pwm_channel {
-    const struct device *dev;
-    uint32_t channel;
-};
+#define AMS_FAN_NODE DT_NODELABEL(ams_fans)
 
-static const struct fan_pwm_channel fan_channels[AMS_FAN_ZONE_COUNT] = {
-    { DEVICE_DT_GET(DT_NODELABEL(pwm3)), 2U }, /* Fan 1: PA7  / TIM3 CH2 */
-    { DEVICE_DT_GET(DT_NODELABEL(pwm3)), 4U }, /* Fan 2: PB1  / TIM3 CH4 */
-    { DEVICE_DT_GET(DT_NODELABEL(pwm4)), 3U }, /* Fan 3: PD14 / TIM4 CH3 */
-    { DEVICE_DT_GET(DT_NODELABEL(pwm4)), 4U }, /* Fan 4: PD15 / TIM4 CH4 */
-    { DEVICE_DT_GET(DT_NODELABEL(pwm5)), 1U }, /* Fan 5: PA0  / TIM5 CH1 */
-    { DEVICE_DT_GET(DT_NODELABEL(pwm5)), 2U }, /* Fan 6: PA1  / TIM5 CH2 */
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_FAN_PWM_ADAPTER_PRESENT),
+             "fan PWM adapter capability must remain present at Z-013");
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_FAN_ACTOR_LIVE),
+             "fan platform adapter requires live fan capability at Z-013");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_FAN_PHYSICAL_VALIDATED),
+             "Z-013 must not claim physical fan PWM validation");
+
+BUILD_ASSERT(DT_PROP_LEN(AMS_FAN_NODE, pwms) == AMS_FAN_ZONE_COUNT,
+             "typed AMS fan bank must expose exactly six PWM outputs");
+BUILD_ASSERT(DT_SAME_NODE(DT_PWMS_CTLR_BY_NAME(AMS_FAN_NODE, fan1),
+                          DT_NODELABEL(pwm3)) &&
+             DT_SAME_NODE(DT_PWMS_CTLR_BY_NAME(AMS_FAN_NODE, fan2),
+                          DT_NODELABEL(pwm3)),
+             "fan1/fan2 must remain on TIM3 PWM controller");
+BUILD_ASSERT(DT_SAME_NODE(DT_PWMS_CTLR_BY_NAME(AMS_FAN_NODE, fan3),
+                          DT_NODELABEL(pwm4)) &&
+             DT_SAME_NODE(DT_PWMS_CTLR_BY_NAME(AMS_FAN_NODE, fan4),
+                          DT_NODELABEL(pwm4)),
+             "fan3/fan4 must remain on TIM4 PWM controller");
+BUILD_ASSERT(DT_SAME_NODE(DT_PWMS_CTLR_BY_NAME(AMS_FAN_NODE, fan5),
+                          DT_NODELABEL(pwm5)) &&
+             DT_SAME_NODE(DT_PWMS_CTLR_BY_NAME(AMS_FAN_NODE, fan6),
+                          DT_NODELABEL(pwm5)),
+             "fan5/fan6 must remain on TIM5 PWM controller");
+BUILD_ASSERT(DT_PWMS_CHANNEL_BY_NAME(AMS_FAN_NODE, fan1) == 2U,
+             "fan1 must remain TIM3 CH2");
+BUILD_ASSERT(DT_PWMS_CHANNEL_BY_NAME(AMS_FAN_NODE, fan2) == 4U,
+             "fan2 must remain TIM3 CH4");
+BUILD_ASSERT(DT_PWMS_CHANNEL_BY_NAME(AMS_FAN_NODE, fan3) == 3U,
+             "fan3 must remain TIM4 CH3");
+BUILD_ASSERT(DT_PWMS_CHANNEL_BY_NAME(AMS_FAN_NODE, fan4) == 4U,
+             "fan4 must remain TIM4 CH4");
+BUILD_ASSERT(DT_PWMS_CHANNEL_BY_NAME(AMS_FAN_NODE, fan5) == 1U,
+             "fan5 must remain TIM5 CH1");
+BUILD_ASSERT(DT_PWMS_CHANNEL_BY_NAME(AMS_FAN_NODE, fan6) == 2U,
+             "fan6 must remain TIM5 CH2");
+BUILD_ASSERT(DT_PWMS_FLAGS_BY_NAME(AMS_FAN_NODE, fan1) == PWM_POLARITY_NORMAL &&
+             DT_PWMS_FLAGS_BY_NAME(AMS_FAN_NODE, fan2) == PWM_POLARITY_NORMAL &&
+             DT_PWMS_FLAGS_BY_NAME(AMS_FAN_NODE, fan3) == PWM_POLARITY_NORMAL &&
+             DT_PWMS_FLAGS_BY_NAME(AMS_FAN_NODE, fan4) == PWM_POLARITY_NORMAL &&
+             DT_PWMS_FLAGS_BY_NAME(AMS_FAN_NODE, fan5) == PWM_POLARITY_NORMAL &&
+             DT_PWMS_FLAGS_BY_NAME(AMS_FAN_NODE, fan6) == PWM_POLARITY_NORMAL,
+             "all DER26 fan PWMs must remain active-high");
+
+static const struct pwm_dt_spec fan_channels[AMS_FAN_ZONE_COUNT] = {
+    PWM_DT_SPEC_GET_BY_NAME(AMS_FAN_NODE, fan1),
+    PWM_DT_SPEC_GET_BY_NAME(AMS_FAN_NODE, fan2),
+    PWM_DT_SPEC_GET_BY_NAME(AMS_FAN_NODE, fan3),
+    PWM_DT_SPEC_GET_BY_NAME(AMS_FAN_NODE, fan4),
+    PWM_DT_SPEC_GET_BY_NAME(AMS_FAN_NODE, fan5),
+    PWM_DT_SPEC_GET_BY_NAME(AMS_FAN_NODE, fan6),
 };
 
 static bool platform_ready;
@@ -48,16 +90,16 @@ static uint32_t fan_percent_to_compare(float percent)
                        (double)percent) / 100.0);
 }
 
-static int validate_timer(const struct device *dev, uint32_t channel)
+static int validate_timer(const struct pwm_dt_spec *spec)
 {
     uint64_t cycles_per_sec = 0U;
     int ret;
 
-    if ((dev == NULL) || !device_is_ready(dev)) {
+    if ((spec == NULL) || !pwm_is_ready_dt(spec)) {
         return -ENODEV;
     }
 
-    ret = pwm_get_cycles_per_sec(dev, channel, &cycles_per_sec);
+    ret = pwm_get_cycles_per_sec(spec->dev, spec->channel, &cycles_per_sec);
     if (ret != 0) {
         return ret;
     }
@@ -71,7 +113,7 @@ static int validate_timer(const struct device *dev, uint32_t channel)
 
 int ams_fan_pwm_set_percent(uint8_t zone, float percent)
 {
-    const struct fan_pwm_channel *fan;
+    const struct pwm_dt_spec *fan;
     uint32_t pulse_cycles;
 
     if (zone >= AMS_FAN_ZONE_COUNT) {
@@ -89,7 +131,7 @@ int ams_fan_pwm_set_percent(uint8_t zone, float percent)
                           fan->channel,
                           AMS_FAN_PWM_PERIOD_CYCLES,
                           pulse_cycles,
-                          PWM_POLARITY_NORMAL);
+                          fan->flags);
 }
 
 uint32_t ams_fan_pwm_force_all_off(void)
@@ -115,17 +157,17 @@ int ams_fan_pwm_init(void)
     /* Validate each physical timer once. A missing/unclocked timer is a
      * platform-initialization failure, equivalent to the HAL timer init path
      * reaching Error_Handler() before app_create(). */
-    ret = validate_timer(fan_channels[0].dev, fan_channels[0].channel);
+    ret = validate_timer(&fan_channels[0]);
     if (ret != 0) {
         return ret;
     }
 
-    ret = validate_timer(fan_channels[2].dev, fan_channels[2].channel);
+    ret = validate_timer(&fan_channels[2]);
     if (ret != 0) {
         return ret;
     }
 
-    ret = validate_timer(fan_channels[4].dev, fan_channels[4].channel);
+    ret = validate_timer(&fan_channels[4]);
     if (ret != 0) {
         return ret;
     }

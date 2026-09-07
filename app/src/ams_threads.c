@@ -3,9 +3,10 @@
 #include <ams_core/ams_fan_control.h>
 #include <ams_core/ams_imd.h>
 
-#include "fan_pwm_zephyr.h"
-#include "imd_capture_zephyr.h"
+#include <ams_platform/fan_pwm.h>
+#include <ams_platform/imd_capture.h>
 #include "ams_safety.h"
+#include <ams_platform/fail_low.h>
 
 #include <errno.h>
 #include <stdint.h>
@@ -204,6 +205,44 @@ BUILD_ASSERT(AMS_STACK_IMD >= AMS_ORACLE_STACK_IMD_BYTES,
              "IMD stack below v2.6.27 allocation");
 BUILD_ASSERT(AMS_STACK_DIAGNOSTICS >= AMS_ORACLE_STACK_DIAGNOSTICS_BYTES,
              "diagnostics stack below v2.6.27 CLI allocation");
+
+/* Hidden Z-013 capability symbols distinguish adapter presence, live actors,
+ * valid safety evidence and physical validation. These are migration-state
+ * facts, not user knobs. */
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_BMS_OK_PLATFORM_ADAPTER_PRESENT),
+             "Z-013 requires normal BMS_OK platform adapter presence");
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_CURRENT_ADC_ADAPTER_PRESENT),
+             "Z-013 requires current ADC adapter presence");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CURRENT_ACTOR_LIVE),
+             "current actor remains deferred at Z-013");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CURRENT_SAFETY_EVIDENCE),
+             "placeholder current must not be safety evidence");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT) &&
+             !IS_ENABLED(CONFIG_AMS_CAP_ADBMS_ACTOR_LIVE) &&
+             !IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SAFETY_EVIDENCE),
+             "ADBMS transport/actor/evidence remain deferred at Z-013");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE),
+             "temperature safety evidence remains deferred at Z-013");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CAN_ADAPTER_PRESENT) &&
+             !IS_ENABLED(CONFIG_AMS_CAP_CAN_ACTOR_LIVE) &&
+             !IS_ENABLED(CONFIG_AMS_CAP_CAN_SAFETY_EVIDENCE),
+             "CAN transport/actor/evidence remain deferred at Z-013");
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_FAN_PWM_ADAPTER_PRESENT) &&
+             IS_ENABLED(CONFIG_AMS_CAP_FAN_ACTOR_LIVE) &&
+             IS_ENABLED(CONFIG_AMS_CAP_FAN_SAFETY_EVIDENCE),
+             "fan adapter/actor/evidence must remain live at Z-013");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_FAN_PHYSICAL_VALIDATED),
+             "fan physical validation remains an open hardware gate");
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_IMD_CAPTURE_ADAPTER_PRESENT) &&
+             IS_ENABLED(CONFIG_AMS_CAP_IMD_ACTOR_LIVE) &&
+             IS_ENABLED(CONFIG_AMS_CAP_IMD_SAFETY_EVIDENCE),
+             "IMD adapter/actor/evidence must remain live at Z-013");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_IMD_PHYSICAL_VALIDATED),
+             "IMD physical validation remains an open hardware gate");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_WATCHDOG_ADAPTER_PRESENT) &&
+             !IS_ENABLED(CONFIG_AMS_CAP_WATCHDOG_ACTIVE) &&
+             !IS_ENABLED(CONFIG_AMS_CAP_WATCHDOG_FULL_ORACLE_COVERAGE),
+             "watchdog remains deferred until Z-014");
 
 struct ams_runtime_stat {
     atomic_t heartbeat_seq;

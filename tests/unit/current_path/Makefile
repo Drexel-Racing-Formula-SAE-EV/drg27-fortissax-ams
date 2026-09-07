@@ -5,7 +5,7 @@ CC ?= gcc
 COMMON := -std=c11 -Wall -Wextra -Werror -pedantic -O2
 CORE_INC := -I$(AMS_CORE)/include
 ADC_TEST := ../current_adc
-ADC_FAKE_INC := -I$(ADC_TEST)/fake_zephyr -I$(ADC_TEST) -I$(DRIVERS)
+ADC_FAKE_INC := -I$(ADC_TEST)/fake_zephyr -I$(ADC_TEST) -I$(DRIVERS) -I../../../include
 
 .PHONY: all test sensor fault adc asan analyze clean
 

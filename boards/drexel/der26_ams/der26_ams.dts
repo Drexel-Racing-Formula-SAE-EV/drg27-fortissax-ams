@@ -19,31 +19,61 @@
     };
 
     /*
-     * Frozen board wiring.
+     * Typed AMS board interfaces.
      *
-     * These GPIO properties document the physical contract only.
-     * Z-002 does not configure or drive BMS_OK or either ADBMS CS pin.
+     * Application-facing hardware contracts live in custom Devicetree nodes
+     * rather than the untyped /zephyr,user escape hatch.  The bindings under
+     * dts/bindings/ams make missing/malformed properties a configuration-time
+     * error before C compilation begins.
      */
-    zephyr,user {
+    ams_safety_io: ams-safety-io {
+        compatible = "drexel,ams-safety-io";
         bms-ok-gpios = <&gpioe 0 GPIO_ACTIVE_HIGH>;
-        adbms-cs-a-gpios = <&gpioe 2 GPIO_ACTIVE_LOW>;
-        adbms-cs-b-gpios = <&gpioe 4 GPIO_ACTIVE_LOW>;
+        status = "okay";
+    };
 
-        /*
-         * Z-011 current-sense acquisition order is intentionally HIGH then
-         * LOW, matching v2.6.27 current_sensor_read_adc().
-         */
+    ams_adbms_interface: ams-adbms-interface {
+        compatible = "drexel,ams-adbms-interface";
+        cs-a-gpios = <&gpioe 2 GPIO_ACTIVE_LOW>;
+        cs-b-gpios = <&gpioe 4 GPIO_ACTIVE_LOW>;
+        status = "disabled";
+    };
+
+    /* Z-011 acquisition order is intentionally HIGH then LOW. */
+    ams_current_sense: ams-current-sense {
+        compatible = "drexel,ams-current-sense";
         io-channels = <&adc1 3>, <&adc2 10>;
-        io-channel-names = "current-high", "current-low";
+        io-channel-names = "high", "low";
+        status = "okay";
     };
 
     /*
-     * Z-013 IMD contract. M_HS PWM is PA5/TIM2_CH1. OK_HS is PC5 and is
-     * active high. The PWM spec period cell is unused for capture.
+     * Z-012 fan consumer mapping. PWM_HZ(32133) is Devicetree metadata for
+     * the consumer; fan_pwm_zephyr.c uses exact cycle-domain period=3361 to
+     * preserve ARR=3360 at the validated 108 MHz timer clock.
      */
-    imd_capture: imd-capture {
-        pwms = <&pwm2 1 0 PWM_POLARITY_NORMAL>;
+    ams_fans: ams-fan-bank {
+        compatible = "drexel,ams-fan-bank";
+        pwms = <&pwm3 2 PWM_HZ(32133) PWM_POLARITY_NORMAL>,
+               <&pwm3 4 PWM_HZ(32133) PWM_POLARITY_NORMAL>,
+               <&pwm4 3 PWM_HZ(32133) PWM_POLARITY_NORMAL>,
+               <&pwm4 4 PWM_HZ(32133) PWM_POLARITY_NORMAL>,
+               <&pwm5 1 PWM_HZ(32133) PWM_POLARITY_NORMAL>,
+               <&pwm5 2 PWM_HZ(32133) PWM_POLARITY_NORMAL>;
+        pwm-names = "fan1", "fan2", "fan3", "fan4", "fan5", "fan6";
+        status = "okay";
+    };
+
+    /*
+     * Z-013 IMD interface. The pwms period cell describes the NORMAL-state
+     * 10 Hz encoding only; capture mode measures period/pulse in hardware and
+     * does not configure the input from this consumer period value.
+     */
+    ams_imd: ams-imd {
+        compatible = "drexel,ams-imd";
+        pwms = <&pwm2 1 PWM_HZ(10) PWM_POLARITY_NORMAL>;
         status-gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>;
+        status = "okay";
     };
 };
 

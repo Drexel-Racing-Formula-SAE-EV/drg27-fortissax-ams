@@ -41,14 +41,18 @@ def main() -> int:
     build = args.build_dir.resolve()
 
     safety_path = repo / "app" / "src" / "ams_safety.c"
+    fail_low_path = repo / "boards" / "drexel" / "der26_ams" / "ams_fail_low_stm32.c"
+    bms_adapter_path = repo / "drivers" / "ams" / "bms_ok_zephyr.c"
     runtime_path = repo / "app" / "src" / "ams_threads.c"
     config_path = build / "zephyr" / ".config"
     map_path = build / "zephyr" / "zephyr.map"
 
-    for path in (safety_path, runtime_path, config_path, map_path):
+    for path in (safety_path, fail_low_path, bms_adapter_path, runtime_path, config_path, map_path):
         require(path.is_file(), f"missing safety-contract artifact: {path}")
 
     safety = safety_path.read_text(encoding="utf-8")
+    fail_low_source = fail_low_path.read_text(encoding="utf-8")
+    bms_adapter = bms_adapter_path.read_text(encoding="utf-8")
     runtime = runtime_path.read_text(encoding="utf-8")
     config = config_path.read_text(encoding="utf-8", errors="replace")
     link_map = map_path.read_text(encoding="utf-8", errors="replace")
@@ -80,7 +84,12 @@ def main() -> int:
     ):
         require(token in safety, f"compile-time safety invariant missing: {token}")
 
-    direct = function_block(safety, "void ams_bms_ok_force_low_direct")
+    require("RCC->" not in safety and "GPIOE->" not in safety and "<soc.h>" not in safety,
+            "application safety policy must not own direct STM32 registers")
+    require("zephyr/drivers/" not in safety and "DT_NODELABEL" not in safety and
+            "GPIO_DT_SPEC" not in safety,
+            "application safety policy must not own normal hardware/Devicetree access")
+    direct = function_block(fail_low_source, "void ams_bms_ok_force_low_direct")
     require("RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN" in direct,
             "direct fail-low no longer owns GPIOE clock")
     require("GPIOE->BSRR = BIT(AMS_BMS_OK_PIN + 16U);" in direct,
@@ -90,8 +99,16 @@ def main() -> int:
     require("__DSB();" in direct and "__ISB();" in direct,
             "direct fail-low missing DSB/ISB completion barriers")
 
-    require("SYS_INIT(ams_bms_ok_early_init, PRE_KERNEL_1, 0);" in safety,
-            "earliest application-controlled fail-low hook drifted")
+    require("DT_NODELABEL(ams_safety_io)" in fail_low_source,
+            "direct fail-low primitive must consume typed safety Devicetree node")
+    require("SYS_INIT(ams_bms_ok_early_init, PRE_KERNEL_1, 0);" in fail_low_source,
+            "earliest fail-low hook must remain registered by board safety layer")
+    require("SYS_INIT(" not in safety,
+            "app safety policy must not own board pre-kernel registration")
+    require("GPIO_DT_SPEC_GET(AMS_SAFETY_NODE, bms_ok_gpios)" in bms_adapter,
+            "normal BMS_OK ownership must use typed Zephyr GPIO adapter")
+    require("return ams_bms_ok_platform_init_low();" in safety,
+            "app safety init must delegate normal GPIO ownership to platform adapter")
 
     fatal = function_block(safety, "void k_sys_fatal_error_handler")
     force_pos = fatal.find("ams_bms_ok_force_low_direct();")
@@ -154,6 +171,7 @@ def main() -> int:
 
     for symbol in (
         "ams_bms_ok_force_low_direct",
+        "ams_bms_ok_platform_init_low",
         "ams_safety_init",
         "k_sys_fatal_error_handler",
     ):

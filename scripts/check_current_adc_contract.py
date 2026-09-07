@@ -34,6 +34,16 @@ def block(text: str, label: str) -> str:
     fail(f"unterminated devicetree block {label}")
 
 
+def string_list_property(node: str, name: str) -> list[str]:
+    match = re.search(
+        rf"(?:^|\n)\s*{re.escape(name)}\s*=\s*((?:\"[^\"]*\"\s*,?\s*)+);",
+        node,
+        flags=re.MULTILINE,
+    )
+    require(match is not None, f"missing generated string-list property: {name}")
+    return re.findall(r'\"([^\"]*)\"', match.group(1))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("repo_root", type=Path)
@@ -43,7 +53,7 @@ def main() -> int:
     repo = args.repo_root.resolve()
     build = args.build_dir.resolve()
     driver = repo / "drivers" / "ams" / "current_adc_zephyr.c"
-    header = repo / "drivers" / "ams" / "current_adc_zephyr.h"
+    header = repo / "include" / "ams_platform" / "current_adc.h"
     board = repo / "boards" / "drexel" / "der26_ams" / "der26_ams.dts"
     dot_config_path = build / "zephyr" / ".config"
     dts_path = build / "zephyr" / "zephyr.dts"
@@ -62,8 +72,10 @@ def main() -> int:
     # Source-level immutable physical/electrical acquisition contract.
     source_tokens = (
         '#include <zephyr/dt-bindings/adc/adc.h>',
+        'ams_current_sense: ams-current-sense {',
+        'compatible = "drexel,ams-current-sense";',
         'io-channels = <&adc1 3>, <&adc2 10>;',
-        'io-channel-names = "current-high", "current-low";',
+        'io-channel-names = "high", "low";',
         '&adc1 {',
         'pinctrl-0 = <&adc1_in3_pa3>;',
         'st,adc-clock-source = "SYNC";',
@@ -94,6 +106,15 @@ def main() -> int:
         '#define AMS_CURRENT_ADC_NOMINAL_VREF_MV 3300U',
     ):
         require(token in h, f"current ADC adapter constant drift: {token}")
+
+    require("#define CURRENT_ADC_NODE DT_NODELABEL(ams_current_sense)" in d,
+            "current adapter must consume typed AMS current-sense node")
+    require("ADC_DT_SPEC_GET_BY_NAME(CURRENT_ADC_NODE, high)" in d,
+            "current high-range ADC must be selected by Devicetree name")
+    require("ADC_DT_SPEC_GET_BY_NAME(CURRENT_ADC_NODE, low)" in d,
+            "current low-range ADC must be selected by Devicetree name")
+    require("CURRENT_ADC_HIGH_INDEX" not in d and "CURRENT_ADC_LOW_INDEX" not in d,
+            "current adapter must not depend on fragile positional DT index macros")
 
     # Adapter design: bounded async acquisition with persistent lifetime-safe
     # storage. The ordinary STM32 synchronous path would wait K_FOREVER in
@@ -145,13 +166,19 @@ def main() -> int:
             "platform ADC adapter contains product/safety policy")
 
     # Generated build evidence.
-    user = block(generated, "zephyr,user")
+    current_node = block(generated, "ams_current_sense:")
     adc1 = block(generated, "adc1:")
     adc2 = block(generated, "adc2:")
     can1 = block(generated, "can1:")
     spi6 = block(generated, "spi6:")
 
-    require("io-channels" in user, "generated Z-011 io-channels missing")
+    require('compatible = "drexel,ams-current-sense"' in current_node,
+            "generated typed current-sense node missing")
+    require("io-channels" in current_node, "generated Z-011 io-channels missing")
+    require(
+        string_list_property(current_node, "io-channel-names") == ["high", "low"],
+        "generated current channel names/order drift",
+    )
     require('status = "okay"' in adc1, "ADC1 not enabled in generated DTS")
     require('status = "okay"' in adc2, "ADC2 not enabled in generated DTS")
     require('status = "disabled"' in can1, "CAN1 must remain disabled in Z-011")

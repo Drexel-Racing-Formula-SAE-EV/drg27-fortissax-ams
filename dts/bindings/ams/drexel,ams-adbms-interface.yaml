@@ -1,0 +1,21 @@
+title: Drexel AMS ADBMS board interface
+
+description: |
+  Board wiring for the two ADBMS daisy-chain chip-select lines. SPI6 remains
+  independently enabled only when the ADBMS transport migration reaches its
+  hardware stage.
+
+compatible: "drexel,ams-adbms-interface"
+
+include: base.yaml
+
+properties:
+  cs-a-gpios:
+    type: phandle-array
+    required: true
+    description: Active-low chip select for ADBMS string A.
+
+  cs-b-gpios:
+    type: phandle-array
+    required: true
+    description: Active-low chip select for ADBMS string B.

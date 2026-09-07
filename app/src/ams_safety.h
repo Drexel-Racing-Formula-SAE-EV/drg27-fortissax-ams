@@ -12,20 +12,6 @@ extern "C" {
  */
 int ams_safety_init(void);
 
-/*
- * Direct STM32 fail-low primitive.
- *
- * This path deliberately does not depend on:
- * - scheduler state
- * - mutexes
- * - workqueues
- * - heap
- * - logging
- * - Zephyr GPIO driver readiness
- *
- * It is safe to use from fatal handling and early initialization.
- */
-void ams_bms_ok_force_low_direct(void);
 
 #ifdef __cplusplus
 }

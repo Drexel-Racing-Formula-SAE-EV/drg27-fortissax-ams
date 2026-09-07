@@ -25,3 +25,16 @@ narrow Zephyr adapter.
 Z-013 deliberately does **not** claim `AMS_IMD_TARGET_VALIDATED=1`. Physical
 polarity/frequency/status validation remains a later hardware gate, and BMS_OK
 assertion authority remains compile-time impossible.
+
+
+### Zephyr 4.4 target-build binding correction
+
+The first target build exposed a devicetree API issue rather than a hardware or
+policy defect. The original Z-013 candidate placed `pwms` and `status-gpios` on
+an unbound `imd-capture` pseudo-node, so Zephyr generated the node itself but
+not the typed phandle/cell macros required by `PWM_DT_SPEC_GET()` and
+`GPIO_DT_SPEC_GET()`. The first target-build correction made the properties consumable, and the
+subsequent Z-013 architecture hardening formalized them in the typed
+`drexel,ams-imd` node.  The production adapter now consumes a `pwm_dt_spec`
+for M_HS (TIM2_CH1/PA5) and a `gpio_dt_spec` for OK_HS (PC5 active high).
+This changes no IMD algorithm, timing, pin, polarity, or safety semantics.

@@ -5,9 +5,9 @@
 
 #include "ams_safety.h"
 #include "ams_threads.h"
-#include "current_adc_zephyr.h"
-#include "fan_pwm_zephyr.h"
-#include "imd_capture_zephyr.h"
+#include <ams_platform/current_adc.h>
+#include <ams_platform/fan_pwm.h>
+#include <ams_platform/imd_capture.h>
 
 
 int main(void)

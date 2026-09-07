@@ -16,9 +16,11 @@ struct adc_sequence {
     size_t buffer_size;
 };
 
-#define ADC_DT_SPEC_GET_BY_IDX(node, idx) \
-    { .dev = ((idx) == 0 ? &fake_adc1_device : &fake_adc2_device), \
-      .channel_id = ((idx) == 0 ? 3U : 10U) }
+#define ADC_DT_SPEC_GET_BY_NAME(node, name) ADC_DT_SPEC_GET_BY_NAME_##name
+#define ADC_DT_SPEC_GET_BY_NAME_high \
+    { .dev = &fake_adc1_device, .channel_id = 3U }
+#define ADC_DT_SPEC_GET_BY_NAME_low \
+    { .dev = &fake_adc2_device, .channel_id = 10U }
 
 bool adc_is_ready_dt(const struct adc_dt_spec *spec);
 int adc_channel_setup_dt(const struct adc_dt_spec *spec);

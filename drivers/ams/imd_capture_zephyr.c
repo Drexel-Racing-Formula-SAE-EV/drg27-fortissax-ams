@@ -1,25 +1,52 @@
-#include "imd_capture_zephyr.h"
+#include <ams_platform/imd_capture.h>
 
 #include <errno.h>
 #include <stddef.h>
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
+#include <zephyr/devicetree/pwms.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/util.h>
 
-#define IMD_CAPTURE_NODE DT_NODELABEL(imd_capture)
+#define IMD_NODE DT_NODELABEL(ams_imd)
+
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_IMD_CAPTURE_ADAPTER_PRESENT),
+             "IMD capture adapter capability must remain present at Z-013");
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_IMD_ACTOR_LIVE),
+             "IMD platform adapter requires live IMD capability at Z-013");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_IMD_PHYSICAL_VALIDATED),
+             "Z-013 must not claim physical IMD validation capability");
 
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_IMD_TARGET_VALIDATED),
              "Z-013 must not claim physical IMD target validation");
 
-static const struct pwm_dt_spec imd_pwm =
-    PWM_DT_SPEC_GET(IMD_CAPTURE_NODE);
+BUILD_ASSERT(DT_NODE_EXISTS(IMD_NODE),
+             "typed AMS IMD node must exist");
+BUILD_ASSERT(DT_NODE_HAS_PROP(IMD_NODE, pwms),
+             "typed AMS IMD node must define pwms");
+BUILD_ASSERT(DT_SAME_NODE(DT_PWMS_CTLR(IMD_NODE), DT_NODELABEL(pwm2)),
+             "IMD M_HS capture must remain on TIM2 PWM controller");
+BUILD_ASSERT(DT_PWMS_CHANNEL(IMD_NODE) == AMS_IMD_PWM_CHANNEL,
+             "IMD M_HS must remain on TIM2 CH1");
+BUILD_ASSERT(DT_PWMS_FLAGS(IMD_NODE) == PWM_POLARITY_NORMAL,
+             "IMD M_HS capture polarity must remain normal/rising-direct");
+BUILD_ASSERT(DT_NODE_HAS_PROP(IMD_NODE, status_gpios),
+             "typed AMS IMD node must define status-gpios");
+BUILD_ASSERT(DT_SAME_NODE(DT_GPIO_CTLR(IMD_NODE, status_gpios),
+                          DT_NODELABEL(gpioc)),
+             "IMD OK_HS controller must be GPIOC");
+BUILD_ASSERT(DT_GPIO_PIN(IMD_NODE, status_gpios) == 5,
+             "IMD OK_HS must remain on PC5");
+BUILD_ASSERT(DT_GPIO_FLAGS(IMD_NODE, status_gpios) == GPIO_ACTIVE_HIGH,
+             "IMD OK_HS must remain active-high");
+
+static const struct pwm_dt_spec imd_pwm = PWM_DT_SPEC_GET(IMD_NODE);
 static const struct gpio_dt_spec imd_status =
-    GPIO_DT_SPEC_GET(IMD_CAPTURE_NODE, status_gpios);
+    GPIO_DT_SPEC_GET(IMD_NODE, status_gpios);
 
 static ams_imd_t *active_state;
 static bool platform_ready;
@@ -55,7 +82,7 @@ static void imd_pwm_capture_callback(const struct device *dev,
     ams_imd_t *state = (ams_imd_t *)user_data;
 
     if ((dev != imd_pwm.dev) ||
-        (channel != AMS_IMD_PWM_CHANNEL) ||
+        (channel != imd_pwm.channel) ||
         (state == NULL) ||
         (state != active_state)) {
         atomic_set(&callback_fault, 1);
@@ -115,7 +142,7 @@ int ams_imd_capture_init(ams_imd_t *state)
     }
 
     ret = pwm_get_cycles_per_sec(imd_pwm.dev,
-                                 AMS_IMD_PWM_CHANNEL,
+                                 imd_pwm.channel,
                                  &cycles_per_sec);
     if (ret != 0) {
         return ret;
@@ -132,7 +159,7 @@ int ams_imd_capture_init(ams_imd_t *state)
      * normal polarity => CH1 rising direct input + CH2 falling indirect input;
      * BOTH returns period and high pulse from one coherent cycle. */
     ret = pwm_configure_capture(imd_pwm.dev,
-                                AMS_IMD_PWM_CHANNEL,
+                                imd_pwm.channel,
                                 PWM_POLARITY_NORMAL |
                                     PWM_CAPTURE_TYPE_BOTH |
                                     PWM_CAPTURE_MODE_CONTINUOUS,
@@ -147,7 +174,7 @@ int ams_imd_capture_init(ams_imd_t *state)
 
     /* This maps to the v2.6.27 runtime HAL_TIM_IC_Start*() stage. Keep a start
      * failure as a process fault, not a kernel-integrity panic. */
-    ret = pwm_enable_capture(imd_pwm.dev, AMS_IMD_PWM_CHANNEL);
+    ret = pwm_enable_capture(imd_pwm.dev, imd_pwm.channel);
     if (ret != 0) {
         capture_start_error = ret;
         ams_imd_set_capture_started(state, false);

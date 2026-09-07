@@ -1,4 +1,20 @@
 #ifndef ZEPHYR_SYS_UTIL_H_
 #define ZEPHYR_SYS_UTIL_H_
+
 #define BIT(n) (1UL << (n))
+#define BUILD_ASSERT(cond, msg) _Static_assert((cond), msg)
+#define IS_ENABLED(x) (x)
+
+#ifndef CONFIG_AMS_CAP_FAN_ACTOR_LIVE
+#define CONFIG_AMS_CAP_FAN_ACTOR_LIVE 1
 #endif
+
+#ifndef CONFIG_AMS_CAP_FAN_PWM_ADAPTER_PRESENT
+#define CONFIG_AMS_CAP_FAN_PWM_ADAPTER_PRESENT 1
+#endif
+
+#ifndef CONFIG_AMS_CAP_FAN_PHYSICAL_VALIDATED
+#define CONFIG_AMS_CAP_FAN_PHYSICAL_VALIDATED 0
+#endif
+
+#endif /* ZEPHYR_SYS_UTIL_H_ */

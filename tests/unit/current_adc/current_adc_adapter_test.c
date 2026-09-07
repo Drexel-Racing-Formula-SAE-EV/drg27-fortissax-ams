@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "current_adc_zephyr.h"
+#include <ams_platform/current_adc.h>
 #include "fake_zephyr/fake_zephyr_adc.h"
 
 static unsigned int checks;
