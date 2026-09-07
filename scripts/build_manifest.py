@@ -86,7 +86,7 @@ def main() -> int:
 
     manifest = {
         "schema_version": 1,
-        "migration_stage": "Z-006",
+        "migration_stage": "Z-007",
         "oracle": {
             "package": "v2.6.27",
             "firmware": "0.5.30",
@@ -147,7 +147,16 @@ def main() -> int:
                 stack,
             ) in THREADS
         ],
-        "z005_peripheral_state": {
+        "measurement_store": {
+            "buffer_count": 2,
+            "snapshot_max_bytes": 2048,
+            "store_max_bytes": 4096,
+            "reader_pinning": True,
+            "copy_outside_lock": True,
+            "injected_metadata_lock": True,
+            "heap_required": False,
+        },
+        "peripheral_state": {
             "can1_enabled": (
                 'can1: can@40006400'
                 in dts

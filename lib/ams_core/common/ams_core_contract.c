@@ -3,6 +3,7 @@
 #include <ams_core/ams_core_config.h>
 #include <ams_core/ams_core_contract.h>
 #include <ams_core/ams_core_time.h>
+#include <ams_core/ams_measurement.h>
 #include <ams_core/ams_core_types.h>
 
 typedef char ams_time_ms_must_be_32_bits[
@@ -80,6 +81,20 @@ int ams_core_contract_check(void)
     if ((ams_current_uncertainty_t)AMS_CURRENT_UNCERTAINTY_UNKNOWN !=
         (ams_current_uncertainty_t)UINT16_MAX) {
         return -7;
+    }
+
+    if (ams_measurement_buffer_count() != AMS_MEASUREMENT_BUFFER_COUNT) {
+        return -8;
+    }
+
+    if (ams_measurement_snapshot_size_bytes() >
+        AMS_MEASUREMENT_SNAPSHOT_MAX_BYTES) {
+        return -9;
+    }
+
+    if (ams_measurement_store_size_bytes() >
+        AMS_MEASUREMENT_STORE_MAX_BYTES) {
+        return -10;
     }
 
     return 0;

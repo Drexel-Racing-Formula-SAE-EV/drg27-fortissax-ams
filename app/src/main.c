@@ -27,7 +27,7 @@ int main(void)
 
     printk("AMS portable core: contract PASS\n");
 
-    printk("DRG27 Fortissax AMS - Zephyr Z-006\n");
+    printk("DRG27 Fortissax AMS - Zephyr Z-007\n");
     printk("BMS_OK: forced LOW\n");
     printk("BMS authority: DISABLED\n");
     printk("Balance authority: DISABLED\n");

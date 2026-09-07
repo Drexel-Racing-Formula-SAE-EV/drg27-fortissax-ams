@@ -157,19 +157,19 @@ def main() -> int:
     require(
         "# CONFIG_AMS_BMS_AUTHORITY is not set"
         in build_config,
-        "Z-006 must remain no-authority",
+        "portable core must remain no-authority",
     )
 
     require(
         "# CONFIG_AMS_BALANCE_AUTHORITY is not set"
         in build_config,
-        "Z-006 must remain no-balance-authority",
+        "portable core must remain no-balance-authority",
     )
 
     require(
         "CONFIG_HEAP_MEM_POOL_SIZE=0"
         in build_config,
-        "Z-006 must remain heap-free",
+        "portable core must remain heap-free",
     )
 
     print("PASS: portable AMS core contract")

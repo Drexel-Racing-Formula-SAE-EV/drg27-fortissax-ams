@@ -1,6 +1,7 @@
 add_library(ams_core STATIC
     common/ams_core_time.c
     common/ams_core_contract.c
+    measurement/ams_measurement.c
 )
 
 target_include_directories(ams_core
