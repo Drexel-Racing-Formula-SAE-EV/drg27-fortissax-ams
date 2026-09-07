@@ -8,6 +8,9 @@
 #include <ams_core/ams_measurement.h>
 #include <ams_core/ams_estimator_lut.h>
 #include <ams_core/ams_soc_ekf.h>
+#include <ams_core/ams_soh.h>
+#include <ams_core/ams_sop.h>
+#include <ams_core/ams_fuse_observer.h>
 #include <ams_core/ams_core_types.h>
 
 typedef char ams_time_ms_must_be_32_bits[
@@ -177,6 +180,68 @@ int ams_core_contract_check(void)
         (ams_p42a_r0_ohm(0.5f, 25.0f) < 0.0135f) ||
         (ams_p42a_r0_ohm(0.5f, 25.0f) > 0.0136f)) {
         return -15;
+    }
+
+
+    /*
+     * Z-010 target-link/configuration smoke.
+     *
+     * Full SoP, SoH, and fuse trajectories remain host-side. These lightweight
+     * checks keep the exact v2.6.27 entry points and defaults in the target
+     * image without moving algorithm execution into startup.
+     */
+    typedef ams_sop_status_t (*ams_sop_solve_fn_t)(
+        const ams_sop_input_t *,
+        const ams_sop_config_t *,
+        ams_sop_result_t *);
+    typedef bool (*ams_soh_update_fn_t)(
+        ams_soh_estimator_t *,
+        const ams_soh_config_t *,
+        const ams_soh_input_t *);
+    typedef bool (*ams_fuse_update_fn_t)(
+        ams_fuse_observer_t *,
+        const ams_fuse_observer_config_t *,
+        const ams_sop_config_t *,
+        const ams_fuse_observer_input_t *,
+        ams_fuse_observer_result_t *);
+
+    volatile ams_sop_solve_fn_t sop_solve_anchor = ams_sop_solve;
+    volatile ams_soh_update_fn_t soh_update_anchor = ams_soh_update;
+    volatile ams_fuse_update_fn_t fuse_update_anchor =
+        ams_fuse_observer_update;
+
+    ams_sop_config_t sop_cfg;
+    ams_soh_config_t soh_cfg;
+    ams_fuse_observer_config_t fuse_cfg;
+
+    if ((sop_solve_anchor == NULL) ||
+        (soh_update_anchor == NULL) ||
+        (fuse_update_anchor == NULL)) {
+        return -16;
+    }
+
+    ams_sop_default_config(&sop_cfg);
+    ams_soh_default_config(&soh_cfg);
+    ams_fuse_observer_default_config(&fuse_cfg);
+
+    if (!ams_sop_config_valid(&sop_cfg) ||
+        !ams_soh_config_valid(&soh_cfg) ||
+        !ams_fuse_observer_config_valid(&fuse_cfg)) {
+        return -17;
+    }
+
+    if ((AMS_SOP_SEGMENTS != 5U) ||
+        (AMS_SOP_TOTAL_CELLS != 75U) ||
+        (AMS_SOP_HORIZONS != 4U) ||
+        (AMS_SOH_SEGMENTS != 5U) ||
+        (AMS_FUSE_EAC14_80_RATED_CURRENT_A != 80.0f)) {
+        return -18;
+    }
+
+    if ((sop_cfg.parallel_cells != 6.0f) ||
+        (soh_cfg.nominal_pack_capacity_ah != 25.2f) ||
+        (fuse_cfg.rated_current_a != 80.0f)) {
+        return -19;
     }
 
     return 0;

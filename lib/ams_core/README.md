@@ -91,3 +91,20 @@ estimator-local topology identifiers and the v2.6.27 default BENCH -> PACK
 topology without importing the legacy build-profile header.
 
 See `estimator/ORACLE_PROVENANCE.md` for source hashes.
+
+## Z-010 scope
+
+Z-010 ports the exact portable v2.6.27 / firmware 0.5.30 power-health core:
+
+- `ams_sop`: deterministic finite-horizon State-of-Power solver and recovery/slew policy;
+- `ams_soh`: capacity/resistance State-of-Health estimator and persistence schema;
+- `ams_fuse_observer`: preliminary EAC14-80 thermal-utilization observer.
+
+Only include paths are adapted to the portable `ams_core` layout. The Z-010
+contract reverses those substitutions and verifies SHA-256 equality against the
+frozen v2.6.27 source.
+
+Z-010 intentionally does not port `ams_power_state`, `ams_power_strategy`, or
+`ams_power_can`. Those combine measurement/estimator/mission/CAN integration and
+belong to later integration and CAN phases. No power-core algorithm is connected
+to a Zephyr thread in Z-010.

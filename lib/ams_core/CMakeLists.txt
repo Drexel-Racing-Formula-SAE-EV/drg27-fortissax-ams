@@ -5,6 +5,9 @@ add_library(ams_core STATIC
     measurement/ams_current_window.c
     estimator/ams_estimator_lut.c
     estimator/ams_soc_ekf.c
+    soh/ams_soh.c
+    sop/ams_sop.c
+    sop/ams_fuse_observer.c
 )
 
 target_include_directories(ams_core

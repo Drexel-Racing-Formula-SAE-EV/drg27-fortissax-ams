@@ -18,7 +18,10 @@ FORBIDDEN_PATTERNS = {
         r'^\s*#\s*include\s*[<"]zephyr/',
         re.MULTILINE,
     ),
-    "FreeRTOS": re.compile(r"\bFreeRTOS\b"),
+    "FreeRTOS include": re.compile(
+        r'^\s*#\s*include\s*[<"](?:FreeRTOS|task|queue|semphr)\.h[>"]',
+        re.MULTILINE,
+    ),
     "CMSIS-RTOS": re.compile(r"\bcmsis_os[0-9_]*\b"),
     "STM32 HAL API": re.compile(r"\bHAL_[A-Za-z0-9_]+\b"),
     "STM32 include": re.compile(

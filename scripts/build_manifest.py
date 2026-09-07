@@ -86,7 +86,7 @@ def main() -> int:
 
     manifest = {
         "schema_version": 1,
-        "migration_stage": "Z-009",
+        "migration_stage": "Z-010",
         "oracle": {
             "package": "v2.6.27",
             "firmware": "0.5.30",
@@ -163,6 +163,16 @@ def main() -> int:
             "carried_sensor_metadata": True,
             "sticky_mixed_range": True,
             "calibration_provenance_carried": True,
+            "heap_required": False,
+        },
+        "power_core": {
+            "oracle": "DER26 AMS v2.6.27 / FW0.5.30",
+            "sop_exact_oracle_copy": True,
+            "soh_exact_oracle_copy": True,
+            "fuse_observer_exact_oracle_copy": True,
+            "power_strategy_ported": False,
+            "power_state_integration_ported": False,
+            "power_can_ported": False,
             "heap_required": False,
         },
         "peripheral_state": {
