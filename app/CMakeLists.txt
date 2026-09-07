@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.20.0)
 
+get_filename_component(DRG27_AMS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+list(APPEND BOARD_ROOT "${DRG27_AMS_ROOT}")
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(drg27_fortissax_ams)
 

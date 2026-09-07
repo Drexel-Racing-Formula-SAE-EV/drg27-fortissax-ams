@@ -1,0 +1,130 @@
+/dts-v1/;
+
+#include <st/f7/stm32f767Xi.dtsi>
+#include <st/f7/stm32f767zitx-pinctrl.dtsi>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+    model = "Drexel Racing DER26 AMS";
+    compatible = "st,stm32f767";
+
+    chosen {
+        zephyr,console = &usart3;
+        zephyr,shell-uart = &usart3;
+        zephyr,sram = &sram0;
+        zephyr,flash = &flash0;
+        zephyr,dtcm = &dtcm;
+    };
+
+    /*
+     * Frozen board wiring.
+     *
+     * These GPIO properties document the physical contract only.
+     * Z-002 does not configure or drive BMS_OK or either ADBMS CS pin.
+     */
+    zephyr,user {
+        bms-ok-gpios = <&gpioe 0 GPIO_ACTIVE_HIGH>;
+        adbms-cs-a-gpios = <&gpioe 2 GPIO_ACTIVE_LOW>;
+        adbms-cs-b-gpios = <&gpioe 4 GPIO_ACTIVE_LOW>;
+    };
+};
+
+
+/*
+ * DER26 uses an actual 8 MHz HSE crystal.
+ * Do NOT set hse-bypass.
+ */
+&clk_hse {
+    clock-frequency = <DT_FREQ_M(8)>;
+    status = "okay";
+};
+
+
+/*
+ * STM32F767 clock tree:
+ *
+ * 8 MHz / 4 = 2 MHz
+ * 2 MHz * 216 = 432 MHz VCO
+ * 432 MHz / 2 = 216 MHz SYSCLK
+ */
+&pll {
+    div-m = <4>;
+    mul-n = <216>;
+    div-p = <2>;
+    div-q = <2>;
+    clocks = <&clk_hse>;
+    status = "okay";
+};
+
+
+&rcc {
+    clocks = <&pll>;
+    clock-frequency = <DT_FREQ_M(216)>;
+
+    ahb-prescaler = <1>;
+    apb1-prescaler = <4>;
+    apb2-prescaler = <2>;
+};
+
+
+/*
+ * Diagnostic UART.
+ *
+ * This is the only application peripheral enabled during Z-002.
+ */
+&usart3 {
+    pinctrl-0 = <&usart3_tx_pd8 &usart3_rx_pd9>;
+    pinctrl-names = "default";
+    current-speed = <115200>;
+    status = "okay";
+};
+
+
+/*
+ * CAN1 / bxCAN hardware contract.
+ *
+ * Disabled until the later CAN migration phase.
+ */
+&can1 {
+    pinctrl-0 = <&can1_rx_pd0 &can1_tx_pd1>;
+    pinctrl-names = "default";
+    status = "disabled";
+};
+
+
+/*
+ * ADBMS SPI6 hardware contract.
+ *
+ * CS_A = PE2 and CS_B = PE4 are intentionally handled separately.
+ *
+ * String-B CS is PE4. Do not remap it.
+ */
+&spi6 {
+    pinctrl-0 = <&spi6_sck_pg13
+                 &spi6_miso_pg12
+                 &spi6_mosi_pg14>;
+    pinctrl-names = "default";
+    status = "disabled";
+};
+
+
+/*
+ * High-range current sensor.
+ * PA3 / ADC1_IN3
+ */
+&adc1 {
+    pinctrl-0 = <&adc1_in3_pa3>;
+    pinctrl-names = "default";
+    status = "disabled";
+};
+
+
+/*
+ * Low-range current sensor.
+ * PC0 / ADC2_IN10
+ */
+&adc2 {
+    pinctrl-0 = <&adc2_in10_pc0>;
+    pinctrl-names = "default";
+    status = "disabled";
+};

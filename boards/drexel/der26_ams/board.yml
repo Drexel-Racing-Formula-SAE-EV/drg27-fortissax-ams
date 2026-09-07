@@ -1,0 +1,6 @@
+board:
+  name: der26_ams
+  full_name: Drexel Racing DER26 Accumulator Management System
+  vendor: others
+  socs:
+    - name: stm32f767xx
