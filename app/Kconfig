@@ -1,0 +1,27 @@
+mainmenu "DRG27 Fortissax AMS"
+
+source "Kconfig.zephyr"
+
+menu "DRG27 AMS migration safety policy"
+
+config AMS_BMS_AUTHORITY
+    bool "Permit BMS_OK assertion authority"
+    default n
+    help
+      Controls whether the application is allowed to contain BMS_OK
+      assertion authority.
+
+      This MUST remain disabled during the early Zephyr migration.
+      Z-003 also enforces this with a C BUILD_ASSERT.
+
+config AMS_BALANCE_AUTHORITY
+    bool "Permit balancing authority"
+    default n
+    help
+      Controls whether the application is allowed to command cell
+      balancing.
+
+      This MUST remain disabled during the early Zephyr migration.
+      Z-003 also enforces this with a C BUILD_ASSERT.
+
+endmenu
