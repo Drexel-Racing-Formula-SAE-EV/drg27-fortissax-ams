@@ -1,6 +1,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 
+#include <ams_core/ams_core_contract.h>
+
 #include "ams_safety.h"
 #include "ams_threads.h"
 
@@ -16,7 +18,16 @@ int main(void)
         k_panic();
     }
 
-    printk("DRG27 Fortissax AMS - Zephyr Z-005\n");
+    ret = ams_core_contract_check();
+
+    if (ret != 0) {
+        printk("AMS portable core contract failed: %d\n", ret);
+        k_panic();
+    }
+
+    printk("AMS portable core: contract PASS\n");
+
+    printk("DRG27 Fortissax AMS - Zephyr Z-006\n");
     printk("BMS_OK: forced LOW\n");
     printk("BMS authority: DISABLED\n");
     printk("Balance authority: DISABLED\n");

@@ -11,3 +11,20 @@ target_sources(app PRIVATE
     src/ams_safety.c
     src/ams_threads.c
 )
+
+# ---------------------------------------------------------------------------
+# Z-006 portable AMS core
+# ---------------------------------------------------------------------------
+
+get_filename_component(
+    AMS_CORE_DIR
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lib/ams_core"
+    ABSOLUTE
+)
+
+add_subdirectory(
+    "${AMS_CORE_DIR}"
+    "${CMAKE_BINARY_DIR}/ams_core"
+)
+
+target_link_libraries(app PRIVATE ams_core)

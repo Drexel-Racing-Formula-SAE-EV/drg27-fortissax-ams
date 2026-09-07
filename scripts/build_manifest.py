@@ -86,7 +86,7 @@ def main() -> int:
 
     manifest = {
         "schema_version": 1,
-        "migration_stage": "Z-005",
+        "migration_stage": "Z-006",
         "oracle": {
             "package": "v2.6.27",
             "firmware": "0.5.30",
