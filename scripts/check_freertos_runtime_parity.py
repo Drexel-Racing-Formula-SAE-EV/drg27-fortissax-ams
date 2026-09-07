@@ -86,14 +86,18 @@ def main() -> int:
     runtime = repo / "app" / "src" / "ams_threads.c"
     safety = repo / "app" / "src" / "ams_safety.c"
     kconfig = repo / "app" / "Kconfig"
-    doc = repo / "docs" / "migration" / "Z010_FREERTOS_RUNTIME_PARITY.md"
+    prj = repo / "app" / "prj.conf"
+    defconfig = repo / "boards" / "drexel" / "der26_ams" / "der26_ams_defconfig"
+    doc = repo / "docs" / "migration" / "Z012_DEEP_SAFETY_PARITY_REVIEW.md"
 
-    for path in (runtime, safety, kconfig, doc):
+    for path in (runtime, safety, kconfig, prj, defconfig, doc):
         require(path.is_file(), f"missing {path}")
 
     r = runtime.read_text(encoding="utf-8")
     s = safety.read_text(encoding="utf-8")
     k = kconfig.read_text(encoding="utf-8")
+    pconf = prj.read_text(encoding="utf-8")
+    dconf = defconfig.read_text(encoding="utf-8")
 
     vals = {name: macro(r, name) for name in set(EXPECTED) | set(PRIOS) |
             {x for pair in STACK_PAIRS for x in pair}}
@@ -133,6 +137,25 @@ def main() -> int:
     require('config AMS_BALANCE_AUTHORITY' in k,
             "balance authority Kconfig gate missing")
 
+    # v2.6.27 uses configASSERT and stack-overflow checking. The Zephyr
+    # migration must refuse to build if its corresponding integrity guards
+    # are weakened.
+    for token in (
+        'BUILD_ASSERT(IS_ENABLED(CONFIG_ASSERT)',
+        'BUILD_ASSERT(IS_ENABLED(CONFIG_ARM_MPU)',
+        'BUILD_ASSERT(IS_ENABLED(CONFIG_HW_STACK_PROTECTION)',
+        'BUILD_ASSERT(CONFIG_HEAP_MEM_POOL_SIZE == 0',
+    ):
+        require(token in s, f"compile-time integrity invariant missing: {token}")
+    require("CONFIG_ASSERT=y" in pconf,
+            "kernel assertions are not enabled in prj.conf")
+    require("CONFIG_HEAP_MEM_POOL_SIZE=0" in pconf,
+            "application heap is not disabled in prj.conf")
+    require("CONFIG_ARM_MPU=y" in dconf,
+            "ARM MPU is not enabled in board defconfig")
+    require("CONFIG_HW_STACK_PROTECTION=y" in dconf,
+            "hardware stack protection is not enabled in board defconfig")
+
     # Fatal policy must force low before halting.
     fatal = s.find("void k_sys_fatal_error_handler")
     require(fatal >= 0, "fatal handler missing")
@@ -140,6 +163,11 @@ def main() -> int:
     halt = s.find("k_fatal_halt(reason);", fatal)
     require((force >= 0) and (halt > force),
             "fatal path must force BMS_OK low before halt")
+    direct_start = s.find("void ams_bms_ok_force_low_direct")
+    direct_end = s.find("static int ams_bms_ok_early_init", direct_start)
+    direct = s[direct_start:direct_end]
+    require("__DSB();" in direct and "__ISB();" in direct,
+            "direct fail-low path must complete with DSB+ISB barriers")
 
     # A disabled placeholder must never look like a live physical safety source.
     require(".enabled = AMS_RUNTIME_AIR_ENABLED != 0U" in r,
@@ -148,25 +176,48 @@ def main() -> int:
             "IMD placeholder is not gated")
     require("if (!thread->enabled || (thread->stale_deadline_ms == 0U))" in r,
             "disabled/non-heartbeat stale suppression missing")
-    require(".safety_evidence_ready = true" not in r,
-            "placeholder runtime cycles are being treated as safety evidence")
+    fan_start = r.find("[AMS_THREAD_FAN]")
+    air_start = r.find("[AMS_THREAD_AIR]")
+    require((fan_start >= 0) and (air_start > fan_start), "fan descriptor missing")
+    fan_block = r[fan_start:air_start]
+    require(".safety_evidence_ready = true" in fan_block,
+            "real Z-012 fan workload is not safety-liveness evidence")
+    require(".safety_evidence_ready = true" not in (r[:fan_start] + r[air_start:]),
+            "non-fan placeholder runtime cycle is treated as safety evidence")
 
-    # Supervisor is activated first once the common startup epoch exists.
-    epoch = r.find("&runtime_start_ms,")
-    sup = r.find("start_thread_if_enabled(AMS_THREAD_SAFETY);")
-    cur = r.find("start_thread_if_enabled(AMS_THREAD_CURRENT);")
-    require((epoch >= 0) and (sup > epoch) and (cur > sup),
-            "runtime start order does not establish epoch -> supervisor -> workers")
+    # v2.6.27 initializes heartbeat grace before its safety-critical RTOS
+    # objects, then lets the highest-priority supervisor run first.
+    start_fn = r.find("int ams_threads_start(void)")
+    epoch = r.find("&runtime_start_ms,", start_fn)
+    create = r.find("create_thread(", start_fn)
+    sup = r.find("start_thread_if_enabled(AMS_THREAD_SAFETY);", start_fn)
+    cur = r.find("start_thread_if_enabled(AMS_THREAD_CURRENT);", start_fn)
+    require((epoch >= 0) and (create > epoch) and (sup > create) and (cur > sup),
+            "runtime start order must be epoch -> create -> supervisor -> workers")
 
-    # Keep the intentional scheduling divergence explicit rather than hidden.
-    require("K_TIMEOUT_ABS_MS" in r,
-            "absolute Zephyr release scheduling unexpectedly removed")
+    # Exact heartbeat boundary/count semantics from the oracle.
+    require("atomic_increment_saturating_u32" in r,
+            "heartbeat count no longer saturates at UINT32_MAX")
+    require("(startup_age_ms >= thread->startup_grace_ms)" in r,
+            "unseen heartbeat is not stale at exact startup-grace expiry")
+    require("snapshot->heartbeat_age_ms <" in r,
+            "diagnostic startup-grace boundary drift")
+
+    # Safety and fan are real periodic workloads and reproduce the FreeRTOS
+    # osDelayUntil(entry + period) overrun behavior: retry immediately after an
+    # overrun and re-anchor from the next actual entry.
+    require("next_release_ms = start_ms + thread->period_ms;" in r,
+            "real workload release is not anchored to actual entry")
+    require("release_ms = complete_ms;" in r,
+            "real workload overrun does not retry immediately")
+
+    # Placeholder-only workers intentionally retain absolute release scheduling
+    # until their actual FreeRTOS task bodies are migrated.
     require("skip missed historical releases" in r.lower(),
-            "missed-release policy is no longer documented in source")
+            "placeholder missed-release policy is no longer explicit")
 
-    # Z-011 has real ADC configuration/adapter code but intentionally does not
-    # claim live current-thread parity before Z-022 proves the shared-mutex
-    # publication ordering. Placeholder execution remains non-safety evidence.
+    # Z-011 current remains deferred. Z-012 promotes only the real fan worker;
+    # current/ADBMS/CAN/estimator placeholders remain non-safety evidence.
     require("ams_current_adc_read_pair" not in r,
             "Z-011 scope drift: runtime current thread already acquires ADC")
     require("reads current ADCs" in r,
@@ -174,7 +225,7 @@ def main() -> int:
     require(".safety_evidence_ready = false" in r,
             "placeholder safety-evidence lock missing")
 
-    print("PASS: Z-011 FreeRTOS v2.6.27 runtime/safety parity contract")
+    print("PASS: Z-012 FreeRTOS v2.6.27 runtime/safety parity contract")
     return 0
 
 

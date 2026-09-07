@@ -38,6 +38,27 @@ BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_BMS_AUTHORITY),
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_BALANCE_AUTHORITY),
              "migration stage forbids balancing authority");
 
+/*
+ * RTOS integrity invariant.
+ *
+ * v2.6.27 used FreeRTOS configASSERT plus stack-overflow checking.  The
+ * migration image keeps assertions enabled and raises the stack-overflow
+ * protection level by requiring the Cortex-M MPU hardware guard.  The
+ * application heap is also forbidden.  These are compile-time requirements,
+ * not merely prj.conf preferences.
+ */
+BUILD_ASSERT(IS_ENABLED(CONFIG_ASSERT),
+             "AMS migration requires kernel assertions");
+
+BUILD_ASSERT(IS_ENABLED(CONFIG_ARM_MPU),
+             "AMS migration requires the ARM MPU");
+
+BUILD_ASSERT(IS_ENABLED(CONFIG_HW_STACK_PROTECTION),
+             "AMS migration requires hardware stack protection");
+
+BUILD_ASSERT(CONFIG_HEAP_MEM_POOL_SIZE == 0,
+             "AMS migration must remain application-heap-free");
+
 
 /*
  * Compile-time board-contract checks.
@@ -129,6 +150,7 @@ void ams_bms_ok_force_low_direct(void)
     GPIOE->BSRR = BIT(AMS_BMS_OK_PIN + 16U);
 
     __DSB();
+    __ISB();
 }
 
 

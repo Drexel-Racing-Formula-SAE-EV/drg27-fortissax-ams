@@ -14,6 +14,7 @@
 #include <ams_core/ams_sop.h>
 #include <ams_core/ams_fuse_observer.h>
 #include <ams_core/ams_core_types.h>
+#include <ams_core/ams_fan_control.h>
 
 typedef char ams_time_ms_must_be_32_bits[
     (sizeof(ams_time_ms_t) == 4U) ? 1 : -1
@@ -283,6 +284,22 @@ int ams_core_contract_check(void)
         current_fault.confirmed ||
         current_fault.latched) {
         return -22;
+    }
+
+    /* Z-012 portable fan-policy smoke. Missing temperature evidence must fail
+     * conservative to maximum cooling exactly as v2.6.27. */
+    ams_fan_control_input_t fan_input = {0};
+    uint8_t fan_reason = AMS_FAN_CONTROL_REASON_OFF_COOL;
+    float fan_percent;
+
+    fan_input.temp_valid = false;
+    fan_input.temp_read_fault = true;
+    fan_input.temp_usable_sensor_count = 0U;
+    fan_percent = ams_fan_percent_from_temp(&fan_input, &fan_reason);
+
+    if ((fan_percent != 100.0f) ||
+        (fan_reason != AMS_FAN_CONTROL_REASON_TEMP_INVALID)) {
+        return -23;
     }
 
     return 0;

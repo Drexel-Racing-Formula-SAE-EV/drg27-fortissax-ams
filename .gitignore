@@ -9,3 +9,8 @@ __pycache__/
 /tests/unit/current_path/current_adc_adapter_test
 /tests/unit/current_path/*_asan
 /tests/unit/current_path/*_an.o
+/tests/unit/fan/fan_control_test
+/tests/unit/fan/fan_pwm_adapter_test
+/tests/unit/fan/*_asan
+/tests/unit/fan/*_an.o
+*.plist

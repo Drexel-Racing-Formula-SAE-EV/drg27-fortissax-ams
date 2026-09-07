@@ -203,6 +203,12 @@ def main() -> int:
             "stack initialization must be enabled")
     require("CONFIG_HEAP_MEM_POOL_SIZE=0" in config,
             "runtime skeleton must not require heap")
+    require("CONFIG_ASSERT=y" in config,
+            "kernel assertions must remain enabled")
+    require("CONFIG_ARM_MPU=y" in config,
+            "ARM MPU must remain enabled")
+    require("CONFIG_HW_STACK_PROTECTION=y" in config,
+            "hardware stack protection must remain enabled")
 
     forbidden_workqueue_calls = (
         "k_work_submit",
@@ -215,7 +221,17 @@ def main() -> int:
                 f"critical AMS runtime must not use system workqueue: {token}")
 
     require("K_TIMEOUT_ABS_MS" in source,
-            "periodic AMS threads must use absolute release timing")
+            "periodic AMS threads must retain bounded release timing")
+    require("atomic_increment_saturating_u32" in source,
+            "heartbeat sequence must saturate instead of wrapping")
+    require("(startup_age_ms >= thread->startup_grace_ms)" in source,
+            "unseen heartbeat must become stale at the exact 3000 ms boundary")
+    require("snapshot->heartbeat_age_ms <" in source,
+            "diagnostic startup-grace boundary must match v2.6.27")
+    require("next_release_ms = start_ms + thread->period_ms;" in source,
+            "safety/fan overrun scheduling must re-anchor from actual entry")
+    require("release_ms = complete_ms;" in source,
+            "overrun path must retry immediately rather than skip a full period")
     require("k_cycle_get_32" in source,
             "execution timing instrumentation missing")
     require("k_thread_stack_space_get" in source,
@@ -234,17 +250,31 @@ def main() -> int:
             "runtime snapshot must expose safety-heartbeat membership")
     require("bool safety_evidence_ready;" in header,
             "runtime snapshot must expose safety-evidence readiness")
-    require(".safety_evidence_ready = true" not in source,
-            "Z-010 placeholder loop must not count as safety liveness evidence")
+    fan_block = source[source.find("[AMS_THREAD_FAN]"):source.find("[AMS_THREAD_AIR]")]
+    require(".safety_evidence_ready = true" in fan_block,
+            "Z-012 real fan workload must be eligible fan liveness evidence")
+    non_fan = source.replace(fan_block, "")
+    require(".safety_evidence_ready = true" not in non_fan,
+            "only the real Z-012 fan workload may claim safety evidence")
+    require("fan_thread_entry" in source,
+            "Z-012 fan worker missing")
+    require("ams_fan_pwm_set_percent" in source,
+            "Z-012 fan worker does not actuate production PWM adapter")
 
-    # Supervisor must be activated before lower-priority work once the shared
-    # runtime epoch and startup grace are established.
+    # v2.6.27 starts heartbeat grace before RTOS object/thread construction.
+    # The Zephyr epoch must likewise precede create_thread(), and the supervisor
+    # must be released before lower-priority workers.
+    epoch = source.find("&runtime_start_ms,")
+    first_create = source.find("create_thread(",
+                               source.find("int ams_threads_start(void)"))
     safety_start = source.find("start_thread_if_enabled(AMS_THREAD_SAFETY);")
     current_start = source.find("start_thread_if_enabled(AMS_THREAD_CURRENT);")
+    require((epoch >= 0) and (first_create > epoch),
+            "runtime startup-grace epoch must precede thread construction")
     require((safety_start >= 0) and (current_start > safety_start),
             "safety supervisor must start before worker threads")
 
-    print("PASS: AMS runtime contract (v2.6.27 safety-policy parity)")
+    print("PASS: AMS runtime contract (v2.6.27 safety-policy parity, Z-012 fan live)")
     return 0
 
 

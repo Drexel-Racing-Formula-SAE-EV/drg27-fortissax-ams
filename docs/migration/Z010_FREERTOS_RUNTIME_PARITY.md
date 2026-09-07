@@ -1,3 +1,8 @@
+> **Historical Z-010 snapshot.** Z-011 and Z-012 have since ported the current
+> sensor/fault/ADC adapter and fan PWM workload. Current safety status is tracked
+> in `Z011_CURRENT_ADC_PARITY.md`, `Z012_FAN_PWM_PARITY.md`, and
+> `Z012_DEEP_SAFETY_PARITY_REVIEW.md`.
+
 # Z-010 FreeRTOS v2.6.27 runtime/safety parity
 
 Oracle: `DER26-AMS-MiL-v2.6.27-ci-build-report-fix-2026-09-06`, firmware 0.5.30.

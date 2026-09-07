@@ -1,5 +1,9 @@
 #include "ams_threads.h"
 
+#include <ams_core/ams_fan_control.h>
+
+#include "fan_pwm_zephyr.h"
+
 #include <errno.h>
 #include <stdint.h>
 
@@ -11,19 +15,19 @@
 
 /*
  * --------------------------------------------------------------------------
- * Z-011 AMS runtime contract
+ * Z-012 AMS runtime contract
  * --------------------------------------------------------------------------
  *
- * This remains a PLATFORM/RUNTIME skeleton only. Z-011 initializes the
- * current ADC adapter at startup, but the live current worker deliberately
- * does not acquire ADC samples until Z-022 proves the mutex/publication path.
+ * Z-012 promotes the fan worker from a placeholder to the real 5 Hz thermal
+ * cooling workload. Current ADC hardware remains initialized but the current
+ * worker still does not acquire samples until Z-022 proves mutex/publication
+ * ordering.
  *
  * No thread below currently:
  * - reads current ADCs
  * - accesses ADBMS SPI
  * - transmits or receives CAN
  * - executes estimator algorithms
- * - commands fans
  * - commands balancing
  * - asserts BMS_OK
  */
@@ -75,7 +79,7 @@
  * AIR has no heartbeat bit in the oracle. Diagnostics here is not the legacy
  * logger task, so neither is allowed to masquerade as safety-liveness proof.
  * The separate temperature heartbeat belongs to the future ADBMS acquisition
- * integration and is frozen here even though Z-010 does not yet produce it.
+ * integration and is frozen here even though Z-012 does not yet produce it.
  */
 #define AMS_HEARTBEAT_STARTUP_GRACE_MS       3000U
 #define AMS_HEARTBEAT_ADBMS_TIMEOUT_MS       3000U
@@ -116,7 +120,7 @@
 #define AMS_CURRENT_WINDOW_MUTEX_TIMEOUT_MS  20U
 
 /*
- * Current Z-010 migration profile is stricter than the FreeRTOS vehicle
+ * Current Z-012 migration profile is stricter than the FreeRTOS vehicle
  * profile: physical authority is compile-time disabled and the physical IMD
  * and AIR auxiliary adapters do not exist yet.
  *
@@ -130,7 +134,7 @@
 
 /*
  * Estimator heartbeat is safety-critical in v2.6.27 only when SoP authority
- * is required. Z-010 has no BMS/SoP authority, so it remains diagnostic only.
+ * is required. Z-012 has no BMS/SoP authority, so it remains diagnostic only.
  */
 #define AMS_RUNTIME_ESTIMATOR_SAFETY_REQUIRED 0U
 
@@ -276,6 +280,16 @@ static struct k_thread diagnostics_thread;
 
 static struct ams_runtime_stat runtime_stats[AMS_THREAD_COUNT];
 
+/* Z-012 fan process diagnostics. The fan worker is the sole policy writer;
+ * atomics provide race-free diagnostic observation without introducing a
+ * mutex into the cooling path. */
+static atomic_t fan_fault;
+static atomic_t fan_set_fail_count;
+static atomic_t fan_command_centipercent;
+static atomic_t fan_command_on;
+static atomic_t fan_control_reason;
+static atomic_t fan_last_update_ms;
+
 K_SEM_DEFINE(diagnostics_request, 0, 1);
 
 static atomic_t runtime_started;
@@ -378,7 +392,7 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .startup_grace_ms = AMS_STARTUP_FAN_MS,
         .enabled = true,
         .safety_heartbeat_required = true,
-        .safety_evidence_ready = false,
+        .safety_evidence_ready = true,
         .thread = &fan_thread,
         .stack = fan_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(fan_stack),
@@ -490,6 +504,28 @@ static void runtime_publish_start(struct ams_thread_descriptor *thread,
 }
 
 
+static void atomic_increment_saturating_u32(atomic_t *value)
+{
+    atomic_val_t observed;
+
+    if (value == NULL) {
+        return;
+    }
+
+    observed = atomic_get(value);
+
+    while ((uint32_t)observed != UINT32_MAX) {
+        if (atomic_cas(value,
+                       observed,
+                       (atomic_val_t)((uint32_t)observed + 1U))) {
+            return;
+        }
+
+        observed = atomic_get(value);
+    }
+}
+
+
 static void runtime_publish_complete(struct ams_thread_descriptor *thread,
                                      int64_t completion,
                                      uint32_t exec_us)
@@ -503,7 +539,10 @@ static void runtime_publish_complete(struct ams_thread_descriptor *thread,
     atomic_update_max_u32(&thread->stat->wcet_us,
                           exec_us);
 
-    atomic_inc(&thread->stat->heartbeat_seq);
+    /* v2.6.27 heartbeat counters saturate instead of wrapping through zero.
+     * Zero is reserved for "never completed", so wrapping would fabricate an
+     * unseen-task state after a sufficiently long uptime. */
+    atomic_increment_saturating_u32(&thread->stat->heartbeat_seq);
 }
 
 
@@ -581,6 +620,115 @@ static void periodic_placeholder_thread(void *p1,
 }
 
 
+static void fan_increment_fail_count(void)
+{
+    atomic_val_t observed = atomic_get(&fan_set_fail_count);
+
+    while ((uint32_t)observed != UINT32_MAX) {
+        if (atomic_cas(&fan_set_fail_count,
+                       observed,
+                       (atomic_val_t)((uint32_t)observed + 1U))) {
+            return;
+        }
+
+        observed = atomic_get(&fan_set_fail_count);
+    }
+}
+
+static void fan_thread_entry(void *p1,
+                             void *p2,
+                             void *p3)
+{
+    struct ams_thread_descriptor *thread = p1;
+    float previous_percent = 0.0f;
+    uint8_t previous_reason = AMS_FAN_CONTROL_REASON_OFF_COOL;
+    int64_t release_ms = k_uptime_get();
+
+    ARG_UNUSED(p2);
+    ARG_UNUSED(p3);
+
+    for (;;) {
+        ams_fan_control_input_t input = {0};
+        uint8_t reason = AMS_FAN_CONTROL_REASON_OFF_COOL;
+        float percent;
+        bool iteration_fault = false;
+        int64_t start_ms;
+        int64_t complete_ms;
+        int64_t next_release_ms;
+        uint32_t start_cycles;
+        uint32_t elapsed_cycles;
+        uint32_t exec_us;
+
+        k_sleep(K_TIMEOUT_ABS_MS(release_ms));
+
+        start_ms = k_uptime_get();
+        start_cycles = k_cycle_get_32();
+        runtime_publish_start(thread, release_ms, start_ms);
+
+        /*
+         * Temperature acquisition is not integrated yet. Do not invent a
+         * nominal value. The exact v2.6.27 fan policy treats missing/untrusted
+         * temperature evidence as TEMP_INVALID and commands maximum cooling.
+         */
+        input.temp_valid = false;
+        input.temp_read_fault = true;
+        input.temp_usable_sensor_count = 0U;
+        input.temp_fault = false;
+        input.temp_fan_max = false;
+        input.max_temp = 0.0f;
+        input.state = 0U;
+        input.fan_command_percent = previous_percent;
+        input.fan_control_reason = previous_reason;
+
+        percent = ams_fan_percent_from_temp(&input, &reason);
+
+        atomic_set(&fan_fault, 0);
+        for (uint8_t zone = 0U; zone < AMS_FAN_ZONE_COUNT; ++zone) {
+            if (ams_fan_pwm_set_percent(zone, percent) != 0) {
+                iteration_fault = true;
+                fan_increment_fail_count();
+            }
+        }
+
+        if (iteration_fault) {
+            atomic_set(&fan_fault, 1);
+            reason = AMS_FAN_CONTROL_REASON_DRIVER_FAULT;
+        }
+
+        previous_percent = percent;
+        previous_reason = reason;
+
+        atomic_set(&fan_command_centipercent,
+                   (atomic_val_t)(uint32_t)(percent * 100.0f));
+        atomic_set(&fan_command_on, percent > 0.5f ? 1 : 0);
+        atomic_set(&fan_control_reason, (atomic_val_t)reason);
+        atomic_set(&fan_last_update_ms, (atomic_val_t)(uint32_t)start_ms);
+
+        elapsed_cycles = k_cycle_get_32() - start_cycles;
+        exec_us = k_cyc_to_us_floor32(elapsed_cycles);
+        complete_ms = k_uptime_get();
+
+        /* The heartbeat is published only after the real six-zone actuation
+         * attempt. It proves software execution, not physical airflow. */
+        runtime_publish_complete(thread, complete_ms, exec_us);
+
+        /*
+         * Match v2.6.27 fan_task_fn()/osDelayUntil(entry + 200 ms): the
+         * deadline is anchored to this iteration's actual entry time. If work
+         * overruns the period, the delay returns immediately and the next
+         * iteration reanchors instead of skipping an additional full period.
+         */
+        next_release_ms = start_ms + thread->period_ms;
+        if (complete_ms >= next_release_ms) {
+            atomic_inc(&thread->stat->overrun_count);
+            release_ms = complete_ms;
+        } else {
+            release_ms = next_release_ms;
+        }
+    }
+}
+
+
 static void runtime_update_stale_flags(void)
 {
     uint32_t now_ms;
@@ -632,7 +780,7 @@ static void runtime_update_stale_flags(void)
              */
             atomic_set(
                 &thread->stat->stale,
-                (startup_age_ms > thread->startup_grace_ms) ? 1 : 0);
+                (startup_age_ms >= thread->startup_grace_ms) ? 1 : 0);
 
             continue;
         }
@@ -685,9 +833,10 @@ static void safety_supervisor_thread(void *p1,
         }
 
         /*
-         * Z-005 supervisor is observational only.
+         * Z-012 supervisor is observational only.
          *
-         * It has no BMS_OK assertion authority.
+         * It has no BMS_OK assertion authority. The complete v2.6.27
+         * readiness/state aggregation returns in the later authority stage.
          */
 
         elapsed_cycles =
@@ -702,18 +851,17 @@ static void safety_supervisor_thread(void *p1,
                                  complete_ms,
                                  exec_us);
 
-        next_release_ms =
-            release_ms + thread->period_ms;
+        /* Match v2.6.27 error_task_fn()/osDelayUntil(entry + 50 ms).
+         * An overrun must not create an extra skipped safety-supervisor
+         * period: retry immediately, then re-anchor from that new entry. */
+        next_release_ms = start_ms + thread->period_ms;
 
         if (complete_ms >= next_release_ms) {
             atomic_inc(&thread->stat->overrun_count);
-
-            do {
-                next_release_ms += thread->period_ms;
-            } while (complete_ms >= next_release_ms);
+            release_ms = complete_ms;
+        } else {
+            release_ms = next_release_ms;
         }
-
-        release_ms = next_release_ms;
     }
 }
 
@@ -741,7 +889,7 @@ static void diagnostics_thread_entry(void *p1,
 
         start_cycles = k_cycle_get_32();
 
-        printk("\nAMS Z-010 runtime snapshot\n");
+        printk("\nAMS Z-012 runtime snapshot\n");
         printk("thread           en sf ev p  per age stale late maxL exec wcet stack-used\n");
 
         for (size_t i = 0U;
@@ -772,6 +920,14 @@ static void diagnostics_thread_entry(void *p1,
                 (unsigned int)snapshot.stack_used_high_water,
                 (unsigned int)snapshot.stack_size);
         }
+
+        printk("fan              fault=%u fails=%u cmd=%.2f%% on=%u reason=%s last=%u\n",
+               (unsigned int)atomic_get(&fan_fault),
+               (unsigned int)atomic_get(&fan_set_fail_count),
+               (double)((uint32_t)atomic_get(&fan_command_centipercent) / 100.0),
+               atomic_get(&fan_command_on) != 0 ? 1U : 0U,
+               ams_fan_control_reason_str((uint8_t)atomic_get(&fan_control_reason)),
+               (unsigned int)atomic_get(&fan_last_update_ms));
 
         elapsed_cycles =
             k_cycle_get_32() - start_cycles;
@@ -856,6 +1012,16 @@ int ams_threads_start(void)
     }
 
     /*
+     * Start the heartbeat/startup-grace epoch before creating application
+     * threads. v2.6.27 calls ams_heartbeat_init() before its safety-critical
+     * mutex/thread creation, so thread-construction time belongs to the same
+     * bounded startup grace rather than silently extending it.
+     */
+    atomic_set(
+        &runtime_start_ms,
+        (atomic_val_t)k_uptime_get_32());
+
+    /*
      * Create all thread objects suspended first.
      */
     if (create_thread(
@@ -890,7 +1056,7 @@ int ams_threads_start(void)
 
     if (create_thread(
             &threads[AMS_THREAD_FAN],
-            periodic_placeholder_thread) == NULL) {
+            fan_thread_entry) == NULL) {
         return -ENOMEM;
     }
 
@@ -915,23 +1081,33 @@ int ams_threads_start(void)
         return -ENOMEM;
     }
 
-    /*
-     * Record the single runtime epoch before any application thread runs.
-     * v2.6.27 applies one 3000 ms startup grace to the monitored heartbeat
-     * set, so the highest-priority supervisor can safely start first without
-     * fabricating stale-worker faults during deterministic startup.
-     */
-    atomic_set(
-        &runtime_start_ms,
-        (atomic_val_t)k_uptime_get_32());
+    /* Preserve board_init() semantics from v2.6.27: channel-start failure
+     * is visible as a fan process fault before workers run, but it is not a
+     * software-integrity panic and does not increment the runtime set-failure
+     * counter until an actual fan-task command fails. */
+    atomic_set(&fan_fault,
+               ams_fan_pwm_startup_fail_mask() != 0U ? 1 : 0);
+    atomic_set(&fan_set_fail_count, 0);
+    atomic_set(&fan_command_centipercent, 0);
+    atomic_set(&fan_command_on, 0);
+    atomic_set(&fan_control_reason,
+               ams_fan_pwm_startup_fail_mask() != 0U
+                   ? AMS_FAN_CONTROL_REASON_DRIVER_FAULT
+                   : AMS_FAN_CONTROL_REASON_OFF_COOL);
+    atomic_set(&fan_last_update_ms, 0);
 
+    /*
+     * All thread objects now exist. Mark runtime active before releasing the
+     * highest-priority supervisor; the startup epoch above already includes
+     * thread-construction time.
+     */
     atomic_set(&runtime_started, 1);
 
     /*
      * Match the safety architecture rather than the historical creation order:
      * the supervisor is the highest-priority application thread and is active
      * before lower-priority work begins.  BMS_OK still cannot be asserted in
-     * Z-010 because assertion authority is compile-time forbidden.
+     * Z-012 because assertion authority is compile-time forbidden.
      */
     start_thread_if_enabled(AMS_THREAD_SAFETY);
 
@@ -1074,7 +1250,7 @@ int ams_thread_snapshot_get(enum ams_thread_id id,
             now_ms - runtime_epoch_ms;
 
         snapshot->startup_grace_active =
-            snapshot->heartbeat_age_ms <=
+            snapshot->heartbeat_age_ms <
             thread->startup_grace_ms;
     } else {
         snapshot->heartbeat_age_ms =

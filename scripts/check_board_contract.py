@@ -174,6 +174,18 @@ def main() -> int:
     require_contains(adc2, 'st,adc-clock-source = "SYNC"', "ADC2 clock source")
     require_contains(adc2, "st,adc-prescaler = < 0x6 >", "ADC2 /6 prescaler")
 
+    # Z-012 fan PWM timers. Exact channel/pin/frequency semantics are checked
+    # in the dedicated fan contract as well.
+    for label, pins in (
+        ("timers3:", "&tim3_ch2_pa7 &tim3_ch4_pb1"),
+        ("timers4:", "&tim4_ch3_pd14 &tim4_ch4_pd15"),
+        ("timers5:", "&tim5_ch1_pa0 &tim5_ch2_pa1"),
+    ):
+        timer = get_block(text, label)
+        require_contains(timer, 'status = "okay"', f"{label} Z-012 enabled")
+        require_contains(timer, "st,prescaler = < 0x0 >", f"{label} prescaler 0")
+        require(pins in timer, f"{label} fan pin mapping drift")
+
     print("PASS: DER26 board contract")
     return 0
 

@@ -6,6 +6,7 @@
 #include "ams_safety.h"
 #include "ams_threads.h"
 #include "current_adc_zephyr.h"
+#include "fan_pwm_zephyr.h"
 
 
 int main(void)
@@ -50,7 +51,23 @@ int main(void)
     }
 
     printk("AMS current ADC adapter: READY (acquisition not scheduled)\n");
-    printk("DRG27 Fortissax AMS - Zephyr Z-011\n");
+
+    /* Z-012: timer/PWM infrastructure failure is equivalent to the legacy
+     * MX_TIMx_Init()/Error_Handler() fatal path. Per-channel startup command
+     * failures remain soft fan process faults and are retried by the fan task. */
+    ret = ams_fan_pwm_init();
+    if (ret != 0) {
+        printk("AMS fan PWM platform init failed: %d\n", ret);
+        k_panic();
+    }
+
+    if (ams_fan_pwm_startup_fail_mask() != 0U) {
+        printk("AMS fan PWM startup channel fault mask: 0x%02x\n",
+               (unsigned int)ams_fan_pwm_startup_fail_mask());
+    } else {
+        printk("AMS fan PWM adapter: READY (all zones initialized off)\n");
+    }
+    printk("DRG27 Fortissax AMS - Zephyr Z-012\n");
     printk("BMS_OK: forced LOW\n");
     printk("BMS authority: DISABLED\n");
     printk("Balance authority: DISABLED\n");

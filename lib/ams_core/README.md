@@ -121,3 +121,17 @@ Raw ADC acquisition is supplied by `drivers/ams/current_adc_zephyr.c`. The
 adapter is deliberately policy-free and the live current thread remains
 unintegrated until Z-022 proves the v2.6.27 current-window mutex/publication
 ordering. See `docs/migration/Z011_CURRENT_ADC_PARITY.md`.
+
+## Z-012 fan thermal-control core
+
+Z-012 ports the exact v2.6.27 fan thermal policy into `ams_core` and connects
+it to a policy-free Zephyr PWM adapter for the six DER26 fan zones. The
+portable policy preserves the live-temperature authority, fail-max paths,
+hysteresis, charge floor, and thermal ramp. The application currently has no
+ported temperature producer, so the real fan worker deliberately presents
+invalid temperature evidence and the oracle policy requests 100% cooling.
+
+The PWM adapter reproduces the original TIM3/TIM4/TIM5 channel mapping,
+108 MHz timer clock, prescaler 0, ARR=3360 period, active-high PWM1 polarity,
+and legacy percent-to-CCR mapping. See `fan/ORACLE_PROVENANCE.md` and
+`docs/migration/Z012_FAN_PWM_PARITY.md`.

@@ -171,3 +171,43 @@
         zephyr,oversampling = <0>;
     };
 };
+
+/*
+ * Z-012 cooling fan PWM hardware contract.
+ *
+ * v2.6.27 uses APB1 timer clock 108 MHz, prescaler 0, up-counting PWM1 and
+ * ARR=3360. Zephyr pwm_stm32 programs ARR=period_cycles-1 for up-counters, so
+ * the adapter requests 3361 cycles and preserves the original timer period.
+ */
+&timers3 {
+    st,prescaler = <0>;
+    status = "okay";
+
+    pwm3: pwm {
+        pinctrl-0 = <&tim3_ch2_pa7 &tim3_ch4_pb1>;
+        pinctrl-names = "default";
+        status = "okay";
+    };
+};
+
+&timers4 {
+    st,prescaler = <0>;
+    status = "okay";
+
+    pwm4: pwm {
+        pinctrl-0 = <&tim4_ch3_pd14 &tim4_ch4_pd15>;
+        pinctrl-names = "default";
+        status = "okay";
+    };
+};
+
+&timers5 {
+    st,prescaler = <0>;
+    status = "okay";
+
+    pwm5: pwm {
+        pinctrl-0 = <&tim5_ch1_pa0 &tim5_ch2_pa1>;
+        pinctrl-names = "default";
+        status = "okay";
+    };
+};

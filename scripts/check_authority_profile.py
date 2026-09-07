@@ -58,6 +58,21 @@ def main() -> int:
     )
 
     require(
+        "CONFIG_ASSERT=y" in config,
+        "kernel assertions must remain enabled"
+    )
+
+    require(
+        "CONFIG_ARM_MPU=y" in config,
+        "ARM MPU must remain enabled"
+    )
+
+    require(
+        "CONFIG_HW_STACK_PROTECTION=y" in config,
+        "hardware stack protection must remain enabled"
+    )
+
+    require(
         "ams_bms_ok_force_low_direct" in link_map,
         "direct fail-low symbol missing"
     )
