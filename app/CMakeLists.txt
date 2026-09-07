@@ -9,4 +9,5 @@ project(drg27_fortissax_ams)
 target_sources(app PRIVATE
     src/main.c
     src/ams_safety.c
+    src/ams_threads.c
 )
