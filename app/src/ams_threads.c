@@ -11,10 +11,12 @@
 
 /*
  * --------------------------------------------------------------------------
- * Z-010 AMS runtime contract
+ * Z-011 AMS runtime contract
  * --------------------------------------------------------------------------
  *
- * This remains a PLATFORM/RUNTIME skeleton only.
+ * This remains a PLATFORM/RUNTIME skeleton only. Z-011 initializes the
+ * current ADC adapter at startup, but the live current worker deliberately
+ * does not acquire ADC samples until Z-022 proves the mutex/publication path.
  *
  * No thread below currently:
  * - reads current ADCs

@@ -164,7 +164,17 @@ def main() -> int:
     require("skip missed historical releases" in r.lower(),
             "missed-release policy is no longer documented in source")
 
-    print("PASS: Z-010 FreeRTOS v2.6.27 runtime/safety parity contract")
+    # Z-011 has real ADC configuration/adapter code but intentionally does not
+    # claim live current-thread parity before Z-022 proves the shared-mutex
+    # publication ordering. Placeholder execution remains non-safety evidence.
+    require("ams_current_adc_read_pair" not in r,
+            "Z-011 scope drift: runtime current thread already acquires ADC")
+    require("reads current ADCs" in r,
+            "runtime source no longer documents deferred current integration")
+    require(".safety_evidence_ready = false" in r,
+            "placeholder safety-evidence lock missing")
+
+    print("PASS: Z-011 FreeRTOS v2.6.27 runtime/safety parity contract")
     return 0
 
 

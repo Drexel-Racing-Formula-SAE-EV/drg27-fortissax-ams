@@ -5,6 +5,7 @@
 
 #include "ams_safety.h"
 #include "ams_threads.h"
+#include "current_adc_zephyr.h"
 
 
 int main(void)
@@ -27,7 +28,29 @@ int main(void)
 
     printk("AMS portable core: contract PASS\n");
 
-    printk("DRG27 Fortissax AMS - Zephyr Z-010\n");
+    /* Keep the complete Z-011 adapter API in the target link without starting
+     * a conversion. Live acquisition remains deferred to Z-022. */
+    typedef int (*ams_current_adc_read_pair_fn_t)(ams_current_adc_pair_t *);
+    typedef bool (*ams_current_adc_faulted_fn_t)(void);
+    volatile ams_current_adc_read_pair_fn_t current_adc_read_anchor =
+        ams_current_adc_read_pair;
+    volatile ams_current_adc_faulted_fn_t current_adc_faulted_anchor =
+        ams_current_adc_is_faulted;
+
+    if ((current_adc_read_anchor == NULL) ||
+        (current_adc_faulted_anchor == NULL)) {
+        printk("AMS current ADC adapter link contract failed\n");
+        k_panic();
+    }
+
+    ret = ams_current_adc_init();
+    if (ret != 0) {
+        printk("AMS current ADC adapter init failed: %d\n", ret);
+        k_panic();
+    }
+
+    printk("AMS current ADC adapter: READY (acquisition not scheduled)\n");
+    printk("DRG27 Fortissax AMS - Zephyr Z-011\n");
     printk("BMS_OK: forced LOW\n");
     printk("BMS authority: DISABLED\n");
     printk("Balance authority: DISABLED\n");

@@ -34,6 +34,28 @@ def read_config_string(config: str, symbol: str):
     return match.group(1) if match else None
 
 
+def dts_block(text: str, label: str) -> str:
+    start = text.find(label)
+    if start < 0:
+        return ""
+    brace = text.find("{", start)
+    if brace < 0:
+        return ""
+    depth = 0
+    for i in range(brace, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    return ""
+
+
+def dts_enabled(text: str, label: str) -> bool:
+    return 'status = "okay"' in dts_block(text, label)
+
+
 def git_output(repo: Path, *args: str) -> str:
     return subprocess.check_output(
         ["git", *args],
@@ -89,7 +111,7 @@ def main() -> int:
 
     manifest = {
         "schema_version": 1,
-        "migration_stage": "Z-010",
+        "migration_stage": "Z-011",
         "oracle": {
             "package": "v2.6.27",
             "firmware": "0.5.30",
@@ -212,19 +234,31 @@ def main() -> int:
             "power_can_ported": False,
             "heap_required": False,
         },
+        "current_adc": {
+            "oracle": "DER26 AMS v2.6.27 / FW0.5.30",
+            "high_range": "PA3/ADC1_IN3/+/-800A",
+            "low_range": "PC0/ADC2_IN10/+/-50A",
+            "acquisition_order": "high_then_low",
+            "resolution_bits": 12,
+            "adc_clock_source": "SYNC",
+            "adc_prescaler": 6,
+            "adc_clock_hz": 18_000_000,
+            "acquisition_ticks": 480,
+            "completion_timeout_ms": 5,
+            "completion_mechanism": "adc_read_async_dt+k_poll",
+            "timeout_recovery": "latched_fault_reboot_only",
+            "dma_enabled": "CONFIG_ADC_STM32_DMA=y" in config,
+            "oversampling": 0,
+            "current_thread_integrated": False,
+            "current_window_integrated": False,
+            "safety_publication_integrated": False,
+            "filtered_current_is_safety_authority": False,
+        },
         "peripheral_state": {
-            "can1_enabled": (
-                'can1: can@40006400'
-                in dts
-                and 'status = "okay"'
-                in dts[
-                    dts.find("can1: can@40006400"):
-                    dts.find(
-                        "};",
-                        dts.find("can1: can@40006400")
-                    ) + 2
-                ]
-            ),
+            "can1_enabled": dts_enabled(dts, "can1:"),
+            "spi6_enabled": dts_enabled(dts, "spi6:"),
+            "adc1_enabled": dts_enabled(dts, "adc1:"),
+            "adc2_enabled": dts_enabled(dts, "adc2:"),
             "authority_expected": False,
         },
         "artifacts": artifact_sizes,

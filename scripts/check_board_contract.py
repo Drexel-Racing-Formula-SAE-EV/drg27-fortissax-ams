@@ -138,7 +138,7 @@ def main() -> int:
         "pinctrl-0 = < &can1_rx_pd0 &can1_tx_pd1 >",
         "CAN1 PD0/PD1"
     )
-    require_contains(can, 'status = "disabled"', "CAN1 Z-005 state")
+    require_contains(can, 'status = "disabled"', "CAN1 Z-011 state")
 
     spi = get_block(text, "spi6:")
     require_contains(
@@ -146,7 +146,13 @@ def main() -> int:
         "pinctrl-0 = < &spi6_sck_pg13 &spi6_miso_pg12 &spi6_mosi_pg14 >",
         "SPI6 PG13/PG12/PG14"
     )
-    require_contains(spi, 'status = "disabled"', "SPI6 Z-005 state")
+    require_contains(spi, 'status = "disabled"', "SPI6 Z-011 state")
+
+    # Z-011 is the first phase that intentionally enables physical current ADCs.
+    # CAN/SPI remain disabled and authority remains impossible. Exact channel
+    # acquisition-time/resolution properties are additionally checked by the
+    # dedicated current-ADC contract against both source and generated DTS.
+    require_contains(user, "io-channels", "current ADC io-channels")
 
     adc1 = get_block(text, "adc1:")
     require_contains(
@@ -154,7 +160,9 @@ def main() -> int:
         "pinctrl-0 = < &adc1_in3_pa3 >",
         "ADC1 high-range PA3"
     )
-    require_contains(adc1, 'status = "disabled"', "ADC1 Z-005 state")
+    require_contains(adc1, 'status = "okay"', "ADC1 Z-011 state")
+    require_contains(adc1, 'st,adc-clock-source = "SYNC"', "ADC1 clock source")
+    require_contains(adc1, "st,adc-prescaler = < 0x6 >", "ADC1 /6 prescaler")
 
     adc2 = get_block(text, "adc2:")
     require_contains(
@@ -162,7 +170,9 @@ def main() -> int:
         "pinctrl-0 = < &adc2_in10_pc0 >",
         "ADC2 low-range PC0"
     )
-    require_contains(adc2, 'status = "disabled"', "ADC2 Z-005 state")
+    require_contains(adc2, 'status = "okay"', "ADC2 Z-011 state")
+    require_contains(adc2, 'st,adc-clock-source = "SYNC"', "ADC2 clock source")
+    require_contains(adc2, "st,adc-prescaler = < 0x6 >", "ADC2 /6 prescaler")
 
     print("PASS: DER26 board contract")
     return 0

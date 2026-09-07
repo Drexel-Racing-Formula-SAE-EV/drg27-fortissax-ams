@@ -108,3 +108,16 @@ Z-010 intentionally does not port `ams_power_state`, `ams_power_strategy`, or
 `ams_power_can`. Those combine measurement/estimator/mission/CAN integration and
 belong to later integration and CAN phases. No power-core algorithm is connected
 to a Zephyr thread in Z-010.
+
+## Z-011 current sensor and fault core
+
+Z-011 adds the portable v2.6.27 DHAB current-sensor processing and current-fault
+policy. The sensor object owns conversion, range hysteresis, cross-range
+plausibility, deadband, telemetry filtering, zero calibration, persistent
+calibration provenance, uncertainty, and validity. It does not own an ADC
+handle or any Zephyr/HAL object.
+
+Raw ADC acquisition is supplied by `drivers/ams/current_adc_zephyr.c`. The
+adapter is deliberately policy-free and the live current thread remains
+unintegrated until Z-022 proves the v2.6.27 current-window mutex/publication
+ordering. See `docs/migration/Z011_CURRENT_ADC_PARITY.md`.

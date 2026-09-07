@@ -4,3 +4,8 @@ build-*/
 .idea/
 __pycache__/
 *.pyc
+/tests/unit/current_path/current_sensor_test
+/tests/unit/current_path/current_fault_test
+/tests/unit/current_path/current_adc_adapter_test
+/tests/unit/current_path/*_asan
+/tests/unit/current_path/*_an.o

@@ -5,6 +5,8 @@
 #include <ams_core/ams_core_contract.h>
 #include <ams_core/ams_core_time.h>
 #include <ams_core/ams_current_window.h>
+#include <ams_core/ams_current_sensor.h>
+#include <ams_core/ams_current_fault.h>
 #include <ams_core/ams_measurement.h>
 #include <ams_core/ams_estimator_lut.h>
 #include <ams_core/ams_soc_ekf.h>
@@ -242,6 +244,45 @@ int ams_core_contract_check(void)
         (soh_cfg.nominal_pack_capacity_ah != 25.2f) ||
         (fuse_cfg.rated_current_a != 80.0f)) {
         return -19;
+    }
+
+    /*
+     * Z-011 portable DHAB/current-fault smoke. Hardware ADC acquisition is
+     * intentionally not started here; the adapter owns that platform path.
+     */
+    current_sensor_t current_sensor;
+    current_fault_state_t current_fault;
+
+    current_sensor_init(&current_sensor);
+    current_sensor_adc_begin(&current_sensor);
+    current_sensor_adc_publish_high(&current_sensor, 1861U);
+    current_sensor_adc_publish_low(&current_sensor, 1861U);
+
+    if (!current_sensor_adc_finish(&current_sensor)) {
+        return -20;
+    }
+
+    (void)current_sensor_convert(&current_sensor);
+    if (!current_sensor.current_valid ||
+        (current_sensor.selected_range != CURRENT_SENSOR_RANGE_50A) ||
+        (current_sensor.reason != CURRENT_SENSOR_REASON_OK) ||
+        (sizeof(current_sensor_calibration_record_t) !=
+         CURRENT_SENSOR_CALIBRATION_RECORD_SIZE)) {
+        return -21;
+    }
+
+    current_fault_init(&current_fault);
+    current_fault_update(&current_fault,
+                         CURRENT_FAULT_MODE_IDLE,
+                         current_sensor.current,
+                         current_sensor.current_valid,
+                         current_sensor.reason,
+                         20U);
+
+    if (current_fault.sensor_fault ||
+        current_fault.confirmed ||
+        current_fault.latched) {
+        return -22;
     }
 
     return 0;
