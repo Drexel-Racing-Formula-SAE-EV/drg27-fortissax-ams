@@ -26,45 +26,47 @@ struct ams_thread_snapshot {
     const char *name;
 
     int priority;
+
     uint32_t period_ms;
+    uint32_t stale_deadline_ms;
+    uint32_t startup_grace_ms;
 
     uint32_t heartbeat_seq;
+    uint32_t heartbeat_age_ms;
+
     uint32_t scheduled_release_ms;
     uint32_t last_start_ms;
     uint32_t last_complete_ms;
 
+    uint32_t last_lateness_ms;
+    uint32_t max_lateness_ms;
+
     uint32_t release_miss_count;
     uint32_t overrun_count;
 
+    uint32_t last_exec_us;
+    uint32_t wcet_us;
+
     bool stale;
+    bool startup_grace_active;
 
     size_t stack_size;
     size_t stack_unused;
+    size_t stack_used_high_water;
 };
 
-/*
- * Create all AMS application threads using statically allocated stacks and
- * thread control blocks.
- *
- * Threads are created suspended first, then started in a controlled order.
- */
 int ams_threads_start(void);
 
-/*
- * Snapshot one thread's runtime state.
- */
 int ams_thread_snapshot_get(enum ams_thread_id id,
                             struct ams_thread_snapshot *snapshot);
 
-/*
- * Request one event-driven diagnostics dump.
- */
 void ams_threads_request_diagnostics(void);
 
-/*
- * Number of explicit AMS application threads.
- */
+void ams_threads_print_manifest(void);
+
 size_t ams_threads_count(void);
+
+uint32_t ams_threads_runtime_start_ms(void);
 
 #ifdef __cplusplus
 }

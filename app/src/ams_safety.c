@@ -26,6 +26,12 @@
  * Even if somebody accidentally changes prj.conf or menuconfig, the
  * Z-003 image must refuse to compile rather than gain authority.
  */
+BUILD_ASSERT(IS_ENABLED(CONFIG_BOARD_DER26_AMS),
+             "AMS safety layer requires the DER26 AMS board");
+
+BUILD_ASSERT(IS_ENABLED(CONFIG_SOC_STM32F767XX),
+             "AMS safety layer requires STM32F767XX");
+
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_BMS_AUTHORITY),
              "Z-003 forbids BMS_OK assertion authority");
 

@@ -11,31 +11,25 @@
 
 /*
  * --------------------------------------------------------------------------
- * Z-004 runtime design
+ * Z-005 AMS runtime contract
  * --------------------------------------------------------------------------
  *
- * This file establishes execution topology only.
+ * This remains a PLATFORM/RUNTIME skeleton only.
  *
- * It deliberately DOES NOT:
- * - access current ADCs
- * - access ADBMS SPI
- * - transmit or receive CAN
- * - execute estimator algorithms
- * - command fans
- * - command balancing
- * - assert BMS_OK
- *
- * Those subsystems are migrated independently after the runtime topology has
- * been established and validated.
+ * No thread below currently:
+ * - reads current ADCs
+ * - accesses ADBMS SPI
+ * - transmits or receives CAN
+ * - executes estimator algorithms
+ * - commands fans
+ * - commands balancing
+ * - asserts BMS_OK
  */
 
 
 /*
- * Zephyr uses numerically smaller non-negative priorities for higher-priority
+ * Numerically smaller non-negative Zephyr priorities are higher-priority
  * preemptible threads.
- *
- * Preserve relative precedence from the migration plan; do not interpret
- * these numbers as FreeRTOS priority values.
  */
 #define AMS_PRIO_SAFETY       0
 #define AMS_PRIO_CURRENT      2
@@ -49,9 +43,7 @@
 
 
 /*
- * Initial periods.
- *
- * Diagnostics is event-driven and therefore has no periodic release.
+ * Nominal release periods.
  */
 #define AMS_PERIOD_SAFETY_MS       50U
 #define AMS_PERIOD_CURRENT_MS      20U
@@ -65,10 +57,43 @@
 
 
 /*
- * Initial migration stack allocations.
+ * Initial liveness deadlines.
  *
- * These are intentionally generous starting values. Actual high-water data
- * will be collected before final stack sizing.
+ * Z-005 uses three nominal periods as a conservative runtime-skeleton
+ * deadline. These are migration/runtime deadlines, not final vehicle safety
+ * policy thresholds.
+ */
+#define AMS_STALE_SAFETY_MS       150U
+#define AMS_STALE_CURRENT_MS       60U
+#define AMS_STALE_ADBMS_MS        300U
+#define AMS_STALE_CAN_MS          300U
+#define AMS_STALE_ESTIMATOR_MS    300U
+#define AMS_STALE_FAN_MS          600U
+#define AMS_STALE_AIR_MS         1500U
+#define AMS_STALE_IMD_MS          300U
+#define AMS_STALE_DIAGNOSTICS_MS    0U
+
+
+/*
+ * Startup grace prevents a legitimate thread from being declared stale
+ * before it has had a reasonable opportunity to execute its first cycle.
+ */
+#define AMS_STARTUP_SAFETY_MS       150U
+#define AMS_STARTUP_CURRENT_MS       60U
+#define AMS_STARTUP_ADBMS_MS        300U
+#define AMS_STARTUP_CAN_MS          300U
+#define AMS_STARTUP_ESTIMATOR_MS    300U
+#define AMS_STARTUP_FAN_MS          600U
+#define AMS_STARTUP_AIR_MS         1500U
+#define AMS_STARTUP_IMD_MS          300U
+#define AMS_STARTUP_DIAGNOSTICS_MS    0U
+
+
+/*
+ * Initial stack allocations.
+ *
+ * These remain deliberately generous until hardware/runtime stack-watermark
+ * evidence exists.
  */
 #define AMS_STACK_SAFETY       2048U
 #define AMS_STACK_CURRENT      2048U
@@ -82,16 +107,25 @@
 
 
 BUILD_ASSERT(CONFIG_NUM_PREEMPT_PRIORITIES > AMS_PRIO_DIAGNOSTICS,
-             "Zephyr requires at least 13 preemptible priorities for AMS layout");
+             "AMS runtime requires at least 13 preemptible priorities");
 
 
 struct ams_runtime_stat {
     atomic_t heartbeat_seq;
+
     atomic_t scheduled_release_ms;
     atomic_t last_start_ms;
     atomic_t last_complete_ms;
+
+    atomic_t last_lateness_ms;
+    atomic_t max_lateness_ms;
+
     atomic_t release_miss_count;
     atomic_t overrun_count;
+
+    atomic_t last_exec_us;
+    atomic_t wcet_us;
+
     atomic_t stale;
 };
 
@@ -102,7 +136,10 @@ struct ams_thread_descriptor {
     const char *name;
 
     int priority;
+
     uint32_t period_ms;
+    uint32_t stale_deadline_ms;
+    uint32_t startup_grace_ms;
 
     struct k_thread *thread;
     k_thread_stack_t *stack;
@@ -143,34 +180,19 @@ static struct k_thread imd_thread;
 static struct k_thread diagnostics_thread;
 
 
-/*
- * Static runtime statistics.
- */
 static struct ams_runtime_stat runtime_stats[AMS_THREAD_COUNT];
 
-
-/*
- * Diagnostics wakeup.
- *
- * Diagnostics is explicitly event-driven rather than another periodic
- * safety/runtime task.
- */
 K_SEM_DEFINE(diagnostics_request, 0, 1);
 
-
-/*
- * Runtime becomes true only after every thread object has been created.
- */
 static atomic_t runtime_started;
+static atomic_t runtime_start_ms;
 
 
 /*
- * Thread descriptors make every AMS execution context explicit.
+ * Explicit application execution topology.
  *
- * AIR is deliberately listed here as a first-class Zephyr thread.
- * The FreeRTOS oracle created AIR through a separate xTaskCreateStatic()
- * path; that architectural exception must not cause AIR to disappear during
- * migration.
+ * AIR remains first-class here because the FreeRTOS oracle created AIR
+ * through its own direct xTaskCreateStatic() path.
  */
 static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
     [AMS_THREAD_SAFETY] = {
@@ -178,6 +200,8 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .name = "ams_safety",
         .priority = AMS_PRIO_SAFETY,
         .period_ms = AMS_PERIOD_SAFETY_MS,
+        .stale_deadline_ms = AMS_STALE_SAFETY_MS,
+        .startup_grace_ms = AMS_STARTUP_SAFETY_MS,
         .thread = &safety_thread,
         .stack = safety_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(safety_stack),
@@ -189,6 +213,8 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .name = "ams_current",
         .priority = AMS_PRIO_CURRENT,
         .period_ms = AMS_PERIOD_CURRENT_MS,
+        .stale_deadline_ms = AMS_STALE_CURRENT_MS,
+        .startup_grace_ms = AMS_STARTUP_CURRENT_MS,
         .thread = &current_thread,
         .stack = current_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(current_stack),
@@ -200,6 +226,8 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .name = "ams_adbms",
         .priority = AMS_PRIO_ADBMS,
         .period_ms = AMS_PERIOD_ADBMS_MS,
+        .stale_deadline_ms = AMS_STALE_ADBMS_MS,
+        .startup_grace_ms = AMS_STARTUP_ADBMS_MS,
         .thread = &adbms_thread,
         .stack = adbms_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(adbms_stack),
@@ -211,6 +239,8 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .name = "ams_can",
         .priority = AMS_PRIO_CAN,
         .period_ms = AMS_PERIOD_CAN_MS,
+        .stale_deadline_ms = AMS_STALE_CAN_MS,
+        .startup_grace_ms = AMS_STARTUP_CAN_MS,
         .thread = &can_thread,
         .stack = can_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(can_stack),
@@ -222,6 +252,8 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .name = "ams_estimator",
         .priority = AMS_PRIO_ESTIMATOR,
         .period_ms = AMS_PERIOD_ESTIMATOR_MS,
+        .stale_deadline_ms = AMS_STALE_ESTIMATOR_MS,
+        .startup_grace_ms = AMS_STARTUP_ESTIMATOR_MS,
         .thread = &estimator_thread,
         .stack = estimator_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(estimator_stack),
@@ -233,6 +265,8 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .name = "ams_fan",
         .priority = AMS_PRIO_FAN,
         .period_ms = AMS_PERIOD_FAN_MS,
+        .stale_deadline_ms = AMS_STALE_FAN_MS,
+        .startup_grace_ms = AMS_STARTUP_FAN_MS,
         .thread = &fan_thread,
         .stack = fan_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(fan_stack),
@@ -244,6 +278,8 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .name = "ams_air",
         .priority = AMS_PRIO_AIR,
         .period_ms = AMS_PERIOD_AIR_MS,
+        .stale_deadline_ms = AMS_STALE_AIR_MS,
+        .startup_grace_ms = AMS_STARTUP_AIR_MS,
         .thread = &air_thread,
         .stack = air_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(air_stack),
@@ -255,6 +291,8 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .name = "ams_imd",
         .priority = AMS_PRIO_IMD,
         .period_ms = AMS_PERIOD_IMD_MS,
+        .stale_deadline_ms = AMS_STALE_IMD_MS,
+        .startup_grace_ms = AMS_STARTUP_IMD_MS,
         .thread = &imd_thread,
         .stack = imd_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(imd_stack),
@@ -266,6 +304,8 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .name = "ams_diag",
         .priority = AMS_PRIO_DIAGNOSTICS,
         .period_ms = AMS_PERIOD_DIAGNOSTICS_MS,
+        .stale_deadline_ms = AMS_STALE_DIAGNOSTICS_MS,
+        .startup_grace_ms = AMS_STARTUP_DIAGNOSTICS_MS,
         .thread = &diagnostics_thread,
         .stack = diagnostics_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(diagnostics_stack),
@@ -274,11 +314,27 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
 };
 
 
+static void atomic_update_max_u32(atomic_t *target, uint32_t value)
+{
+    atomic_val_t observed;
+
+    observed = atomic_get(target);
+
+    while (value > (uint32_t)observed) {
+        if (atomic_cas(target, observed, (atomic_val_t)value)) {
+            break;
+        }
+
+        observed = atomic_get(target);
+    }
+}
+
+
 static void runtime_publish_start(struct ams_thread_descriptor *thread,
                                   int64_t scheduled_release,
                                   int64_t actual_start)
 {
-    int64_t lateness_ms;
+    uint32_t lateness_ms = 0U;
 
     atomic_set(&thread->stat->scheduled_release_ms,
                (atomic_val_t)(uint32_t)scheduled_release);
@@ -286,29 +342,53 @@ static void runtime_publish_start(struct ams_thread_descriptor *thread,
     atomic_set(&thread->stat->last_start_ms,
                (atomic_val_t)(uint32_t)actual_start);
 
-    lateness_ms = actual_start - scheduled_release;
+    if (actual_start > scheduled_release) {
+        int64_t lateness = actual_start - scheduled_release;
+
+        if (lateness > (int64_t)UINT32_MAX) {
+            lateness_ms = UINT32_MAX;
+        } else {
+            lateness_ms = (uint32_t)lateness;
+        }
+    }
+
+    atomic_set(&thread->stat->last_lateness_ms,
+               (atomic_val_t)lateness_ms);
+
+    atomic_update_max_u32(&thread->stat->max_lateness_ms,
+                          lateness_ms);
 
     /*
-     * A release is counted as missed only if execution begins an entire
-     * period late. Ordinary scheduler jitter is not treated as a miss.
+     * An ordinary small scheduler delay is not a release miss.
+     * Missing an entire nominal period is.
      */
-    if (lateness_ms >= (int64_t)thread->period_ms) {
+    if ((thread->period_ms != 0U) &&
+        (lateness_ms >= thread->period_ms)) {
         atomic_inc(&thread->stat->release_miss_count);
     }
 }
 
 
 static void runtime_publish_complete(struct ams_thread_descriptor *thread,
-                                     int64_t completion)
+                                     int64_t completion,
+                                     uint32_t exec_us)
 {
     atomic_set(&thread->stat->last_complete_ms,
                (atomic_val_t)(uint32_t)completion);
+
+    atomic_set(&thread->stat->last_exec_us,
+               (atomic_val_t)exec_us);
+
+    atomic_update_max_u32(&thread->stat->wcet_us,
+                          exec_us);
 
     atomic_inc(&thread->stat->heartbeat_seq);
 }
 
 
-static void periodic_placeholder_thread(void *p1, void *p2, void *p3)
+static void periodic_placeholder_thread(void *p1,
+                                        void *p2,
+                                        void *p3)
 {
     struct ams_thread_descriptor *thread = p1;
     int64_t release_ms;
@@ -323,36 +403,52 @@ static void periodic_placeholder_thread(void *p1, void *p2, void *p3)
         int64_t complete_ms;
         int64_t next_release_ms;
 
+        uint32_t start_cycles;
+        uint32_t elapsed_cycles;
+        uint32_t exec_us;
+
         /*
-         * Absolute release timing prevents execution-time drift from being
-         * accumulated into the next period.
+         * Absolute scheduling avoids cumulative period drift.
          */
         k_sleep(K_TIMEOUT_ABS_MS(release_ms));
 
         start_ms = k_uptime_get();
+        start_cycles = k_cycle_get_32();
 
-        runtime_publish_start(thread, release_ms, start_ms);
+        runtime_publish_start(thread,
+                              release_ms,
+                              start_ms);
 
         /*
          * ------------------------------------------------------------------
-         * Z-004 PLACEHOLDER ONLY
+         * Z-005 PLACEHOLDER
          * ------------------------------------------------------------------
          *
-         * Real subsystem work is intentionally absent.
+         * The actual subsystem body will be inserted here during its own
+         * migration phase.
          */
+
+        elapsed_cycles =
+            k_cycle_get_32() - start_cycles;
+
+        exec_us =
+            k_cyc_to_us_floor32(elapsed_cycles);
 
         complete_ms = k_uptime_get();
 
-        runtime_publish_complete(thread, complete_ms);
+        runtime_publish_complete(thread,
+                                 complete_ms,
+                                 exec_us);
 
-        next_release_ms = release_ms + thread->period_ms;
+        next_release_ms =
+            release_ms + thread->period_ms;
 
         if (complete_ms >= next_release_ms) {
             atomic_inc(&thread->stat->overrun_count);
 
             /*
-             * Do not execute a burst of stale catch-up cycles.
-             * Advance to the first future absolute release.
+             * Skip missed historical releases instead of producing a burst
+             * of catch-up executions.
              */
             do {
                 next_release_ms += thread->period_ms;
@@ -366,50 +462,71 @@ static void periodic_placeholder_thread(void *p1, void *p2, void *p3)
 
 static void runtime_update_stale_flags(void)
 {
-    uint32_t now_ms = k_uptime_get_32();
+    uint32_t now_ms;
+    uint32_t started_ms;
+
+    now_ms = k_uptime_get_32();
+
+    started_ms =
+        (uint32_t)atomic_get(&runtime_start_ms);
 
     /*
-     * Safety-supervisor liveness is handled later by the watchdog/supervisor
-     * integration. Diagnostics is event-driven and therefore not aged here.
+     * The safety thread does not diagnose its own death.
+     * That responsibility moves to the watchdog/external supervisor layer.
+     *
+     * Diagnostics is event-driven and therefore has no periodic stale
+     * deadline.
      */
     for (size_t i = AMS_THREAD_CURRENT;
          i < AMS_THREAD_DIAGNOSTICS;
          ++i) {
-        struct ams_thread_descriptor *thread = &threads[i];
-        uint32_t last_complete;
+        struct ams_thread_descriptor *thread;
         uint32_t heartbeat;
-        uint32_t max_age_ms;
+        uint32_t last_complete;
         uint32_t age_ms;
+        uint32_t startup_age_ms;
+
+        thread = &threads[i];
 
         heartbeat =
-            (uint32_t)atomic_get(&thread->stat->heartbeat_seq);
+            (uint32_t)atomic_get(
+                &thread->stat->heartbeat_seq);
 
         last_complete =
-            (uint32_t)atomic_get(&thread->stat->last_complete_ms);
+            (uint32_t)atomic_get(
+                &thread->stat->last_complete_ms);
 
-        /*
-         * Give every thread at least three scheduled periods before calling
-         * it stale.
-         */
-        max_age_ms = thread->period_ms * 3U;
+        startup_age_ms =
+            now_ms - started_ms;
 
         if (heartbeat == 0U) {
-            atomic_set(&thread->stat->stale, 1);
+            /*
+             * A newly-created thread is not stale until its explicit startup
+             * grace has elapsed.
+             */
+            atomic_set(
+                &thread->stat->stale,
+                (startup_age_ms > thread->startup_grace_ms) ? 1 : 0);
+
             continue;
         }
 
         /*
-         * Unsigned subtraction intentionally gives wrap-safe 32-bit age.
+         * Unsigned subtraction provides wrap-safe 32-bit elapsed age.
          */
-        age_ms = now_ms - last_complete;
+        age_ms =
+            now_ms - last_complete;
 
-        atomic_set(&thread->stat->stale,
-                   (age_ms > max_age_ms) ? 1 : 0);
+        atomic_set(
+            &thread->stat->stale,
+            (age_ms > thread->stale_deadline_ms) ? 1 : 0);
     }
 }
 
 
-static void safety_supervisor_thread(void *p1, void *p2, void *p3)
+static void safety_supervisor_thread(void *p1,
+                                     void *p2,
+                                     void *p3)
 {
     struct ams_thread_descriptor *thread = p1;
     int64_t release_ms;
@@ -424,28 +541,43 @@ static void safety_supervisor_thread(void *p1, void *p2, void *p3)
         int64_t complete_ms;
         int64_t next_release_ms;
 
+        uint32_t start_cycles;
+        uint32_t elapsed_cycles;
+        uint32_t exec_us;
+
         k_sleep(K_TIMEOUT_ABS_MS(release_ms));
 
         start_ms = k_uptime_get();
+        start_cycles = k_cycle_get_32();
 
-        runtime_publish_start(thread, release_ms, start_ms);
+        runtime_publish_start(thread,
+                              release_ms,
+                              start_ms);
 
         if (atomic_get(&runtime_started) != 0) {
             runtime_update_stale_flags();
         }
 
         /*
-         * No authority decision is made here in Z-004.
+         * Z-005 supervisor is observational only.
          *
-         * The supervisor currently observes runtime liveness only.
-         * BMS_OK remains structurally impossible to assert.
+         * It has no BMS_OK assertion authority.
          */
+
+        elapsed_cycles =
+            k_cycle_get_32() - start_cycles;
+
+        exec_us =
+            k_cyc_to_us_floor32(elapsed_cycles);
 
         complete_ms = k_uptime_get();
 
-        runtime_publish_complete(thread, complete_ms);
+        runtime_publish_complete(thread,
+                                 complete_ms,
+                                 exec_us);
 
-        next_release_ms = release_ms + thread->period_ms;
+        next_release_ms =
+            release_ms + thread->period_ms;
 
         if (complete_ms >= next_release_ms) {
             atomic_inc(&thread->stat->overrun_count);
@@ -460,7 +592,9 @@ static void safety_supervisor_thread(void *p1, void *p2, void *p3)
 }
 
 
-static void diagnostics_thread_entry(void *p1, void *p2, void *p3)
+static void diagnostics_thread_entry(void *p1,
+                                     void *p2,
+                                     void *p3)
 {
     struct ams_thread_descriptor *thread = p1;
 
@@ -468,15 +602,25 @@ static void diagnostics_thread_entry(void *p1, void *p2, void *p3)
     ARG_UNUSED(p3);
 
     for (;;) {
-        k_sem_take(&diagnostics_request, K_FOREVER);
+        uint32_t start_cycles;
+        uint32_t elapsed_cycles;
+        uint32_t exec_us;
 
-        atomic_set(&thread->stat->last_start_ms,
-                   (atomic_val_t)k_uptime_get_32());
+        k_sem_take(&diagnostics_request,
+                   K_FOREVER);
 
-        printk("\nAMS Z-004 runtime\n");
-        printk("thread           prio period hb     stale stack-free\n");
+        atomic_set(
+            &thread->stat->last_start_ms,
+            (atomic_val_t)k_uptime_get_32());
 
-        for (size_t i = 0U; i < AMS_THREAD_COUNT; ++i) {
+        start_cycles = k_cycle_get_32();
+
+        printk("\nAMS Z-005 runtime snapshot\n");
+        printk("thread           p  per age stale late maxL exec wcet stack-used\n");
+
+        for (size_t i = 0U;
+             i < AMS_THREAD_COUNT;
+             ++i) {
             struct ams_thread_snapshot snapshot;
 
             if (ams_thread_snapshot_get(
@@ -485,20 +629,31 @@ static void diagnostics_thread_entry(void *p1, void *p2, void *p3)
                 continue;
             }
 
-            printk("%-16s %4d %6u %6u %5u %5u/%u\n",
-                   snapshot.name,
-                   snapshot.priority,
-                   snapshot.period_ms,
-                   snapshot.heartbeat_seq,
-                   snapshot.stale ? 1U : 0U,
-                   (unsigned int)snapshot.stack_unused,
-                   (unsigned int)snapshot.stack_size);
+            printk(
+                "%-16s %2d %4u %4u %5u %4u %4u %4u %4u %5u/%u\n",
+                snapshot.name,
+                snapshot.priority,
+                snapshot.period_ms,
+                snapshot.heartbeat_age_ms,
+                snapshot.stale ? 1U : 0U,
+                snapshot.last_lateness_ms,
+                snapshot.max_lateness_ms,
+                snapshot.last_exec_us,
+                snapshot.wcet_us,
+                (unsigned int)snapshot.stack_used_high_water,
+                (unsigned int)snapshot.stack_size);
         }
 
-        atomic_set(&thread->stat->last_complete_ms,
-                   (atomic_val_t)k_uptime_get_32());
+        elapsed_cycles =
+            k_cycle_get_32() - start_cycles;
 
-        atomic_inc(&thread->stat->heartbeat_seq);
+        exec_us =
+            k_cyc_to_us_floor32(elapsed_cycles);
+
+        runtime_publish_complete(
+            thread,
+            k_uptime_get(),
+            exec_us);
     }
 }
 
@@ -521,93 +676,145 @@ static k_tid_t create_thread(struct ams_thread_descriptor *thread,
         K_FOREVER);
 
     if (tid != NULL) {
-        (void)k_thread_name_set(tid, thread->name);
+        (void)k_thread_name_set(
+            tid,
+            thread->name);
     }
 
     return tid;
 }
 
 
+void ams_threads_print_manifest(void)
+{
+    printk("\nAMS runtime manifest\n");
+    printk("thread           prio period stale grace stack\n");
+
+    for (size_t i = 0U;
+         i < AMS_THREAD_COUNT;
+         ++i) {
+        const struct ams_thread_descriptor *thread;
+
+        thread = &threads[i];
+
+        printk("%-16s %4d %6u %5u %5u %5u\n",
+               thread->name,
+               thread->priority,
+               thread->period_ms,
+               thread->stale_deadline_ms,
+               thread->startup_grace_ms,
+               (unsigned int)thread->stack_size);
+    }
+}
+
+
 int ams_threads_start(void)
 {
-    /*
-     * Create every thread suspended first.
-     *
-     * This prevents the highest-priority supervisor from running while the
-     * rest of the runtime topology is only partially constructed.
-     */
-
-    if (create_thread(&threads[AMS_THREAD_SAFETY],
-                      safety_supervisor_thread) == NULL) {
-        return -ENOMEM;
-    }
-
-    if (create_thread(&threads[AMS_THREAD_CURRENT],
-                      periodic_placeholder_thread) == NULL) {
-        return -ENOMEM;
-    }
-
-    if (create_thread(&threads[AMS_THREAD_ADBMS],
-                      periodic_placeholder_thread) == NULL) {
-        return -ENOMEM;
-    }
-
-    if (create_thread(&threads[AMS_THREAD_CAN],
-                      periodic_placeholder_thread) == NULL) {
-        return -ENOMEM;
-    }
-
-    if (create_thread(&threads[AMS_THREAD_ESTIMATOR],
-                      periodic_placeholder_thread) == NULL) {
-        return -ENOMEM;
-    }
-
-    if (create_thread(&threads[AMS_THREAD_FAN],
-                      periodic_placeholder_thread) == NULL) {
-        return -ENOMEM;
+    if (atomic_get(&runtime_started) != 0) {
+        return -EALREADY;
     }
 
     /*
-     * AIR is explicitly created here.
-     *
-     * Do not remove this because it did not share the normal FreeRTOS
-     * CMSIS task-creation path in the oracle.
+     * Create all thread objects suspended first.
      */
-    if (create_thread(&threads[AMS_THREAD_AIR],
-                      periodic_placeholder_thread) == NULL) {
+    if (create_thread(
+            &threads[AMS_THREAD_SAFETY],
+            safety_supervisor_thread) == NULL) {
         return -ENOMEM;
     }
 
-    if (create_thread(&threads[AMS_THREAD_IMD],
-                      periodic_placeholder_thread) == NULL) {
+    if (create_thread(
+            &threads[AMS_THREAD_CURRENT],
+            periodic_placeholder_thread) == NULL) {
         return -ENOMEM;
     }
 
-    if (create_thread(&threads[AMS_THREAD_DIAGNOSTICS],
-                      diagnostics_thread_entry) == NULL) {
+    if (create_thread(
+            &threads[AMS_THREAD_ADBMS],
+            periodic_placeholder_thread) == NULL) {
         return -ENOMEM;
     }
 
+    if (create_thread(
+            &threads[AMS_THREAD_CAN],
+            periodic_placeholder_thread) == NULL) {
+        return -ENOMEM;
+    }
+
+    if (create_thread(
+            &threads[AMS_THREAD_ESTIMATOR],
+            periodic_placeholder_thread) == NULL) {
+        return -ENOMEM;
+    }
+
+    if (create_thread(
+            &threads[AMS_THREAD_FAN],
+            periodic_placeholder_thread) == NULL) {
+        return -ENOMEM;
+    }
 
     /*
-     * Start ordinary workers before the supervisor.
+     * Explicit AIR creation is mandatory.
      */
-    k_thread_start(threads[AMS_THREAD_CURRENT].thread);
-    k_thread_start(threads[AMS_THREAD_ADBMS].thread);
-    k_thread_start(threads[AMS_THREAD_CAN].thread);
-    k_thread_start(threads[AMS_THREAD_ESTIMATOR].thread);
-    k_thread_start(threads[AMS_THREAD_FAN].thread);
-    k_thread_start(threads[AMS_THREAD_AIR].thread);
-    k_thread_start(threads[AMS_THREAD_IMD].thread);
-    k_thread_start(threads[AMS_THREAD_DIAGNOSTICS].thread);
+    if (create_thread(
+            &threads[AMS_THREAD_AIR],
+            periodic_placeholder_thread) == NULL) {
+        return -ENOMEM;
+    }
+
+    if (create_thread(
+            &threads[AMS_THREAD_IMD],
+            periodic_placeholder_thread) == NULL) {
+        return -ENOMEM;
+    }
+
+    if (create_thread(
+            &threads[AMS_THREAD_DIAGNOSTICS],
+            diagnostics_thread_entry) == NULL) {
+        return -ENOMEM;
+    }
+
+    /*
+     * Record the single runtime epoch before application workers begin.
+     */
+    atomic_set(
+        &runtime_start_ms,
+        (atomic_val_t)k_uptime_get_32());
+
+    /*
+     * Start worker threads first.
+     */
+    k_thread_start(
+        threads[AMS_THREAD_CURRENT].thread);
+
+    k_thread_start(
+        threads[AMS_THREAD_ADBMS].thread);
+
+    k_thread_start(
+        threads[AMS_THREAD_CAN].thread);
+
+    k_thread_start(
+        threads[AMS_THREAD_ESTIMATOR].thread);
+
+    k_thread_start(
+        threads[AMS_THREAD_FAN].thread);
+
+    k_thread_start(
+        threads[AMS_THREAD_AIR].thread);
+
+    k_thread_start(
+        threads[AMS_THREAD_IMD].thread);
+
+    k_thread_start(
+        threads[AMS_THREAD_DIAGNOSTICS].thread);
 
     atomic_set(&runtime_started, 1);
 
     /*
-     * Supervisor starts last so its first liveness scan sees a complete
-     * runtime topology.
+     * Supervisor starts only after the worker topology is complete.
      */
-    k_thread_start(threads[AMS_THREAD_SAFETY].thread);
+    k_thread_start(
+        threads[AMS_THREAD_SAFETY].thread);
 
     return 0;
 }
@@ -617,7 +824,12 @@ int ams_thread_snapshot_get(enum ams_thread_id id,
                             struct ams_thread_snapshot *snapshot)
 {
     struct ams_thread_descriptor *thread;
+
     size_t unused = 0U;
+
+    uint32_t now_ms;
+    uint32_t runtime_epoch_ms;
+
     int ret;
 
     if ((id < 0) ||
@@ -628,18 +840,33 @@ int ams_thread_snapshot_get(enum ams_thread_id id,
 
     thread = &threads[id];
 
-    ret = k_thread_stack_space_get(thread->thread, &unused);
+    ret =
+        k_thread_stack_space_get(
+            thread->thread,
+            &unused);
 
     if (ret != 0) {
         unused = 0U;
     }
 
-    snapshot->name = thread->name;
-    snapshot->priority = thread->priority;
-    snapshot->period_ms = thread->period_ms;
+    snapshot->name =
+        thread->name;
+
+    snapshot->priority =
+        thread->priority;
+
+    snapshot->period_ms =
+        thread->period_ms;
+
+    snapshot->stale_deadline_ms =
+        thread->stale_deadline_ms;
+
+    snapshot->startup_grace_ms =
+        thread->startup_grace_ms;
 
     snapshot->heartbeat_seq =
-        (uint32_t)atomic_get(&thread->stat->heartbeat_seq);
+        (uint32_t)atomic_get(
+            &thread->stat->heartbeat_seq);
 
     snapshot->scheduled_release_ms =
         (uint32_t)atomic_get(
@@ -653,6 +880,14 @@ int ams_thread_snapshot_get(enum ams_thread_id id,
         (uint32_t)atomic_get(
             &thread->stat->last_complete_ms);
 
+    snapshot->last_lateness_ms =
+        (uint32_t)atomic_get(
+            &thread->stat->last_lateness_ms);
+
+    snapshot->max_lateness_ms =
+        (uint32_t)atomic_get(
+            &thread->stat->max_lateness_ms);
+
     snapshot->release_miss_count =
         (uint32_t)atomic_get(
             &thread->stat->release_miss_count);
@@ -661,11 +896,54 @@ int ams_thread_snapshot_get(enum ams_thread_id id,
         (uint32_t)atomic_get(
             &thread->stat->overrun_count);
 
-    snapshot->stale =
-        atomic_get(&thread->stat->stale) != 0;
+    snapshot->last_exec_us =
+        (uint32_t)atomic_get(
+            &thread->stat->last_exec_us);
 
-    snapshot->stack_size = thread->stack_size;
-    snapshot->stack_unused = unused;
+    snapshot->wcet_us =
+        (uint32_t)atomic_get(
+            &thread->stat->wcet_us);
+
+    snapshot->stale =
+        atomic_get(
+            &thread->stat->stale) != 0;
+
+    snapshot->stack_size =
+        thread->stack_size;
+
+    snapshot->stack_unused =
+        unused;
+
+    if (unused <= thread->stack_size) {
+        snapshot->stack_used_high_water =
+            thread->stack_size - unused;
+    } else {
+        snapshot->stack_used_high_water =
+            thread->stack_size;
+    }
+
+    now_ms =
+        k_uptime_get_32();
+
+    runtime_epoch_ms =
+        (uint32_t)atomic_get(
+            &runtime_start_ms);
+
+    if (snapshot->heartbeat_seq == 0U) {
+        snapshot->heartbeat_age_ms =
+            now_ms - runtime_epoch_ms;
+
+        snapshot->startup_grace_active =
+            snapshot->heartbeat_age_ms <=
+            thread->startup_grace_ms;
+    } else {
+        snapshot->heartbeat_age_ms =
+            now_ms -
+            snapshot->last_complete_ms;
+
+        snapshot->startup_grace_active =
+            false;
+    }
 
     return 0;
 }
@@ -680,4 +958,11 @@ void ams_threads_request_diagnostics(void)
 size_t ams_threads_count(void)
 {
     return ARRAY_SIZE(threads);
+}
+
+
+uint32_t ams_threads_runtime_start_ms(void)
+{
+    return (uint32_t)atomic_get(
+        &runtime_start_ms);
 }

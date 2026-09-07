@@ -9,11 +9,6 @@ int main(void)
 {
     int ret;
 
-    /*
-     * Direct PRE_KERNEL safety initialization has already forced PE0 low.
-     * Establish normal Zephyr GPIO ownership before any application threads
-     * are permitted to run.
-     */
     ret = ams_safety_init();
 
     if (ret != 0) {
@@ -21,10 +16,15 @@ int main(void)
         k_panic();
     }
 
-    printk("DRG27 Fortissax AMS - Zephyr Z-004\n");
+    printk("DRG27 Fortissax AMS - Zephyr Z-005\n");
     printk("BMS_OK: forced LOW\n");
     printk("BMS authority: DISABLED\n");
     printk("Balance authority: DISABLED\n");
+
+    /*
+     * Print the intended execution topology before it is started.
+     */
+    ams_threads_print_manifest();
 
     ret = ams_threads_start();
 
@@ -37,15 +37,15 @@ int main(void)
            (unsigned int)ams_threads_count());
 
     /*
-     * Request one startup runtime snapshot.
-     * Diagnostics remains event-driven.
+     * Give the periodic workers time to produce useful first-cycle runtime
+     * data before printing the initial diagnostics snapshot.
      */
+    k_sleep(K_MSEC(250));
+
     ams_threads_request_diagnostics();
 
     /*
      * Main is startup-only.
-     *
-     * It does not become an additional AMS service loop.
      */
     for (;;) {
         k_sleep(K_FOREVER);
