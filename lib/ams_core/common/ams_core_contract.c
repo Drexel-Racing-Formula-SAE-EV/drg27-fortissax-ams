@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdint.h>
 
 #include <ams_core/ams_core_config.h>
@@ -5,6 +6,8 @@
 #include <ams_core/ams_core_time.h>
 #include <ams_core/ams_current_window.h>
 #include <ams_core/ams_measurement.h>
+#include <ams_core/ams_estimator_lut.h>
+#include <ams_core/ams_soc_ekf.h>
 #include <ams_core/ams_core_types.h>
 
 typedef char ams_time_ms_must_be_32_bits[
@@ -128,6 +131,52 @@ int ams_core_contract_check(void)
         (current_window.charge_As < 0.19999) ||
         (current_window.charge_As > 0.20001)) {
         return -12;
+    }
+
+    /*
+     * Z-009 target-link smoke for the exact v2.6.27 estimator core.
+     *
+     * Do not execute a full EKF update from the startup contract: the normal
+     * estimator thread owns that stack budget later. Volatile function-pointer
+     * anchors keep the init/update entry points in the target link while the
+     * lightweight checks below verify the topology config and LUT objects.
+     */
+    typedef void (*ams_ekf_init_fn_t)(ams_ekf_instance_t *,
+                                      const ams_ekf_config_t *);
+    typedef bool (*ams_ekf_step_gated_fn_t)(
+        ams_ekf_instance_t *,
+        float,
+        float,
+        float,
+        float,
+        bool,
+        ams_ekf_r0_update_result_t *);
+
+    volatile ams_ekf_init_fn_t estimator_init_anchor = ams_ekf_init;
+    volatile ams_ekf_step_gated_fn_t estimator_step_anchor =
+        ams_ekf_step_gated;
+    ams_ekf_config_t estimator_cfg;
+
+    if ((estimator_init_anchor == NULL) ||
+        (estimator_step_anchor == NULL)) {
+        return -13;
+    }
+
+    ams_ekf_make_pack_config(&estimator_cfg);
+
+    if ((estimator_cfg.enabled == 0U) ||
+        (estimator_cfg.first_series_group != 0U) ||
+        (estimator_cfg.series_group_count != AMS_EKF_PACK_SERIES_GROUPS) ||
+        (estimator_cfg.parallel_cell_count != AMS_EKF_PACK_PARALLEL_CELLS) ||
+        (estimator_cfg.cell_capacity_Ah != AMS_EKF_CELL_CAPACITY_AH)) {
+        return -14;
+    }
+
+    if ((ams_p42a_ocv_v(0.5f, 25.0f) < 3.7530f) ||
+        (ams_p42a_ocv_v(0.5f, 25.0f) > 3.7532f) ||
+        (ams_p42a_r0_ohm(0.5f, 25.0f) < 0.0135f) ||
+        (ams_p42a_r0_ohm(0.5f, 25.0f) > 0.0136f)) {
+        return -15;
     }
 
     return 0;

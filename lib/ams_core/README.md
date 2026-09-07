@@ -52,3 +52,42 @@ The current-window integration and boundary-rotation algorithm is deliberately
 left for Z-008 so the v2.6.27 ordering, carried metadata, mixed-range latching,
 uncertainty, and calibration-provenance rules can be migrated and tested as one
 unit.
+
+
+## Z-009 estimator core
+
+Z-009 ports the estimator math from the frozen DER26 AMS v2.6.27 /
+firmware 0.5.30 oracle without changing the numerical algorithm.
+
+Included:
+
+- P42A OCV/R0/C1/tau1 lookup tables;
+- 3-state inner EKF `[SoC, Vp1, Vp2]`;
+- full 3x3 covariance including cross-covariances;
+- scalar adaptive outer R0 loop;
+- adaptive measurement covariance;
+- Joseph-form covariance update/repair;
+- feed-forward thermal observer;
+- startup acquisition/relaxation anchor logic;
+- pack, segment, and even-split estimator configuration;
+- coulomb-count fallback/reference state;
+- estimator summary/status generation;
+- estimator-local R0 observation bookkeeping used by the dual-EKF path.
+
+Not included in Z-009:
+
+- the Zephyr estimator thread;
+- measurement-store-to-estimator input collection;
+- source selection between RAW/AVG8/IIR;
+- runtime epoch scheduling or one-sequence-once task ownership;
+- HIL CAN parsing;
+- general SoH, SoP, or fuse engines;
+- any safety or BMS_OK authority.
+
+`ams_soc_ekf.c`, `ams_estimator_lut.c`, and their public headers are
+byte-for-byte oracle copies after only the include-path substitutions required
+to make them part of `ams_core`. `ams_estimator_config.h` reproduces the
+estimator-local topology identifiers and the v2.6.27 default BENCH -> PACK
+topology without importing the legacy build-profile header.
+
+See `estimator/ORACLE_PROVENANCE.md` for source hashes.
