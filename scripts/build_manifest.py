@@ -56,12 +56,26 @@ def dts_enabled(text: str, label: str) -> bool:
     return 'status = "okay"' in dts_block(text, label)
 
 
-def git_output(repo: Path, *args: str) -> str:
-    return subprocess.check_output(
-        ["git", *args],
-        cwd=repo,
-        text=True,
-    ).strip()
+def git_output(repo: Path, *args: str) -> str | None:
+    """Return git output when the package is inside a worktree.
+
+    Release ZIPs intentionally do not contain `.git`, so target contract
+    generation must remain usable on an independently extracted package.
+    """
+    try:
+        completed = subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+    except OSError:
+        return None
+    if completed.returncode != 0:
+        return None
+    return completed.stdout.strip()
 
 
 def main() -> int:
@@ -99,7 +113,8 @@ def main() -> int:
     )
 
     git_commit = git_output(repo, "rev-parse", "HEAD")
-    git_dirty = bool(git_output(repo, "status", "--porcelain"))
+    git_status = git_output(repo, "status", "--porcelain")
+    git_dirty = None if git_status is None else bool(git_status)
 
     artifact_sizes = {}
 
@@ -183,8 +198,15 @@ def main() -> int:
                 "drexel,ams-fan-bank",
                 "drexel,ams-imd",
             ],
-            "current_adc_uses_named_adc_dt_spec": True,
+            "current_adc_uses_named_adc_dt_spec": False,
+            "current_adc_uses_typed_private_controller_phandles": True,
+            "current_adc_private_backend": "drivers/ams/current_adc_stm32.c",
+            "current_adc_generic_zephyr_driver_owned": False,
+            "current_adc_irq_transport": False,
+            "current_adc_dma_transport": False,
+            "current_adc_async_transport": False,
             "fan_uses_named_pwm_dt_spec": True,
+            "fan_output_timer_capture_irqs_disabled": True,
             "imd_uses_pwm_and_gpio_dt_spec": True,
             "platform_adapter_build_layer_separate": True,
             "board_emergency_primitive_build_layer_separate": True,
@@ -220,6 +242,11 @@ def main() -> int:
             "spi6_read_dummy_byte": 255,
             "current_high": "PA3/ADC1_IN3",
             "current_low": "PC0/ADC2_IN10",
+            "current_adc_input_clock_hz": 108_000_000,
+            "current_adc_prescaler": 6,
+            "current_adc_clock_hz": 18_000_000,
+            "current_adc_common_reset": "APB2_ADCRST_bit8_ADC1_ADC2_ADC3",
+            "current_adc_shared_irq": 18,
             "imd_pwm": "PA5/TIM2_CH1",
             "imd_ok_hs": "PC5",
             "uart3_tx": "PD8",
@@ -358,6 +385,8 @@ def main() -> int:
             "timeout_is_terminal_by_default": False,
             "recovery_failure_latches_faulted": True,
             "runtime_transfer_callers": 0,
+            "linked_runtime_transfer_entrypoints_required_absent": True,
+            "integrity_violation_counter": "saturating",
             "startup_initializes_without_transfer": True,
             "wake_api_present": False,
             "adbms_actor_live": False,
@@ -377,9 +406,20 @@ def main() -> int:
             "adc_clock_hz": 18_000_000,
             "acquisition_ticks": 480,
             "completion_timeout_ms": 5,
-            "completion_mechanism": "adc_read_async_dt+k_poll",
-            "timeout_recovery": "latched_fault_reboot_only",
+            "completion_timeout_semantics": "HAL_F7_elapsed_gt_5ms_with_EOC_recheck",
+            "success_flag_clear": "STRT_plus_EOC_before_DR_read",
+            "completion_mechanism": "private_STM32_LL_bounded_poll",
+            "generic_zephyr_adc_enabled": "CONFIG_ADC=y" in config,
+            "async_enabled": "CONFIG_ADC_ASYNC=y" in config,
             "dma_enabled": "CONFIG_ADC_STM32_DMA=y" in config,
+            "irq_enabled": False,
+            "shared_irq": 18,
+            "common_reset_owns_adc1_adc2_adc3": True,
+            "adc3_must_remain_disabled": True,
+            "timeout_recovery": "ADC_common_RCC_reset_reconfigure_readback_then_ready",
+            "timeout_is_terminal_by_default": False,
+            "recovery_failure_latches_faulted": True,
+            "integrity_violation_counter": "saturating",
             "oversampling": 0,
             "current_thread_integrated": False,
             "current_window_integrated": False,
@@ -411,6 +451,8 @@ def main() -> int:
             "missing_temperature_behavior": "100_percent_fail_max",
             "startup_channel_failure": "soft_process_fault_retry",
             "timer_platform_failure": "fatal_fail_low",
+            "output_only_timer_irqs_disabled": [29, 30, 50],
+            "imd_timer_irq_preserved": 28,
             "physical_feedback": False,
             "temperature_source_integrated": False,
         },

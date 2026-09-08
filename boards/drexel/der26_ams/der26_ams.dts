@@ -65,11 +65,28 @@
         status = "okay";
     };
 
-    /* Z-011 acquisition order is intentionally HIGH then LOW. */
+    /*
+     * Z-011/Z-015-hardened private current ADC interface. ADC1/ADC2 are kept
+     * disabled as Zephyr devices so adc_stm32 never owns their shared IRQ or
+     * async adc_context. The typed AMS node owns both analog pinctrl states,
+     * the common ADC reset, and the exact v2.6.27 conversion contract.
+     */
     ams_current_sense: ams-current-sense {
         compatible = "drexel,ams-current-sense";
-        io-channels = <&adc1 3>, <&adc2 10>;
-        io-channel-names = "high", "low";
+        high-controller = <&adc1>;
+        low-controller = <&adc2>;
+        pinctrl-0 = <&adc1_in3_pa3 &adc2_in10_pc0>;
+        pinctrl-names = "default";
+        resets = <&rctl STM32_RESET(APB2, 8)>;
+        reset-names = "adc-common";
+        high-channel = <3>;
+        low-channel = <10>;
+        adc-input-clock-hz = <108000000>;
+        adc-prescaler = <6>;
+        adc-clock-hz = <18000000>;
+        resolution-bits = <12>;
+        acquisition-ticks = <480>;
+        conversion-timeout-ms = <5>;
         status = "okay";
     };
 
@@ -184,59 +201,20 @@
 
 
 /*
- * High-range DHAB current channel.
- * C_SENSE_H = PA3 / ADC1_IN3 / +/-800 A.
+ * Z-011/Z-015-hardened current-sense ADC hardware metadata.
  *
- * Preserve the v2.6.27 ADC contract: synchronous PCLK2/6, 12-bit, one
- * software-triggered sample, no oversampling/DMA, 480-cycle acquisition.
+ * ADC1/ADC2 stay disabled so Zephyr adc_stm32 does not instantiate its
+ * interrupt-driven adc_context. The private AMS adapter references these SoC
+ * nodes only for base address, APB2 clock and shared IRQ metadata. Pinmux and
+ * reset ownership live on ams_current_sense above. ADC3 must remain disabled
+ * because STM32F767 has one common ADC reset bit for ADC1/2/3.
  */
 &adc1 {
-    pinctrl-0 = <&adc1_in3_pa3>;
-    pinctrl-names = "default";
-    st,adc-clock-source = "SYNC";
-    st,adc-prescaler = <6>;
-    vref-mv = <3300>;
-    status = "okay";
-
-    #address-cells = <1>;
-    #size-cells = <0>;
-
-    channel@3 {
-        reg = <3>;
-        zephyr,gain = "ADC_GAIN_1";
-        zephyr,reference = "ADC_REF_VDD_1";
-        zephyr,vref-mv = <3300>;
-        zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 480)>;
-        zephyr,resolution = <12>;
-        zephyr,oversampling = <0>;
-    };
+    status = "disabled";
 };
 
-
-/*
- * Low-range DHAB current channel.
- * C_SENSE_L = PC0 / ADC2_IN10 / +/-50 A.
- */
 &adc2 {
-    pinctrl-0 = <&adc2_in10_pc0>;
-    pinctrl-names = "default";
-    st,adc-clock-source = "SYNC";
-    st,adc-prescaler = <6>;
-    vref-mv = <3300>;
-    status = "okay";
-
-    #address-cells = <1>;
-    #size-cells = <0>;
-
-    channel@a {
-        reg = <10>;
-        zephyr,gain = "ADC_GAIN_1";
-        zephyr,reference = "ADC_REF_VDD_1";
-        zephyr,vref-mv = <3300>;
-        zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_TICKS, 480)>;
-        zephyr,resolution = <12>;
-        zephyr,oversampling = <0>;
-    };
+    status = "disabled";
 };
 
 /*

@@ -48,6 +48,8 @@ struct fake_spi_platform {
     bool clock_rate_fail;
     bool cs_config_fail;
     bool cs_assert_fail_once;
+    bool txe_hook_fired;
+    void (*txe_hook)(void);
     unsigned irq_disable_count;
     unsigned irq_clear_count;
     unsigned reset_count;

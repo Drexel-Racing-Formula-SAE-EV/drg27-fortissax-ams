@@ -39,12 +39,12 @@ int ams_current_adc_init(void);
  * Acquire exactly one high-range sample followed by one low-range sample.
  * A failed high read suppresses the low read, matching v2.6.27.
  *
- * The Zephyr STM32 ADC synchronous API waits K_FOREVER internally by default.
- * Z-011 therefore uses adc_read_async_dt() plus a 5 ms k_poll timeout. If a
- * conversion times out, Zephyr exposes no public cancellation API for the
- * in-flight STM32 adc_context operation. The adapter latches itself faulted
- * and refuses buffer/device reuse until reboot. This is more fail-closed than
- * the HAL oracle and prevents an overdue ISR from writing into reused storage.
+ * The hardened platform path privately owns ADC1/ADC2 and performs bounded
+ * polling with no Zephyr adc_context, completion signal, DMA, or ADC ISR.
+ * A timeout returns a bad sample, resets/reconfigures the shared STM32F767 ADC
+ * block, and permits the next scan to retry, restoring the recoverability of
+ * the v2.6.27 HAL oracle. Only a failed reset/reconfiguration latches the
+ * adapter faulted until reboot.
  */
 int ams_current_adc_read_pair(ams_current_adc_pair_t *pair);
 

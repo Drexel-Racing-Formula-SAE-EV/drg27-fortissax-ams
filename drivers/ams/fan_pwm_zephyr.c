@@ -8,6 +8,7 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/devicetree/pwms.h>
 #include <zephyr/drivers/pwm.h>
+#include <zephyr/irq.h>
 #include <zephyr/sys/util.h>
 
 #define AMS_FAN_NODE DT_NODELABEL(ams_fans)
@@ -18,6 +19,12 @@ BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_FAN_ACTOR_LIVE),
              "fan platform adapter requires live fan capability at Z-013");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_FAN_PHYSICAL_VALIDATED),
              "Z-013 must not claim physical fan PWM validation");
+BUILD_ASSERT(IS_ENABLED(CONFIG_ARCH_HAS_IRQ_PENDING_OPS),
+             "fan output-only timer hardening requires NVIC pending-clear support");
+BUILD_ASSERT(DT_IRQN(DT_NODELABEL(timers3)) == 29U &&
+             DT_IRQN(DT_NODELABEL(timers4)) == 30U &&
+             DT_IRQN(DT_NODELABEL(timers5)) == 50U,
+             "DER26 fan timers must retain TIM3/TIM4/TIM5 IRQ numbers");
 
 BUILD_ASSERT(DT_PROP_LEN(AMS_FAN_NODE, pwms) == AMS_FAN_ZONE_COUNT,
              "typed AMS fan bank must expose exactly six PWM outputs");
@@ -90,6 +97,25 @@ static uint32_t fan_percent_to_compare(float percent)
                        (double)percent) / 100.0);
 }
 
+static void disable_output_only_timer_irqs(void)
+{
+    /* CONFIG_PWM_CAPTURE is global, so Zephyr pwm_stm32 connects/enables the
+     * capture IRQ for every enabled PWM timer, including TIM3/4/5. The fan
+     * bank is output-only and never uses capture, therefore those NVIC lines
+     * are unnecessary attack/failure surface. Disable and clear them after the
+     * devices are initialized; TIM2 remains untouched for the IMD capture path. */
+    static const unsigned int irqs[] = {
+        DT_IRQN(DT_NODELABEL(timers3)),
+        DT_IRQN(DT_NODELABEL(timers4)),
+        DT_IRQN(DT_NODELABEL(timers5)),
+    };
+
+    for (size_t i = 0U; i < (sizeof(irqs) / sizeof(irqs[0])); ++i) {
+        irq_disable(irqs[i]);
+        k_irq_clear_pending(irqs[i]);
+    }
+}
+
 static int validate_timer(const struct pwm_dt_spec *spec)
 {
     uint64_t cycles_per_sec = 0U;
@@ -154,7 +180,10 @@ int ams_fan_pwm_init(void)
     platform_ready = false;
     startup_fail_mask = 0U;
 
-    /* Validate each physical timer once. A missing/unclocked timer is a
+    /* Validate each physical timer once. pwm_is_ready_dt() is a controller
+     * device-readiness check and pwm_stm32_get_cycles_per_sec() ignores the
+     * channel argument, so a second channel on the same TIMx cannot have a
+     * distinct readiness/clock state. A missing/unclocked timer is therefore a
      * platform-initialization failure, equivalent to the HAL timer init path
      * reaching Error_Handler() before app_create(). */
     ret = validate_timer(&fan_channels[0]);
@@ -172,6 +201,7 @@ int ams_fan_pwm_init(void)
         return ret;
     }
 
+    disable_output_only_timer_irqs();
     platform_ready = true;
 
     /* Match board_init/fan_init semantics: attempt every fan independently.

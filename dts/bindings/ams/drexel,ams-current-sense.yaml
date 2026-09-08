@@ -1,22 +1,78 @@
-title: Drexel AMS dual-range current sense
+title: Drexel AMS private dual-range current-sense interface
 
 description: |
-  Two ADC inputs used by the DER26 dual-range DHAB current sensor. The
-  io-channel-names order is part of the acquisition contract: high range first,
-  then low range.
+  Board wiring and frozen ADC acquisition contract for the DER26 dual-range
+  DHAB current sensor.  The generic Zephyr STM32 ADC devices remain disabled:
+  a private bounded polling backend owns ADC1/ADC2 through STM32 LL while using
+  Zephyr Devicetree, pinctrl, clock-control, reset-controller and IRQ APIs.
+
+  ADC1 and ADC2 share the STM32F767 ADC common block reset and ADC_IRQn.  The
+  private backend therefore owns the common ADC reset boundary and requires
+  ADC3 to remain disabled as well.  Acquisition order is a frozen behavioral
+  contract: high range first, then low range.
 
 compatible: "drexel,ams-current-sense"
 
-include: base.yaml
+include:
+  - base.yaml
+  - pinctrl-device.yaml
+  - reset-device.yaml
 
 properties:
-  io-channels:
-    type: phandle-array
+  high-controller:
+    type: phandle
     required: true
-    description: ADC channels in high-range then low-range order.
+    description: Disabled SoC ADC1 node used for register/clock/IRQ metadata.
 
-  io-channel-names:
-    type: string-array
+  low-controller:
+    type: phandle
     required: true
-    const: ["high", "low"]
-    description: Must contain "high" and "low" in that order.
+    description: Disabled SoC ADC2 node used for register/clock/IRQ metadata.
+
+  high-channel:
+    type: int
+    required: true
+    const: 3
+    description: Frozen high-range input ADC1_IN3 / PA3.
+
+  low-channel:
+    type: int
+    required: true
+    const: 10
+    description: Frozen low-range input ADC2_IN10 / PC0.
+
+  adc-input-clock-hz:
+    type: int
+    required: true
+    const: 108000000
+    description: Frozen APB2 input clock feeding the ADC common prescaler.
+
+  adc-prescaler:
+    type: int
+    required: true
+    const: 6
+    description: Frozen v2.6.27 synchronous PCLK2 divide-by-6 setting.
+
+  adc-clock-hz:
+    type: int
+    required: true
+    const: 18000000
+    description: Frozen achieved ADC conversion clock after the /6 prescaler.
+
+  resolution-bits:
+    type: int
+    required: true
+    const: 12
+    description: Frozen v2.6.27 ADC resolution.
+
+  acquisition-ticks:
+    type: int
+    required: true
+    const: 480
+    description: Frozen v2.6.27 channel sampling time in ADC clock cycles.
+
+  conversion-timeout-ms:
+    type: int
+    required: true
+    const: 5
+    description: Frozen v2.6.27 HAL_ADC_PollForConversion timeout argument.

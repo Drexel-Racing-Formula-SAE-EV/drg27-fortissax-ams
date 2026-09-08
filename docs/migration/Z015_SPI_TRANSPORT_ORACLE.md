@@ -29,6 +29,8 @@ The reference implementation is **DER26 AMS v2.6.27 / FW 0.5.30**.  Relevant sou
 
 The 500 ms timeout is retained for initial parity.  It is deliberately **not** claimed to be an optimal final deadline.  At 421,875 bit/s, 512 bytes take about 9.71 ms of raw wire time.  Tightening the timeout is deferred until later measured protocol/timing evidence exists.
 
+The Z-015 polling engine intentionally does **not** insert scheduler yield/sleep points between frames. This preserves the continuous manual-CS assertion and HAL-style polling semantics of the oracle. The target ADBMS owner remains a normal preemptible Zephyr thread, so higher-priority safety work is still schedulable; changing inter-byte scheduling or tightening the deadline is deferred to measured Z-016+ timing work.
+
 ## Exact transfer semantics being preserved
 
 `adbms6830_spi_write()` holds the complete logical SPI operation under the ADBMS recursive lock, optionally drives the selected CS low, calls `HAL_SPI_Transmit(..., SPI_TIMEOUT)`, restores CS high, and releases the lock.

@@ -4,8 +4,10 @@
 This runner intentionally does NOT build/flash a target and does NOT advance
 migration scope.  It exercises only portable/currently-present Z-015 logic,
 adapters and source contracts.  Historically expensive SoP/SoH/fuse campaigns
-are deliberately excluded because Z-015 adds only the ADBMS SPI6 transport
-substrate and does not change those frozen algorithms.
+are deliberately excluded because the Z-015 changes do not modify those frozen
+portable algorithms.  This closeout also carries post-review hardening of the
+pre-existing current-ADC and fan-PWM platform adapters discovered while auditing
+Zephyr/STM32 HAL ownership and timeout behavior.
 """
 
 from __future__ import annotations
@@ -190,6 +192,8 @@ def main() -> int:
         repo / "scripts" / "check_z015_contract_mutations.py",
         repo / "drivers" / "ams" / "adbms_spi_engine.c",
         repo / "drivers" / "ams" / "adbms_spi_stm32.c",
+        repo / "drivers" / "ams" / "current_adc_stm32.c",
+        repo / "drivers" / "ams" / "fan_pwm_zephyr.c",
     )
     for path in required:
         if not path.is_file():
@@ -204,8 +208,8 @@ def main() -> int:
 
         print("Z-015 canonical host/SIL validation")
         print(f"repo: {repo}")
-        print("scope: Z-001..Z-014 regression + audited Z-015 private SPI6 transport substrate")
-        print("excluded: target build/flash, physical SPI/IWDG, Z-016+, long SoP/SoH/fuse campaigns")
+        print("scope: Z-001..Z-014 regression + audited Z-015 private SPI6 + post-review current-ADC/fan HAL hardening")
+        print("excluded: target build/flash, physical SPI/ADC/PWM/IWDG, Z-016+, long SoP/SoH/fuse campaigns")
 
         # Script syntax is a safety gate too: target contract failures must not
         # be hidden behind a malformed checker.
@@ -234,6 +238,12 @@ def main() -> int:
         run_stage(
             "Z-015 private SPI6 source/architecture contract",
             [sys.executable, str(repo / "scripts/check_z015_source_hygiene.py"), str(repo)],
+            repo,
+            records,
+        )
+        run_stage(
+            "Z-015 final-ELF zero-transfer-caller gate self-test",
+            [sys.executable, str(repo / "scripts/check_z015_elf_caller_gate_selftest.py"), str(repo)],
             repo,
             records,
         )
@@ -316,7 +326,7 @@ def main() -> int:
             "schema": "der27-ams-z015-host-validation-v1",
             "success": success,
             "repo": str(repo),
-            "scope": "Z-015 host/source/SIL only; no target/hardware/Z-016",
+            "scope": "Z-015 host/source/SIL + post-review HAL hardening only; no target/hardware/Z-016",
             "target_build_performed": False,
             "hardware_validation_performed": False,
             "later_migration_stage_performed": False,

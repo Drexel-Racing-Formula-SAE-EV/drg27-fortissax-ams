@@ -30,7 +30,7 @@ randomized:
 
 ADAPTER_BASE := $(BASE) -Ifake_zephyr -I../../../include
 ADAPTER_SRCS := adbms_spi_adapter_test.c fake_zephyr/fake_zephyr_spi.c $(ENGINE) $(DRIVERS)/adbms_spi_stm32.c
-ADAPTER_SCENARIOS := nominal tx-timeout rx-timeout bsy-timeout fault cs-assert recovery-fail clock-bad pinctrl-bad reset-init-bad
+ADAPTER_SCENARIOS := nominal tx-timeout rx-timeout bsy-timeout fault cs-assert recovery-fail reentry clock-bad pinctrl-bad reset-init-bad
 
 adapter:
 	$(CC) $(ADAPTER_BASE) -O2 $(ADAPTER_SRCS) -o adbms_spi_adapter_test

@@ -37,7 +37,7 @@ static inline void LL_SPI_DisableCRC(SPI_TypeDef*s){s->crc_enabled=0;}
 static inline uint32_t LL_SPI_IsEnabledCRC(SPI_TypeDef*s){return s->crc_enabled;}
 static inline void LL_SPI_DisableNSSPulseMgt(SPI_TypeDef*s){s->nss_pulse=0;}
 static inline uint32_t LL_SPI_IsEnabledNSSPulse(SPI_TypeDef*s){return s->nss_pulse;}
-static inline uint32_t LL_SPI_IsActiveFlag_TXE(SPI_TypeDef*s){(void)s; return fake_spi.txe_stuck?0U:1U;}
+static inline uint32_t LL_SPI_IsActiveFlag_TXE(SPI_TypeDef*s){(void)s; if(fake_spi.txe_hook && !fake_spi.txe_hook_fired){fake_spi.txe_hook_fired=true; fake_spi.txe_hook();} return fake_spi.txe_stuck?0U:1U;}
 static inline uint32_t LL_SPI_IsActiveFlag_RXNE(SPI_TypeDef*s){(void)s; return fake_spi.rxne_stuck?0U:(fake_spi.fifo_pending != 0U);}
 static inline uint32_t LL_SPI_IsActiveFlag_BSY(SPI_TypeDef*s){(void)s; return fake_spi.bsy_stuck?1U:0U;}
 static inline uint32_t LL_SPI_IsActiveFlag_OVR(SPI_TypeDef*s){(void)s; return fake_spi.fault_ovr?1U:0U;}

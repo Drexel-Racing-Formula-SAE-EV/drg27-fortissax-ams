@@ -1,17 +1,17 @@
 Z-015 canonical host/SIL validation
-repo: /mnt/data/z015_work
-scope: Z-001..Z-014 regression + audited Z-015 private SPI6 transport substrate
-excluded: target build/flash, physical SPI/IWDG, Z-016+, long SoP/SoH/fuse campaigns
+repo: /mnt/data/z015_hal_review_hardened
+scope: Z-001..Z-014 regression + audited Z-015 private SPI6 + post-review current-ADC/fan HAL hardening
+excluded: target build/flash, physical SPI/ADC/PWM/IWDG, Z-016+, long SoP/SoH/fuse campaigns
 
 === Python contract/checker syntax ===
->>> /opt/pyvenv/bin/python -m py_compile /mnt/data/z015_work/scripts/build_manifest.py /mnt/data/z015_work/scripts/check_adbms_spi_contract.py /mnt/data/z015_work/scripts/check_all_contracts.py /mnt/data/z015_work/scripts/check_architecture_contract.py /mnt/data/z015_work/scripts/check_authority_profile.py /mnt/data/z015_work/scripts/check_board_contract.py /mnt/data/z015_work/scripts/check_capability_contract.py /mnt/data/z015_work/scripts/check_core_contract.py /mnt/data/z015_work/scripts/check_current_adc_contract.py /mnt/data/z015_work/scripts/check_current_sensor_contract.py /mnt/data/z015_work/scripts/check_current_window_contract.py /mnt/data/z015_work/scripts/check_estimator_contract.py /mnt/data/z015_work/scripts/check_fan_pwm_contract.py /mnt/data/z015_work/scripts/check_freertos_runtime_parity.py /mnt/data/z015_work/scripts/check_imd_capture_contract.py /mnt/data/z015_work/scripts/check_measurement_contract.py /mnt/data/z015_work/scripts/check_null_platform_core.py /mnt/data/z015_work/scripts/check_power_core_contract.py /mnt/data/z015_work/scripts/check_runtime_contract.py /mnt/data/z015_work/scripts/check_safety_integrity_contract.py /mnt/data/z015_work/scripts/check_watchdog_contract.py /mnt/data/z015_work/scripts/check_z014_contract_mutations.py /mnt/data/z015_work/scripts/check_z014_source_hygiene.py /mnt/data/z015_work/scripts/check_z015_contract_mutations.py /mnt/data/z015_work/scripts/check_z015_elf_caller_gate_selftest.py /mnt/data/z015_work/scripts/check_z015_source_hygiene.py /mnt/data/z015_work/scripts/run_z014_host_validation.py /mnt/data/z015_work/scripts/run_z015_host_validation.py
+>>> /opt/pyvenv/bin/python3 -m py_compile /mnt/data/z015_hal_review_hardened/scripts/build_manifest.py /mnt/data/z015_hal_review_hardened/scripts/check_adbms_spi_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_all_contracts.py /mnt/data/z015_hal_review_hardened/scripts/check_architecture_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_authority_profile.py /mnt/data/z015_hal_review_hardened/scripts/check_board_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_capability_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_core_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_current_adc_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_current_sensor_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_current_window_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_estimator_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_fan_pwm_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_freertos_runtime_parity.py /mnt/data/z015_hal_review_hardened/scripts/check_imd_capture_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_measurement_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_null_platform_core.py /mnt/data/z015_hal_review_hardened/scripts/check_power_core_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_runtime_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_safety_integrity_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_watchdog_contract.py /mnt/data/z015_hal_review_hardened/scripts/check_z014_contract_mutations.py /mnt/data/z015_hal_review_hardened/scripts/check_z014_source_hygiene.py /mnt/data/z015_hal_review_hardened/scripts/check_z015_contract_mutations.py /mnt/data/z015_hal_review_hardened/scripts/check_z015_elf_caller_gate_selftest.py /mnt/data/z015_hal_review_hardened/scripts/check_z015_source_hygiene.py /mnt/data/z015_hal_review_hardened/scripts/run_z014_host_validation.py /mnt/data/z015_hal_review_hardened/scripts/run_z015_host_validation.py
 
 === FreeRTOS v2.6.27 runtime/safety source parity ===
->>> /opt/pyvenv/bin/python /mnt/data/z015_work/scripts/check_freertos_runtime_parity.py /mnt/data/z015_work
+>>> /opt/pyvenv/bin/python3 /mnt/data/z015_hal_review_hardened/scripts/check_freertos_runtime_parity.py /mnt/data/z015_hal_review_hardened
 PASS: Z-014 FreeRTOS v2.6.27 runtime/watchdog safety parity contract
 
 === Z-015 source-only architecture/safety hygiene ===
->>> /opt/pyvenv/bin/python /mnt/data/z015_work/scripts/check_z014_source_hygiene.py /mnt/data/z015_work
+>>> /opt/pyvenv/bin/python3 /mnt/data/z015_hal_review_hardened/scripts/check_z014_source_hygiene.py /mnt/data/z015_hal_review_hardened
 PASS: Z-014/Z-015 source-only architecture/safety hygiene contract
   scanned production C/H files: 57
   portable core: no RTOS/HAL/platform imports
@@ -20,33 +20,35 @@ PASS: Z-014/Z-015 source-only architecture/safety hygiene contract
   watchdog: sole feeder, no disable path, runtime-owned heartbeat evidence
 
 === Z-015 private SPI6 source/architecture contract ===
->>> /opt/pyvenv/bin/python /mnt/data/z015_work/scripts/check_z015_source_hygiene.py /mnt/data/z015_work
-PASS: Z-015 private SPI6 source/architecture safety contract
+>>> /opt/pyvenv/bin/python3 /mnt/data/z015_hal_review_hardened/scripts/check_z015_source_hygiene.py /mnt/data/z015_hal_review_hardened
+PASS: Z-015 private SPI6 + HAL-driver source/architecture safety contract
   stock spi_stm32 ownership: structurally absent
   SPI6 IRQ/DMA/async path: absent; NVIC line disabled + pending-cleared
   transfer engine: bounded synchronous owner; illegal/reentrant attempts durably counted
+  current ADC: private bounded polling; transient timeout recovery; generic adc_stm32 absent
+  fan: output-only TIM3/4/5 capture IRQs disabled + pending-cleared
   runtime: adapter init/status only; zero transfers/wake/ADBMS evidence
 
 === Z-015 final-ELF zero-transfer-caller gate self-test ===
->>> /opt/pyvenv/bin/python /mnt/data/z015_work/scripts/check_z015_elf_caller_gate_selftest.py /mnt/data/z015_work
+>>> /opt/pyvenv/bin/python3 /mnt/data/z015_hal_review_hardened/scripts/check_z015_elf_caller_gate_selftest.py /mnt/data/z015_hal_review_hardened
 PASS: Z-015 final-ELF caller-gate self-test
   lifecycle-only image: raw transfer entrypoints absent
   caller image: raw transfer entrypoints present/detectable
 
 === Frozen SoP/SoH/fuse exact portable-source identity ===
->>> /opt/pyvenv/bin/python /mnt/data/z015_work/scripts/check_power_core_contract.py /mnt/data/z015_work
+>>> /opt/pyvenv/bin/python3 /mnt/data/z015_hal_review_hardened/scripts/check_power_core_contract.py /mnt/data/z015_hal_review_hardened
 PASS: exact frozen v2.6.27 SoP/SoH/fuse portable-source contract
 
 === ams_core true null-platform isolation ===
->>> /opt/pyvenv/bin/python /mnt/data/z015_work/scripts/check_null_platform_core.py /mnt/data/z015_work
->>> cmake -S /mnt/data/z015_work/tests/null_platform -B /mnt/data/z015_work/build/null_platform_core -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_DISABLE_FIND_PACKAGE_Zephyr=TRUE -Wno-unused-cli
+>>> /opt/pyvenv/bin/python3 /mnt/data/z015_hal_review_hardened/scripts/check_null_platform_core.py /mnt/data/z015_hal_review_hardened
+>>> cmake -S /mnt/data/z015_hal_review_hardened/tests/null_platform -B /mnt/data/z015_hal_review_hardened/build/null_platform_core -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_DISABLE_FIND_PACKAGE_Zephyr=TRUE -Wno-unused-cli
 -- The C compiler identification is GNU 14.2.0
 -- Detecting C compiler ABI info
 -- Detecting C compiler ABI info - done
 -- Check for working C compiler: /usr/bin/cc - skipped
 -- Detecting C compile features
 -- Detecting C compile features - done
--- Configuring done (0.2s)
+-- Configuring done (0.1s)
 -- Generating done (0.0s)
 CMake Warning:
   Manually-specified variables were not used by the project:
@@ -54,32 +56,32 @@ CMake Warning:
     CMAKE_DISABLE_FIND_PACKAGE_Zephyr
 
 
--- Build files have been written to: /mnt/data/z015_work/build/null_platform_core
->>> cmake --build /mnt/data/z015_work/build/null_platform_core --parallel
+-- Build files have been written to: /mnt/data/z015_hal_review_hardened/build/null_platform_core
+>>> cmake --build /mnt/data/z015_hal_review_hardened/build/null_platform_core --parallel
 [  5%] Building C object ams_core/CMakeFiles/ams_core.dir/common/ams_core_time.c.o
-[ 10%] Building C object ams_core/CMakeFiles/ams_core.dir/measurement/ams_measurement.c.o
-[ 15%] Building C object ams_core/CMakeFiles/ams_core.dir/current/ams_current_sensor.c.o
+[ 15%] Building C object ams_core/CMakeFiles/ams_core.dir/faults/ams_current_fault.c.o
 [ 21%] Building C object ams_core/CMakeFiles/ams_core.dir/common/ams_core_contract.c.o
-[ 31%] Building C object ams_core/CMakeFiles/ams_core.dir/estimator/ams_estimator_lut.c.o
+[ 21%] Building C object ams_core/CMakeFiles/ams_core.dir/measurement/ams_current_window.c.o
+[ 26%] Building C object ams_core/CMakeFiles/ams_core.dir/measurement/ams_measurement.c.o
+[ 31%] Building C object ams_core/CMakeFiles/ams_core.dir/current/ams_current_sensor.c.o
 [ 36%] Building C object ams_core/CMakeFiles/ams_core.dir/estimator/ams_soc_ekf.c.o
-[ 36%] Building C object ams_core/CMakeFiles/ams_core.dir/measurement/ams_current_window.c.o
-[ 42%] Building C object ams_core/CMakeFiles/ams_core.dir/sop/ams_sop.c.o
-[ 47%] Building C object ams_core/CMakeFiles/ams_core.dir/faults/ams_current_fault.c.o
-[ 52%] Building C object ams_core/CMakeFiles/ams_core.dir/sop/ams_fuse_observer.c.o
-[ 57%] Building C object ams_core/CMakeFiles/ams_core.dir/fan/ams_fan_control.c.o
-[ 63%] Building C object ams_core/CMakeFiles/ams_core.dir/soh/ams_soh.c.o
-[ 68%] Building C object ams_core/CMakeFiles/ams_core.dir/watchdog/ams_watchdog_policy.c.o
-[ 73%] Building C object ams_core/CMakeFiles/ams_core.dir/imd/ams_imd.c.o
-[ 78%] Building C object ams_core/CMakeFiles/ams_core.dir/integrity/ams_stack_health.c.o
-[ 84%] Building C object ams_core/CMakeFiles/ams_core.dir/watchdog/ams_watchdog_heartbeat.c.o
+[ 42%] Building C object ams_core/CMakeFiles/ams_core.dir/soh/ams_soh.c.o
+[ 47%] Building C object ams_core/CMakeFiles/ams_core.dir/estimator/ams_estimator_lut.c.o
+[ 52%] Building C object ams_core/CMakeFiles/ams_core.dir/sop/ams_sop.c.o
+[ 57%] Building C object ams_core/CMakeFiles/ams_core.dir/sop/ams_fuse_observer.c.o
+[ 63%] Building C object ams_core/CMakeFiles/ams_core.dir/fan/ams_fan_control.c.o
+[ 68%] Building C object ams_core/CMakeFiles/ams_core.dir/integrity/ams_stack_health.c.o
+[ 84%] Building C object ams_core/CMakeFiles/ams_core.dir/watchdog/ams_watchdog_policy.c.o
+[ 84%] Building C object ams_core/CMakeFiles/ams_core.dir/imd/ams_imd.c.o
+[ 78%] Building C object ams_core/CMakeFiles/ams_core.dir/watchdog/ams_watchdog_heartbeat.c.o
 [ 89%] Linking C static library libams_core.a
 [ 89%] Built target ams_core
 [ 94%] Building C object CMakeFiles/ams_core_null_platform_smoke.dir/null_platform_smoke.c.o
 [100%] Linking C executable ams_core_null_platform_smoke
 [100%] Built target ams_core_null_platform_smoke
->>> ctest --test-dir /mnt/data/z015_work/build/null_platform_core --output-on-failure
-Internal ctest changing into directory: /mnt/data/z015_work/build/null_platform_core
-Test project /mnt/data/z015_work/build/null_platform_core
+>>> ctest --test-dir /mnt/data/z015_hal_review_hardened/build/null_platform_core --output-on-failure
+Internal ctest changing into directory: /mnt/data/z015_hal_review_hardened/build/null_platform_core
+Test project /mnt/data/z015_hal_review_hardened/build/null_platform_core
     Start 1: ams_core_null_platform_smoke
 1/1 Test #1: ams_core_null_platform_smoke .....   Passed    0.00 sec
 
@@ -89,8 +91,8 @@ Total Test time (real) =   0.00 sec
 PASS: ams_core true null-platform build/test and compile-path audit (16 core TUs; compile_commands.json)
 
 === watchdog: clean test strict ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/watchdog clean test strict
-make: Entering directory '/mnt/data/z015_work/tests/unit/watchdog'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/watchdog clean test strict
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 rm -f watchdog_policy_test watchdog_policy_test_asan watchdog_policy_test_ubsan \
 	watchdog_heartbeat_test watchdog_heartbeat_test_asan watchdog_heartbeat_test_ubsan \
 	watchdog_heartbeat_diff_* \
@@ -173,11 +175,11 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 
 	watchdog_heartbeat_test.c ../../../lib/ams_core/watchdog/ams_watchdog_heartbeat.c -o watchdog_heartbeat_test_strict
 ./watchdog_heartbeat_test_strict
 PASS watchdog heartbeat oracle: 128 checks, 0 failures
-make: Leaving directory '/mnt/data/z015_work/tests/unit/watchdog'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 
 === safety_fatal: clean test strict ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/safety_fatal clean test strict
-make: Entering directory '/mnt/data/z015_work/tests/unit/safety_fatal'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal clean test strict
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal'
 rm -f safety_fatal_test safety_fatal_test_strict safety_fatal_test_asan \
 	safety_fatal_test_ubsan ams_safety_an.o *.plist
 cc -std=c11 -Wall -Wextra -Werror -pedantic -Ifake_zephyr -I../../../app/src -I../../../include -O2 safety_fatal_test.c ../../../app/src/ams_safety.c -o safety_fatal_test
@@ -186,20 +188,20 @@ PASS Zephyr fatal/fail-low composition: 20 checks
 cc -std=c11 -Wall -Wextra -Werror -pedantic -Ifake_zephyr -I../../../app/src -I../../../include -O2 -Wconversion -Wsign-conversion -Wshadow safety_fatal_test.c ../../../app/src/ams_safety.c -o safety_fatal_test_strict
 ./safety_fatal_test_strict
 PASS Zephyr fatal/fail-low composition: 20 checks
-make: Leaving directory '/mnt/data/z015_work/tests/unit/safety_fatal'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal'
 
 === bms_ok: clean test ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/bms_ok clean test
-make: Entering directory '/mnt/data/z015_work/tests/unit/bms_ok'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/bms_ok clean test
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/bms_ok'
 rm -f bms_ok_adapter_test bms_ok_adapter_test_asan bms_ok_adapter_test_ubsan bms_ok_adapter_an.o
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -Ifake_zephyr -I../../../include bms_ok_adapter_test.c ../../../drivers/ams/bms_ok_zephyr.c -o bms_ok_adapter_test
 ./bms_ok_adapter_test
 BMS_OK adapter: PASS (19 checks)
-make: Leaving directory '/mnt/data/z015_work/tests/unit/bms_ok'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/bms_ok'
 
 === current_path: clean test ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/current_path clean test
-make: Entering directory '/mnt/data/z015_work/tests/unit/current_path'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/current_path clean test
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_path'
 rm -f current_sensor_test current_fault_test current_adc_adapter_test \
 	current_sensor_asan current_fault_asan current_adc_asan \
 	current_sensor_ubsan current_fault_ubsan current_adc_ubsan \
@@ -214,33 +216,39 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -I../../../lib/ams_core/include 
 	../current_fault/current_fault_test.c -lm -o current_fault_test
 ./current_fault_test
 current fault: 22 checks, 0 failures
-cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -I../current_adc/fake_zephyr -I../current_adc -I../../../drivers/ams -I../../../include \
-	../../../drivers/ams/current_adc_zephyr.c \
-	../current_adc/fake_zephyr/fake_zephyr_adc.c \
-	../current_adc/current_adc_adapter_test.c -o current_adc_adapter_test
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -DAMS_CURRENT_ADC_ADAPTER_TEST=1 -I../current_adc/fake_zephyr -I../current_adc -I../../../drivers/ams -I../../../include \
+	../../../drivers/ams/current_adc_stm32.c ../current_adc/fake_zephyr/fake_zephyr_adc.c ../current_adc/current_adc_adapter_test.c -o current_adc_adapter_test
 ./current_adc_adapter_test
-PASS current ADC adapter SIL: 516547 checks, 0 failures
+PASS current ADC private-backend SIL: 285756 checks, 0 failures
+./current_adc_adapter_test high-timeout
+PASS current ADC private-backend SIL: 23 checks, 0 failures
 ./current_adc_adapter_test low-timeout
-PASS current ADC low-timeout SIL: 14 checks, 0 failures
-./current_adc_adapter_test ambiguous
-PASS current ADC ambiguous-completion SIL: 6 checks, 0 failures
-make: Leaving directory '/mnt/data/z015_work/tests/unit/current_path'
+PASS current ADC private-backend SIL: 20 checks, 0 failures
+./current_adc_adapter_test timeout-boundary
+PASS current ADC private-backend SIL: 27 checks, 0 failures
+./current_adc_adapter_test recovery-fail
+PASS current ADC private-backend SIL: 30 checks, 0 failures
+./current_adc_adapter_test reentry
+PASS current ADC private-backend SIL: 19 checks, 0 failures
+./current_adc_adapter_test stress
+PASS current ADC private-backend SIL: 285584 checks, 0 failures
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_path'
 
 === fan: clean test ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/fan clean test
-make: Entering directory '/mnt/data/z015_work/tests/unit/fan'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/fan clean test
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/fan'
 rm -f fan_control_test fan_pwm_adapter_test fan_control_test_asan fan_pwm_adapter_test_asan fan_control_test_ubsan fan_pwm_adapter_test_ubsan fan_core_an.o fan_pwm_an.o
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -I../../../lib/ams_core/include fan_control_test.c ../../../lib/ams_core/fan/ams_fan_control.c -lm -o fan_control_test
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -Ifake_zephyr -I../../../drivers/ams -I../../../include fan_pwm_adapter_test.c ../../../drivers/ams/fan_pwm_zephyr.c -lm -o fan_pwm_adapter_test
 ./fan_control_test
 fan control: PASS (688 checks)
 ./fan_pwm_adapter_test
-fan PWM adapter: PASS (150679 checks)
-make: Leaving directory '/mnt/data/z015_work/tests/unit/fan'
+fan PWM adapter: PASS (150683 checks)
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/fan'
 
 === imd: clean test ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/imd clean test
-make: Entering directory '/mnt/data/z015_work/tests/unit/imd'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/imd clean test
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/imd'
 rm -f imd_core_test imd_capture_adapter_test \
 	imd_core_test_asan imd_capture_adapter_test_asan \
 	imd_core_test_ubsan imd_capture_adapter_test_ubsan \
@@ -254,11 +262,11 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -Ifake_zephyr -I../../../drivers
 	../../../lib/ams_core/imd/ams_imd.c -lm -o imd_capture_adapter_test
 ./imd_capture_adapter_test
 IMD capture adapter: PASS (776535 checks)
-make: Leaving directory '/mnt/data/z015_work/tests/unit/imd'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/imd'
 
 === measurement_store: clean test ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/measurement_store clean test
-make: Entering directory '/mnt/data/z015_work/tests/unit/measurement_store'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/measurement_store clean test
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/measurement_store'
 rm -f measurement_store_test measurement_store_test_asan measurement_store_test_ubsan measurement_an.o
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -pthread -O2 measurement_store_test.c ../../../lib/ams_core/measurement/ams_measurement.c -o measurement_store_test
 ./measurement_store_test
@@ -271,11 +279,11 @@ PASS: abort_preserves_last_publication
 PASS: rejects_wrong_publish_pointer
 PASS: concurrent_copy_stress
 PASS: 8 measurement-store tests
-make: Leaving directory '/mnt/data/z015_work/tests/unit/measurement_store'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/measurement_store'
 
 === current_window: clean test ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/current_window clean test
-make: Entering directory '/mnt/data/z015_work/tests/unit/current_window'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/current_window clean test
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_window'
 rm -f current_window_test current_window_test_asan current_window_test_ubsan current_window_an.o
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 current_window_test.c ../../../lib/ams_core/measurement/ams_current_window.c -lm -o current_window_test
 ./current_window_test
@@ -289,20 +297,20 @@ PASS: calibration provenance carry/recovery
 PASS: nonfinite/range validation and filtered fallback
 PASS: sequence wrap skips zero
 PASS: 9 current-window regressions
-make: Leaving directory '/mnt/data/z015_work/tests/unit/current_window'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_window'
 
 === estimator: clean test ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/estimator clean test
-make: Entering directory '/mnt/data/z015_work/tests/unit/estimator'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/estimator clean test
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/estimator'
 rm -f estimator_core_test estimator_core_test_asan estimator_core_test_ubsan estimator_lut_an.o estimator_ekf_an.o
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 estimator_core_test.c ../../../lib/ams_core/estimator/ams_estimator_lut.c ../../../lib/ams_core/estimator/ams_soc_ekf.c -lm -o estimator_core_test
 ./estimator_core_test
 PASS: 89 v2.6.27 estimator-core checks
-make: Leaving directory '/mnt/data/z015_work/tests/unit/estimator'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/estimator'
 
 === adbms_spi: clean test ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/adbms_spi clean test
-make: Entering directory '/mnt/data/z015_work/tests/unit/adbms_spi'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi clean test
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi'
 rm -f adbms_spi_engine_test adbms_spi_engine_test_strict adbms_spi_engine_test_asan \
 	adbms_spi_engine_test_ubsan adbms_spi_random_* adbms_spi_engine_an.o \
 	adbms_spi_adapter_test adbms_spi_adapter_test_strict adbms_spi_adapter_test_asan \
@@ -330,11 +338,11 @@ PASS Z-015 production SPI6 adapter SIL scenario=pinctrl-bad checks=5 failures=0
 PASS Z-015 production SPI6 adapter SIL scenario=reset-init-bad checks=5 failures=0
 ./adbms_spi_adapter_test random 25000
 PASS Z-015 production SPI6 adapter SIL scenario=random checks=250013 failures=0
-make: Leaving directory '/mnt/data/z015_work/tests/unit/adbms_spi'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi'
 
 === system/z014_safety_sil: clean test strict ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/system/z014_safety_sil clean test strict
-make: Entering directory '/mnt/data/z015_work/tests/system/z014_safety_sil'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil clean test strict
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil'
 rm -f z014_safety_sil z014_safety_sil_strict z014_safety_sil_asan \
 	z014_safety_sil_ubsan z014_safety_sil_an.o *.plist
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 z014_safety_sil.c ../../../lib/ams_core/watchdog/ams_watchdog_policy.c ../../../lib/ams_core/watchdog/ams_watchdog_heartbeat.c ../../../lib/ams_core/integrity/ams_stack_health.c -o z014_safety_sil
@@ -346,11 +354,11 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 
 ./z014_safety_sil_strict
 PASS Z-014 integrated seeded scheduler SIL: seeds=5 steps=250000 supervisor=162990 actors=488707
 PASS Z-014 integrated safety SIL: 7 scenario classes, BMS/balance authority absent
-make: Leaving directory '/mnt/data/z015_work/tests/system/z014_safety_sil'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil'
 
 === watchdog: asan ubsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/watchdog asan ubsan
-make: Entering directory '/mnt/data/z015_work/tests/unit/watchdog'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/watchdog asan ubsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer \
 	watchdog_policy_test.c ../../../lib/ams_core/watchdog/ams_watchdog_policy.c ../../../lib/ams_core/integrity/ams_stack_health.c -o watchdog_policy_test_asan
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./watchdog_policy_test_asan
@@ -402,22 +410,22 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 
 	../../../lib/ams_core/watchdog/ams_watchdog_policy.c ../../../lib/ams_core/watchdog/ams_watchdog_heartbeat.c -o watchdog_concurrency_test_ubsan
 ./watchdog_concurrency_test_ubsan
 PASS watchdog concurrency SIL: fan=100000 imd=100000 supervisor=150000, 0 failures
-make: Leaving directory '/mnt/data/z015_work/tests/unit/watchdog'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 
 === safety_fatal: asan ubsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/safety_fatal asan ubsan
-make: Entering directory '/mnt/data/z015_work/tests/unit/safety_fatal'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal asan ubsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -Ifake_zephyr -I../../../app/src -I../../../include -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer safety_fatal_test.c ../../../app/src/ams_safety.c -o safety_fatal_test_asan
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./safety_fatal_test_asan
 PASS Zephyr fatal/fail-low composition: 20 checks
 cc -std=c11 -Wall -Wextra -Werror -pedantic -Ifake_zephyr -I../../../app/src -I../../../include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all safety_fatal_test.c ../../../app/src/ams_safety.c -o safety_fatal_test_ubsan
 ./safety_fatal_test_ubsan
 PASS Zephyr fatal/fail-low composition: 20 checks
-make: Leaving directory '/mnt/data/z015_work/tests/unit/safety_fatal'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal'
 
 === bms_ok: asan ubsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/bms_ok asan ubsan
-make: Entering directory '/mnt/data/z015_work/tests/unit/bms_ok'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/bms_ok asan ubsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/bms_ok'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer \
 	-Ifake_zephyr -I../../../include bms_ok_adapter_test.c ../../../drivers/ams/bms_ok_zephyr.c \
 	-o bms_ok_adapter_test_asan
@@ -428,11 +436,11 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno
 	-o bms_ok_adapter_test_ubsan
 ./bms_ok_adapter_test_ubsan
 BMS_OK adapter: PASS (19 checks)
-make: Leaving directory '/mnt/data/z015_work/tests/unit/bms_ok'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/bms_ok'
 
 === current_path: asan ubsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/current_path asan ubsan
-make: Entering directory '/mnt/data/z015_work/tests/unit/current_path'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/current_path asan ubsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_path'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer \
 	-I../../../lib/ams_core/include ../../../lib/ams_core/current/ams_current_sensor.c \
 	../current_sensor/current_sensor_test.c -lm -o current_sensor_asan
@@ -444,15 +452,19 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=address,undefi
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./current_fault_asan
 current fault: 22 checks, 0 failures
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer \
-	-I../current_adc/fake_zephyr -I../current_adc -I../../../drivers/ams -I../../../include ../../../drivers/ams/current_adc_zephyr.c \
-	../current_adc/fake_zephyr/fake_zephyr_adc.c \
-	../current_adc/current_adc_adapter_test.c -o current_adc_asan
+	-DAMS_CURRENT_ADC_ADAPTER_TEST=1 -I../current_adc/fake_zephyr -I../current_adc -I../../../drivers/ams -I../../../include ../../../drivers/ams/current_adc_stm32.c ../current_adc/fake_zephyr/fake_zephyr_adc.c ../current_adc/current_adc_adapter_test.c -o current_adc_asan
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./current_adc_asan
-PASS current ADC adapter SIL: 516547 checks, 0 failures
+PASS current ADC private-backend SIL: 285756 checks, 0 failures
+ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./current_adc_asan high-timeout
+PASS current ADC private-backend SIL: 23 checks, 0 failures
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./current_adc_asan low-timeout
-PASS current ADC low-timeout SIL: 14 checks, 0 failures
-ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./current_adc_asan ambiguous
-PASS current ADC ambiguous-completion SIL: 6 checks, 0 failures
+PASS current ADC private-backend SIL: 20 checks, 0 failures
+ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./current_adc_asan timeout-boundary
+PASS current ADC private-backend SIL: 27 checks, 0 failures
+ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./current_adc_asan recovery-fail
+PASS current ADC private-backend SIL: 30 checks, 0 failures
+ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./current_adc_asan reentry
+PASS current ADC private-backend SIL: 19 checks, 0 failures
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
 	-I../../../lib/ams_core/include ../../../lib/ams_core/current/ams_current_sensor.c \
 	../current_sensor/current_sensor_test.c -lm -o current_sensor_ubsan
@@ -464,37 +476,41 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno
 ./current_fault_ubsan
 current fault: 22 checks, 0 failures
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
-	-I../current_adc/fake_zephyr -I../current_adc -I../../../drivers/ams -I../../../include ../../../drivers/ams/current_adc_zephyr.c \
-	../current_adc/fake_zephyr/fake_zephyr_adc.c \
-	../current_adc/current_adc_adapter_test.c -o current_adc_ubsan
+	-DAMS_CURRENT_ADC_ADAPTER_TEST=1 -I../current_adc/fake_zephyr -I../current_adc -I../../../drivers/ams -I../../../include ../../../drivers/ams/current_adc_stm32.c ../current_adc/fake_zephyr/fake_zephyr_adc.c ../current_adc/current_adc_adapter_test.c -o current_adc_ubsan
 ./current_adc_ubsan
-PASS current ADC adapter SIL: 516547 checks, 0 failures
+PASS current ADC private-backend SIL: 285756 checks, 0 failures
+./current_adc_ubsan high-timeout
+PASS current ADC private-backend SIL: 23 checks, 0 failures
 ./current_adc_ubsan low-timeout
-PASS current ADC low-timeout SIL: 14 checks, 0 failures
-./current_adc_ubsan ambiguous
-PASS current ADC ambiguous-completion SIL: 6 checks, 0 failures
-make: Leaving directory '/mnt/data/z015_work/tests/unit/current_path'
+PASS current ADC private-backend SIL: 20 checks, 0 failures
+./current_adc_ubsan timeout-boundary
+PASS current ADC private-backend SIL: 27 checks, 0 failures
+./current_adc_ubsan recovery-fail
+PASS current ADC private-backend SIL: 30 checks, 0 failures
+./current_adc_ubsan reentry
+PASS current ADC private-backend SIL: 19 checks, 0 failures
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_path'
 
 === fan: asan ubsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/fan asan ubsan
-make: Entering directory '/mnt/data/z015_work/tests/unit/fan'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/fan asan ubsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/fan'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=address,undefined -I../../../lib/ams_core/include fan_control_test.c ../../../lib/ams_core/fan/ams_fan_control.c -lm -o fan_control_test_asan
 ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 ./fan_control_test_asan
 fan control: PASS (688 checks)
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=address,undefined -Ifake_zephyr -I../../../drivers/ams -I../../../include fan_pwm_adapter_test.c ../../../drivers/ams/fan_pwm_zephyr.c -lm -o fan_pwm_adapter_test_asan
 ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 ./fan_pwm_adapter_test_asan
-fan PWM adapter: PASS (150679 checks)
+fan PWM adapter: PASS (150683 checks)
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all -I../../../lib/ams_core/include fan_control_test.c ../../../lib/ams_core/fan/ams_fan_control.c -lm -o fan_control_test_ubsan
 ./fan_control_test_ubsan
 fan control: PASS (688 checks)
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all -Ifake_zephyr -I../../../drivers/ams -I../../../include fan_pwm_adapter_test.c ../../../drivers/ams/fan_pwm_zephyr.c -lm -o fan_pwm_adapter_test_ubsan
 ./fan_pwm_adapter_test_ubsan
-fan PWM adapter: PASS (150679 checks)
-make: Leaving directory '/mnt/data/z015_work/tests/unit/fan'
+fan PWM adapter: PASS (150683 checks)
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/fan'
 
 === imd: asan ubsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/imd asan ubsan
-make: Entering directory '/mnt/data/z015_work/tests/unit/imd'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/imd asan ubsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/imd'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer \
 	-I../../../lib/ams_core/include imd_core_test.c ../../../lib/ams_core/imd/ams_imd.c \
 	-lm -o imd_core_test_asan
@@ -517,11 +533,11 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno
 	../../../lib/ams_core/imd/ams_imd.c -lm -o imd_capture_adapter_test_ubsan
 ./imd_capture_adapter_test_ubsan
 IMD capture adapter: PASS (776535 checks)
-make: Leaving directory '/mnt/data/z015_work/tests/unit/imd'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/imd'
 
 === measurement_store: asan ubsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/measurement_store asan ubsan
-make: Entering directory '/mnt/data/z015_work/tests/unit/measurement_store'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/measurement_store asan ubsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/measurement_store'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -pthread -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer measurement_store_test.c ../../../lib/ams_core/measurement/ams_measurement.c -o measurement_store_test_asan
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./measurement_store_test_asan
 PASS: init_contract
@@ -544,11 +560,11 @@ PASS: abort_preserves_last_publication
 PASS: rejects_wrong_publish_pointer
 PASS: concurrent_copy_stress
 PASS: 8 measurement-store tests
-make: Leaving directory '/mnt/data/z015_work/tests/unit/measurement_store'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/measurement_store'
 
 === current_window: asan ubsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/current_window asan ubsan
-make: Entering directory '/mnt/data/z015_work/tests/unit/current_window'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/current_window asan ubsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_window'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer current_window_test.c ../../../lib/ams_core/measurement/ams_current_window.c -lm -o current_window_test_asan
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./current_window_test_asan
 PASS: late boundary rejection and clean recovery
@@ -573,22 +589,22 @@ PASS: calibration provenance carry/recovery
 PASS: nonfinite/range validation and filtered fallback
 PASS: sequence wrap skips zero
 PASS: 9 current-window regressions
-make: Leaving directory '/mnt/data/z015_work/tests/unit/current_window'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_window'
 
 === estimator: asan ubsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/estimator asan ubsan
-make: Entering directory '/mnt/data/z015_work/tests/unit/estimator'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/estimator asan ubsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/estimator'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer estimator_core_test.c ../../../lib/ams_core/estimator/ams_estimator_lut.c ../../../lib/ams_core/estimator/ams_soc_ekf.c -lm -o estimator_core_test_asan
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./estimator_core_test_asan
 PASS: 89 v2.6.27 estimator-core checks
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all estimator_core_test.c ../../../lib/ams_core/estimator/ams_estimator_lut.c ../../../lib/ams_core/estimator/ams_soc_ekf.c -lm -o estimator_core_test_ubsan
 ./estimator_core_test_ubsan
 PASS: 89 v2.6.27 estimator-core checks
-make: Leaving directory '/mnt/data/z015_work/tests/unit/estimator'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/estimator'
 
 === adbms_spi: asan ubsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/adbms_spi asan ubsan
-make: Entering directory '/mnt/data/z015_work/tests/unit/adbms_spi'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi asan ubsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../drivers/ams -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer \
 	adbms_spi_engine_test.c ../../../drivers/ams/adbms_spi_engine.c -o adbms_spi_engine_test_asan
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./adbms_spi_engine_test_asan
@@ -611,11 +627,11 @@ PASS Z-015 ADBMS SPI randomized model: 100000 operations seed=0xe93c6b6d
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../drivers/ams -Ifake_zephyr -I../../../include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all adbms_spi_adapter_test.c fake_zephyr/fake_zephyr_spi.c ../../../drivers/ams/adbms_spi_engine.c ../../../drivers/ams/adbms_spi_stm32.c -o adbms_spi_adapter_test_ubsan
 ./adbms_spi_adapter_test_ubsan random 10000
 PASS Z-015 production SPI6 adapter SIL scenario=random checks=100013 failures=0
-make: Leaving directory '/mnt/data/z015_work/tests/unit/adbms_spi'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi'
 
 === system/z014_safety_sil: asan ubsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/system/z014_safety_sil asan ubsan
-make: Entering directory '/mnt/data/z015_work/tests/system/z014_safety_sil'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil asan ubsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer \
 	z014_safety_sil.c ../../../lib/ams_core/watchdog/ams_watchdog_policy.c ../../../lib/ams_core/watchdog/ams_watchdog_heartbeat.c ../../../lib/ams_core/integrity/ams_stack_health.c -o z014_safety_sil_asan
 ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./z014_safety_sil_asan
@@ -626,181 +642,181 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 
 ./z014_safety_sil_ubsan
 PASS Z-014 integrated seeded scheduler SIL: seeds=5 steps=250000 supervisor=162990 actors=488707
 PASS Z-014 integrated safety SIL: 7 scenario classes, BMS/balance authority absent
-make: Leaving directory '/mnt/data/z015_work/tests/system/z014_safety_sil'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil'
 
 === watchdog: tsan ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/watchdog tsan
-make: Entering directory '/mnt/data/z015_work/tests/unit/watchdog'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/watchdog tsan
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=thread -pthread \
 	watchdog_concurrency_test.c ../../../lib/ams_core/watchdog/ams_watchdog_policy.c \
 	../../../lib/ams_core/watchdog/ams_watchdog_heartbeat.c -o watchdog_concurrency_test_tsan
 TSAN_OPTIONS=halt_on_error=1 ./watchdog_concurrency_test_tsan
 PASS watchdog concurrency SIL: fan=100000 imd=100000 supervisor=150000, 0 failures
-make: Leaving directory '/mnt/data/z015_work/tests/unit/watchdog'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 
 === watchdog: analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/watchdog analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/watchdog'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/watchdog analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -fanalyzer -c ../../../lib/ams_core/watchdog/ams_watchdog_policy.c -o watchdog_policy_an.o
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -fanalyzer -c ../../../lib/ams_core/watchdog/ams_watchdog_heartbeat.c -o watchdog_heartbeat_an.o
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -fanalyzer -c ../../../lib/ams_core/integrity/ams_stack_health.c -o stack_health_an.o
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -fanalyzer -DAMS_WATCHDOG_ADAPTER_TEST -Ifake_zephyr -I../../../include \
 	-c ../../../drivers/ams/watchdog_zephyr.c -o watchdog_adapter_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/watchdog'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 
 === safety_fatal: analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/safety_fatal analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/safety_fatal'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -Ifake_zephyr -I../../../app/src -I../../../include -fanalyzer -c ../../../app/src/ams_safety.c -o ams_safety_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/safety_fatal'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal'
 
 === bms_ok: analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/bms_ok analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/bms_ok'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/bms_ok analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/bms_ok'
 cc -std=c11 -Wall -Wextra -Werror -fanalyzer -Ifake_zephyr -I../../../include \
 	-c ../../../drivers/ams/bms_ok_zephyr.c -o bms_ok_adapter_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/bms_ok'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/bms_ok'
 
 === current_path: analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/current_path analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/current_path'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/current_path analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_path'
 cc -std=c11 -Wall -Wextra -Werror -fanalyzer -I../../../lib/ams_core/include \
 	-c ../../../lib/ams_core/current/ams_current_sensor.c -o sensor_an.o
 cc -std=c11 -Wall -Wextra -Werror -fanalyzer -I../../../lib/ams_core/include \
 	-c ../../../lib/ams_core/faults/ams_current_fault.c -o fault_an.o
-cc -std=c11 -Wall -Wextra -Werror -fanalyzer -I../current_adc/fake_zephyr -I../current_adc -I../../../drivers/ams -I../../../include \
-	-c ../../../drivers/ams/current_adc_zephyr.c -o adc_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/current_path'
+cc -std=c11 -Wall -Wextra -Werror -fanalyzer -DAMS_CURRENT_ADC_ADAPTER_TEST=1 -I../current_adc/fake_zephyr -I../current_adc -I../../../drivers/ams -I../../../include \
+	-c ../../../drivers/ams/current_adc_stm32.c -o adc_an.o
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_path'
 
 === fan: analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/fan analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/fan'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/fan analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/fan'
 cc -std=c11 -Wall -Wextra -Werror -fanalyzer -I../../../lib/ams_core/include \
 	-c ../../../lib/ams_core/fan/ams_fan_control.c -o fan_core_an.o
 cc -std=c11 -Wall -Wextra -Werror -fanalyzer -Ifake_zephyr -I../../../drivers/ams -I../../../include \
 	-c ../../../drivers/ams/fan_pwm_zephyr.c -o fan_pwm_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/fan'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/fan'
 
 === imd: analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/imd analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/imd'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/imd analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/imd'
 cc -std=c11 -Wall -Wextra -Werror -fanalyzer -Ifake_zephyr \
 	-I../../../drivers/ams -I../../../include -I../../../lib/ams_core/include -c ../../../drivers/ams/imd_capture_zephyr.c \
 	-o imd_adapter_an.o
 cc -std=c11 -Wall -Wextra -Werror -fanalyzer -I../../../lib/ams_core/include \
 	-c ../../../lib/ams_core/imd/ams_imd.c -o imd_core_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/imd'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/imd'
 
 === measurement_store: analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/measurement_store analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/measurement_store'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/measurement_store analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/measurement_store'
 cc -std=c11 -Wall -Wextra -Werror -fanalyzer -I../../../lib/ams_core/include -c ../../../lib/ams_core/measurement/ams_measurement.c -o measurement_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/measurement_store'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/measurement_store'
 
 === current_window: analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/current_window analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/current_window'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/current_window analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_window'
 cc -std=c11 -Wall -Wextra -Werror -fanalyzer -I../../../lib/ams_core/include -c ../../../lib/ams_core/measurement/ams_current_window.c -o current_window_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/current_window'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_window'
 
 === estimator: analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/estimator analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/estimator'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/estimator analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/estimator'
 cc -std=c11 -Wall -Wextra -Werror -fanalyzer -I../../../lib/ams_core/include -c ../../../lib/ams_core/estimator/ams_estimator_lut.c -o estimator_lut_an.o
 cc -std=c11 -Wall -Wextra -Werror -fanalyzer -I../../../lib/ams_core/include -c ../../../lib/ams_core/estimator/ams_soc_ekf.c -o estimator_ekf_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/estimator'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/estimator'
 
 === adbms_spi: analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/adbms_spi analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/adbms_spi'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../drivers/ams -fanalyzer -c ../../../drivers/ams/adbms_spi_engine.c -o adbms_spi_engine_an.o
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../drivers/ams -Ifake_zephyr -I../../../include -fanalyzer -c ../../../drivers/ams/adbms_spi_stm32.c -o adbms_spi_adapter_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/adbms_spi'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi'
 
 === system/z014_safety_sil: analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/system/z014_safety_sil analyze
-make: Entering directory '/mnt/data/z015_work/tests/system/z014_safety_sil'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil'
 cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -fanalyzer -c z014_safety_sil.c -o z014_safety_sil_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/system/z014_safety_sil'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil'
 
 === watchdog: clang-analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/watchdog clang-analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/watchdog'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/watchdog clang-analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include --analyze ../../../lib/ams_core/watchdog/ams_watchdog_policy.c
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include --analyze ../../../lib/ams_core/watchdog/ams_watchdog_heartbeat.c
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include --analyze ../../../lib/ams_core/integrity/ams_stack_health.c
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include --analyze -DAMS_WATCHDOG_ADAPTER_TEST -Ifake_zephyr -I../../../include \
 	../../../drivers/ams/watchdog_zephyr.c
-make: Leaving directory '/mnt/data/z015_work/tests/unit/watchdog'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 
 === safety_fatal: clang-analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/safety_fatal clang-analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/safety_fatal'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal clang-analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal'
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror -pedantic -Ifake_zephyr -I../../../app/src -I../../../include --analyze -Xanalyzer -analyzer-output=text ../../../app/src/ams_safety.c
-make: Leaving directory '/mnt/data/z015_work/tests/unit/safety_fatal'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal'
 
 === bms_ok: clang-analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/bms_ok clang-analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/bms_ok'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/bms_ok clang-analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/bms_ok'
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -Ifake_zephyr -I../../../include ../../../drivers/ams/bms_ok_zephyr.c
-make: Leaving directory '/mnt/data/z015_work/tests/unit/bms_ok'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/bms_ok'
 
 === current_path: clang-analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/current_path clang-analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/current_path'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/current_path clang-analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_path'
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -I../../../lib/ams_core/include ../../../lib/ams_core/current/ams_current_sensor.c
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -I../../../lib/ams_core/include ../../../lib/ams_core/faults/ams_current_fault.c
-/usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -I../current_adc/fake_zephyr -I../current_adc -I../../../drivers/ams -I../../../include ../../../drivers/ams/current_adc_zephyr.c
-make: Leaving directory '/mnt/data/z015_work/tests/unit/current_path'
+/usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -DAMS_CURRENT_ADC_ADAPTER_TEST=1 -I../current_adc/fake_zephyr -I../current_adc -I../../../drivers/ams -I../../../include ../../../drivers/ams/current_adc_stm32.c
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_path'
 
 === fan: clang-analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/fan clang-analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/fan'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/fan clang-analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/fan'
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -I../../../lib/ams_core/include ../../../lib/ams_core/fan/ams_fan_control.c
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -Ifake_zephyr -I../../../drivers/ams -I../../../include ../../../drivers/ams/fan_pwm_zephyr.c
-make: Leaving directory '/mnt/data/z015_work/tests/unit/fan'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/fan'
 
 === imd: clang-analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/imd clang-analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/imd'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/imd clang-analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/imd'
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -Ifake_zephyr -I../../../drivers/ams -I../../../include -I../../../lib/ams_core/include ../../../drivers/ams/imd_capture_zephyr.c
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -I../../../lib/ams_core/include ../../../lib/ams_core/imd/ams_imd.c
-make: Leaving directory '/mnt/data/z015_work/tests/unit/imd'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/imd'
 
 === measurement_store: clang-analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/measurement_store clang-analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/measurement_store'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/measurement_store clang-analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/measurement_store'
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -I../../../lib/ams_core/include ../../../lib/ams_core/measurement/ams_measurement.c
-make: Leaving directory '/mnt/data/z015_work/tests/unit/measurement_store'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/measurement_store'
 
 === current_window: clang-analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/current_window clang-analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/current_window'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/current_window clang-analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_window'
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -I../../../lib/ams_core/include ../../../lib/ams_core/measurement/ams_current_window.c
-make: Leaving directory '/mnt/data/z015_work/tests/unit/current_window'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_window'
 
 === estimator: clang-analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/estimator clang-analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/estimator'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/estimator clang-analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/estimator'
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -I../../../lib/ams_core/include ../../../lib/ams_core/estimator/ams_estimator_lut.c
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror --analyze -I../../../lib/ams_core/include ../../../lib/ams_core/estimator/ams_soc_ekf.c
-make: Leaving directory '/mnt/data/z015_work/tests/unit/estimator'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/estimator'
 
 === adbms_spi: clang-analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/adbms_spi clang-analyze
-make: Entering directory '/mnt/data/z015_work/tests/unit/adbms_spi'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi clang-analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi'
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror -pedantic -I../../../drivers/ams --analyze ../../../drivers/ams/adbms_spi_engine.c
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror -pedantic -I../../../drivers/ams -Ifake_zephyr -I../../../include --analyze ../../../drivers/ams/adbms_spi_stm32.c
-make: Leaving directory '/mnt/data/z015_work/tests/unit/adbms_spi'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi'
 
 === system/z014_safety_sil: clang-analyze ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/system/z014_safety_sil clang-analyze
-make: Entering directory '/mnt/data/z015_work/tests/system/z014_safety_sil'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil clang-analyze
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil'
 /usr/local/swift/usr/bin/clang -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include --analyze -Xanalyzer -analyzer-output=text z014_safety_sil.c
-make: Leaving directory '/mnt/data/z015_work/tests/system/z014_safety_sil'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil'
 
 === Z-015 safety-contract mutation/negative controls ===
->>> /opt/pyvenv/bin/python /mnt/data/z015_work/scripts/check_z014_contract_mutations.py /mnt/data/z015_work
+>>> /opt/pyvenv/bin/python3 /mnt/data/z015_hal_review_hardened/scripts/check_z014_contract_mutations.py /mnt/data/z015_hal_review_hardened
 PASS: Z-014 contract mutation suite (18 unsafe mutations rejected)
   rejected: direct wdt_feed bypass
   rejected: second platform feeder
@@ -824,8 +840,8 @@ PASS: Z-014 contract mutation suite (18 unsafe mutations rejected)
   pass: hidden default-n capabilities may be absent from .config
 
 === Z-015 SPI transport mutation/negative controls ===
->>> /opt/pyvenv/bin/python /mnt/data/z015_work/scripts/check_z015_contract_mutations.py /mnt/data/z015_work
-PASS: Z-015 contract mutation suite (29 unsafe mutations rejected)
+>>> /opt/pyvenv/bin/python3 /mnt/data/z015_hal_review_hardened/scripts/check_z015_contract_mutations.py /mnt/data/z015_hal_review_hardened
+PASS: Z-015 contract mutation suite (46 unsafe mutations rejected)
   rejected: stock_spi6_enabled
   rejected: generic_spi_enabled
   rejected: spi_async_enabled
@@ -854,12 +870,29 @@ PASS: Z-015 contract mutation suite (29 unsafe mutations rejected)
   rejected: adbms_actor_promoted
   rejected: adbms_evidence_promoted
   rejected: physical_validation_faked
+  rejected: generic_adc_enabled
+  rejected: adc_async_enabled
+  rejected: adc_dma_enabled
+  rejected: adc1_generic_owner_enabled
+  rejected: adc_common_reset_drift
+  rejected: adc_irq_enabled
+  rejected: adc_pending_clear_removed
+  rejected: adc_recovery_reset_removed
+  rejected: adc_timeout_made_terminal
+  rejected: adc_timeout_boundary_drift
+  rejected: adc_timeout_recheck_removed
+  rejected: adc_success_strt_clear_removed
+  rejected: adc_poll_yield_inserted
+  rejected: fan_output_irq_disable_removed
+  rejected: fan_output_irq_clear_removed
+  rejected: manifest_adc_async_lie
+  rejected: adc3_generic_owner_enabled
   rejected: wake_api
-Report: /mnt/data/z015_work/docs/migration/evidence/Z015_DEEP_HOST_SIL_CANONICAL_REPORT_2026-09-07.json
+Report: /mnt/data/z015_hal_review_hardened/docs/migration/evidence/Z015_POST_REVIEW_HAL_HOST_SIL_REPORT_FINAL_2026-09-07.json
 
 === watchdog: clean ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/watchdog clean
-make: Entering directory '/mnt/data/z015_work/tests/unit/watchdog'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/watchdog clean
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 rm -f watchdog_policy_test watchdog_policy_test_asan watchdog_policy_test_ubsan \
 	watchdog_heartbeat_test watchdog_heartbeat_test_asan watchdog_heartbeat_test_ubsan \
 	watchdog_heartbeat_diff_* \
@@ -868,78 +901,78 @@ rm -f watchdog_policy_test watchdog_policy_test_asan watchdog_policy_test_ubsan 
 	watchdog_policy_an.o watchdog_heartbeat_an.o stack_health_an.o \
 	watchdog_adapter_test watchdog_adapter_test_asan watchdog_adapter_test_ubsan \
 	watchdog_policy_test_strict watchdog_heartbeat_test_strict watchdog_adapter_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/watchdog'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/watchdog'
 
 === safety_fatal: clean ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/safety_fatal clean
-make: Entering directory '/mnt/data/z015_work/tests/unit/safety_fatal'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal clean
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal'
 rm -f safety_fatal_test safety_fatal_test_strict safety_fatal_test_asan \
 	safety_fatal_test_ubsan ams_safety_an.o *.plist
-make: Leaving directory '/mnt/data/z015_work/tests/unit/safety_fatal'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/safety_fatal'
 
 === bms_ok: clean ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/bms_ok clean
-make: Entering directory '/mnt/data/z015_work/tests/unit/bms_ok'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/bms_ok clean
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/bms_ok'
 rm -f bms_ok_adapter_test bms_ok_adapter_test_asan bms_ok_adapter_test_ubsan bms_ok_adapter_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/bms_ok'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/bms_ok'
 
 === current_path: clean ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/current_path clean
-make: Entering directory '/mnt/data/z015_work/tests/unit/current_path'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/current_path clean
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_path'
 rm -f current_sensor_test current_fault_test current_adc_adapter_test \
 	current_sensor_asan current_fault_asan current_adc_asan \
 	current_sensor_ubsan current_fault_ubsan current_adc_ubsan \
 	sensor_an.o fault_an.o adc_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/current_path'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_path'
 
 === fan: clean ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/fan clean
-make: Entering directory '/mnt/data/z015_work/tests/unit/fan'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/fan clean
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/fan'
 rm -f fan_control_test fan_pwm_adapter_test fan_control_test_asan fan_pwm_adapter_test_asan fan_control_test_ubsan fan_pwm_adapter_test_ubsan fan_core_an.o fan_pwm_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/fan'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/fan'
 
 === imd: clean ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/imd clean
-make: Entering directory '/mnt/data/z015_work/tests/unit/imd'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/imd clean
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/imd'
 rm -f imd_core_test imd_capture_adapter_test \
 	imd_core_test_asan imd_capture_adapter_test_asan \
 	imd_core_test_ubsan imd_capture_adapter_test_ubsan \
 	imd_adapter_an.o imd_core_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/imd'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/imd'
 
 === measurement_store: clean ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/measurement_store clean
-make: Entering directory '/mnt/data/z015_work/tests/unit/measurement_store'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/measurement_store clean
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/measurement_store'
 rm -f measurement_store_test measurement_store_test_asan measurement_store_test_ubsan measurement_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/measurement_store'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/measurement_store'
 
 === current_window: clean ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/current_window clean
-make: Entering directory '/mnt/data/z015_work/tests/unit/current_window'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/current_window clean
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_window'
 rm -f current_window_test current_window_test_asan current_window_test_ubsan current_window_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/current_window'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/current_window'
 
 === estimator: clean ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/estimator clean
-make: Entering directory '/mnt/data/z015_work/tests/unit/estimator'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/estimator clean
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/estimator'
 rm -f estimator_core_test estimator_core_test_asan estimator_core_test_ubsan estimator_lut_an.o estimator_ekf_an.o
-make: Leaving directory '/mnt/data/z015_work/tests/unit/estimator'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/estimator'
 
 === adbms_spi: clean ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/unit/adbms_spi clean
-make: Entering directory '/mnt/data/z015_work/tests/unit/adbms_spi'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi clean
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi'
 rm -f adbms_spi_engine_test adbms_spi_engine_test_strict adbms_spi_engine_test_asan \
 	adbms_spi_engine_test_ubsan adbms_spi_random_* adbms_spi_engine_an.o \
 	adbms_spi_adapter_test adbms_spi_adapter_test_strict adbms_spi_adapter_test_asan \
 	adbms_spi_adapter_test_ubsan adbms_spi_adapter_an.o *.plist
-make: Leaving directory '/mnt/data/z015_work/tests/unit/adbms_spi'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/unit/adbms_spi'
 
 === system/z014_safety_sil: clean ===
->>> /usr/bin/make -C /mnt/data/z015_work/tests/system/z014_safety_sil clean
-make: Entering directory '/mnt/data/z015_work/tests/system/z014_safety_sil'
+>>> /usr/bin/make -C /mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil clean
+make: Entering directory '/mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil'
 rm -f z014_safety_sil z014_safety_sil_strict z014_safety_sil_asan \
 	z014_safety_sil_ubsan z014_safety_sil_an.o *.plist
-make: Leaving directory '/mnt/data/z015_work/tests/system/z014_safety_sil'
+make: Leaving directory '/mnt/data/z015_hal_review_hardened/tests/system/z014_safety_sil'
 
 PASS: complete Z-015 deep host/source/SIL validation
 Skipped evidence: none

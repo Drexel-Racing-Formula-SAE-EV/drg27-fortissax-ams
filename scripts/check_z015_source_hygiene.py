@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Source-only gate for the audited Z-015 private bounded SPI6 transport."""
+"""Source-only gate for audited Z-015 private HAL ownership and safety boundaries."""
 
 from __future__ import annotations
 
@@ -84,6 +84,8 @@ def main() -> int:
         "docs/migration/Z015_SPI_TRANSPORT_ORACLE.md",
         "docs/migration/Z015_STM32_SPI_DRIVER_AUDIT.md",
         "docs/migration/Z015_ADBMS_CALLER_INVENTORY.md",
+        "drivers/ams/current_adc_stm32.c",
+        "tests/unit/current_adc/current_adc_adapter_test.c",
     )
     for rel in required:
         require((repo / rel).is_file(), f"missing Z-015 artifact: {rel}")
@@ -126,13 +128,19 @@ def main() -> int:
             "st,soft-nss is meaningless with private SPI6 ownership and must stay absent")
 
     prj = (repo / "app/prj.conf").read_text(encoding="utf-8")
-    for token in ("CONFIG_SPI=n", "CONFIG_SPI_ASYNC=n", "CONFIG_SPI_RTIO=n", "CONFIG_SPI_STM32_DMA=n"):
+    for token in ("CONFIG_SPI=n", "CONFIG_SPI_ASYNC=n", "CONFIG_SPI_RTIO=n", "CONFIG_SPI_STM32_DMA=n", "CONFIG_LTO=n"):
         require(token in prj, f"private SPI6 configuration missing: {token}")
+    for token in ("CONFIG_ADC=n", "CONFIG_ADC_ASYNC=n", "CONFIG_ADC_STM32_DMA=n"):
+        require(token in prj, f"private current-ADC configuration missing: {token}")
 
     kconfig = (repo / "app/Kconfig").read_text(encoding="utf-8")
     private = kconfig_block(kconfig, "AMS_ADBMS_SPI_PRIVATE_BACKEND")
     require("default y" in private and "select USE_STM32_LL_SPI" in private and "select RESET" in private,
             "private backend must structurally select LL SPI + reset support")
+    current_private = kconfig_block(kconfig, "AMS_CURRENT_ADC_PRIVATE_BACKEND")
+    require("default y" in current_private and "select USE_STM32_LL_ADC" in current_private
+            and "select RESET" in current_private,
+            "private current ADC backend must structurally select LL ADC + reset support")
     present = kconfig_block(kconfig, "AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT")
     require("default y" in present, "Z-015 adapter-presence capability not promoted")
     for symbol in ("AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED", "AMS_CAP_ADBMS_ACTOR_LIVE",
@@ -156,6 +164,9 @@ def main() -> int:
             "wire dummy/bounds policy missing from production engine")
     require("recover_after_failure" in engine and "set_cs_active" in engine,
             "engine failure path no longer restores CS/recovery ordering")
+    require("intentionally have no scheduler yield/sleep hook" in engine and
+            "continuous manual-CS" in engine and "normal preemptible Zephyr thread" in engine,
+            "bounded polling no-yield/preemptibility rationale is no longer explicit")
 
     target = (repo / "drivers/ams/adbms_spi_stm32.c").read_text(encoding="utf-8")
     forbidden_target = (
@@ -185,6 +196,102 @@ def main() -> int:
             "SPI6 programming no longer explicitly sets /256")
     require(target.count("reset_line_toggle_dt(&spi6_reset)") >= 2,
             "SPI6 reset must exist in both startup preparation and transport recovery")
+    require("platform_integrity_violation_count" in target and
+            "atomic_inc_saturating(&platform_integrity_violation_count);" in target,
+            "illegal/reentrant transfer attempts are not durably counted")
+    cas_start = target.find("if (!atomic_cas(&platform_state")
+    read_start = target.find("    if (read) {", cas_start)
+    require(cas_start >= 0 and read_start > cas_start and
+            "atomic_inc_saturating(&platform_integrity_violation_count);" in target[cas_start:read_start],
+            "single-owner CAS failure does not record an integrity violation before return")
+
+    # Post-Z-015 HAL review: current ADC uses the same ownership lesson as
+    # SPI. Generic adc_stm32 async context/IRQ/DMA are structurally absent; a
+    # private bounded poll can recover a transient timeout by resetting the
+    # common ADC block, with ADC3 frozen disabled because ADCRST is shared.
+    manifest_builder = (repo / "scripts/build_manifest.py").read_text(encoding="utf-8")
+    for token in (
+        '"completion_mechanism": "private_STM32_LL_bounded_poll"',
+        '"completion_timeout_semantics": "HAL_F7_elapsed_gt_5ms_with_EOC_recheck"',
+        '"timeout_is_terminal_by_default": False',
+        '"current_adc_generic_zephyr_driver_owned": False',
+        '"fan_output_timer_capture_irqs_disabled": True',
+    ):
+        require(token in manifest_builder, f"build manifest does not report hardened platform truth: {token}")
+    for stale in (
+        '"completion_mechanism": "adc_read_async_dt+k_poll"',
+        '"timeout_recovery": "latched_fault_reboot_only"',
+    ):
+        require(stale not in manifest_builder, f"stale pre-hardening build-manifest claim survived: {stale}")
+
+    current = (repo / "drivers/ams/current_adc_stm32.c").read_text(encoding="utf-8")
+    for token in (
+        "BUILD_ASSERT(!IS_ENABLED(CONFIG_ADC)",
+        "BUILD_ASSERT(IS_ENABLED(CONFIG_USE_STM32_LL_ADC)",
+        "DT_IRQN(CURRENT_ADC_HIGH_NODE) == 18",
+        "irq_disable(irq);", "k_irq_clear_pending(irq);",
+        "reset_line_toggle_dt(&adc_common_reset)",
+        "LL_ADC_CLOCK_SYNC_PCLK_DIV6", "LL_ADC_RESOLUTION_12B",
+        "LL_ADC_SAMPLINGTIME_480CYCLES", "CURRENT_ADC_TIMEOUT_MS",
+        "WRITE_REG(adc->SR, ~(LL_ADC_FLAG_STRT | LL_ADC_FLAG_EOCS))",
+        "elapsed_ms > CURRENT_ADC_TIMEOUT_MS",
+        "if (LL_ADC_IsActiveFlag_EOCS(adc) == 0U)",
+        "return recover_and_return(-ETIMEDOUT)",
+        "adc_contract_readback_valid()", "integrity_violation_count",
+    ):
+        require(token in current, f"private current ADC hardening missing: {token}")
+    current_code = re.sub(r"/\*.*?\*/|//[^\n]*", "", current, flags=re.DOTALL)
+    for token in (
+        "<zephyr/drivers/adc.h>", "adc_read_async", "k_poll(",
+        "k_poll_signal", "irq_enable(", "IRQ_CONNECT(", "k_yield(", "k_sleep(",
+        "k_sched_lock(", "irq_lock(",
+    ):
+        require(token not in current_code, f"current ADC reintroduced unsafe async/blocking ownership: {token}")
+    require(current.count("disable_and_clear_adc_irq();") >= 4,
+            "current ADC must quiesce/clear shared ADC IRQ across init and recovery")
+    recovery_start = current.find("static int reset_and_reconfigure_adc")
+    recovery_end = current.find("static int recover_and_return", recovery_start)
+    require(0 <= recovery_start < recovery_end,
+            "current ADC recovery function boundaries missing")
+    recovery = current[recovery_start:recovery_end]
+    reset_pos = recovery.find("reset_line_toggle_dt(&adc_common_reset)")
+    before = recovery.rfind("disable_and_clear_adc_irq();", 0, reset_pos)
+    after = recovery.find("disable_and_clear_adc_irq();", reset_pos)
+    program = recovery.find("program_adc_contract();", reset_pos)
+    verify = recovery.find("adc_contract_readback_valid()", program)
+    require(0 <= before < reset_pos < after < program < verify,
+            "current ADC recovery ordering drift")
+
+    current_node = block(board, "ams_current_sense: ams-current-sense")
+    for token in (
+        "high-controller = <&adc1>", "low-controller = <&adc2>",
+        "&adc1_in3_pa3", "&adc2_in10_pc0",
+        "resets = <&rctl STM32_RESET(APB2, 8)>",
+        "adc-input-clock-hz = <108000000>", "adc-prescaler = <6>",
+        "adc-clock-hz = <18000000>", "conversion-timeout-ms = <5>",
+    ):
+        require(token in current_node, f"current ADC board contract missing: {token}")
+    for node in ("&adc1", "&adc2"):
+        require('status = "disabled"' in block(board, node),
+                f"generic current ADC device must remain disabled: {node}")
+    # ADC3 is disabled by the SoC DTS and must not be overridden to okay in the
+    # board file while the common ADCRST recovery architecture is in force.
+    require(re.search(r"(?ms)^\s*&adc3\s*\{.*?status\s*=\s*\"okay\"", board) is None,
+            "ADC3 cannot become live while current recovery owns common ADCRST")
+
+    # CONFIG_PWM_CAPTURE globally causes pwm_stm32 to connect capture IRQs for
+    # every enabled PWM timer. TIM3/4/5 are output-only fan timers, so the fan
+    # adapter explicitly disables and pending-clears those unused NVIC lines.
+    fan = (repo / "drivers/ams/fan_pwm_zephyr.c").read_text(encoding="utf-8")
+    for token in (
+        "disable_output_only_timer_irqs",
+        "DT_IRQN(DT_NODELABEL(timers3)) == 29U",
+        "DT_IRQN(DT_NODELABEL(timers4)) == 30U",
+        "DT_IRQN(DT_NODELABEL(timers5)) == 50U",
+        "irq_disable(irqs[i]);", "k_irq_clear_pending(irqs[i]);",
+        "pwm_stm32_get_cycles_per_sec() ignores the",
+    ):
+        require(token in fan, f"fan timer IRQ/readiness hardening missing: {token}")
 
     # The lifecycle API is intentionally public only for startup/status. Raw
     # transfer calls remain private to drivers/ams until the single owner lands.
@@ -193,6 +300,8 @@ def main() -> int:
             "startup/status lifecycle API missing")
     require("ams_adbms_spi_write(" not in public and "ams_adbms_spi_write_read(" not in public,
             "raw ADBMS transport leaked into public platform surface")
+    require("uint32_t integrity_violation_count;" in public,
+            "ADBMS SPI lifecycle status lacks durable single-owner integrity evidence")
 
     prod = files_under(repo, ("app", "boards", "drivers", "include", "lib", "zephyr"))
     internal_include_hits = occurrences(repo, prod, re.compile(r"#\s*include\s*[<\"]adbms_spi_internal\.h"))
@@ -238,10 +347,12 @@ def main() -> int:
                           "CONFIG_AMS_ADBMS_SPI_PHYSICAL_VALIDATED=y"):
             require(forbidden not in text, f"unsafe Z-015 config claim in {conf.name}: {forbidden}")
 
-    print("PASS: Z-015 private SPI6 source/architecture safety contract")
+    print("PASS: Z-015 private SPI6 + HAL-driver source/architecture safety contract")
     print("  stock spi_stm32 ownership: structurally absent")
     print("  SPI6 IRQ/DMA/async path: absent; NVIC line disabled + pending-cleared")
-    print("  transfer engine: one bounded synchronous owner, host/SIL portable")
+    print("  transfer engine: bounded synchronous owner; illegal/reentrant attempts durably counted")
+    print("  current ADC: private bounded polling; transient timeout recovery; generic adc_stm32 absent")
+    print("  fan: output-only TIM3/4/5 capture IRQs disabled + pending-cleared")
     print("  runtime: adapter init/status only; zero transfers/wake/ADBMS evidence")
     return 0
 

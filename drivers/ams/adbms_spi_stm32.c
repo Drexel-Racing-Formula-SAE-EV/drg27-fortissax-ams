@@ -85,6 +85,7 @@ static atomic_t platform_init_attempt_count;
 static atomic_t platform_transfer_success_count;
 static atomic_t platform_transfer_timeout_count;
 static atomic_t platform_transfer_io_error_count;
+static atomic_t platform_integrity_violation_count;
 static atomic_t platform_recovery_success_count;
 static atomic_t platform_recovery_failure_count;
 static atomic_t platform_cs_idle_guaranteed;
@@ -473,6 +474,11 @@ static ams_adbms_spi_result_t run_transfer(bool read,
     if (!atomic_cas(&platform_state,
                     AMS_ADBMS_SPI_PLATFORM_READY,
                     AMS_ADBMS_SPI_PLATFORM_ACTIVE)) {
+        /* Any transfer attempt outside READY violates the single-owner/lifecycle
+         * contract. Preserve durable field evidence even though last_result may
+         * later be overwritten by the transaction that currently owns SPI6. */
+        atomic_inc_saturating(&platform_integrity_violation_count);
+        atomic_set(&platform_last_error, -EFAULT);
         atomic_set(&platform_last_result, AMS_ADBMS_SPI_RESULT_INTERNAL_FAULT);
         return AMS_ADBMS_SPI_RESULT_INTERNAL_FAULT;
     }
@@ -551,6 +557,7 @@ ams_adbms_spi_platform_status_t ams_adbms_spi_platform_status(void)
         .transfer_success_count = (uint32_t)atomic_get(&platform_transfer_success_count),
         .transfer_timeout_count = (uint32_t)atomic_get(&platform_transfer_timeout_count),
         .transfer_io_error_count = (uint32_t)atomic_get(&platform_transfer_io_error_count),
+        .integrity_violation_count = (uint32_t)atomic_get(&platform_integrity_violation_count),
         .recovery_success_count = (uint32_t)atomic_get(&platform_recovery_success_count),
         .recovery_failure_count = (uint32_t)atomic_get(&platform_recovery_failure_count),
         .last_error = (int)atomic_get(&platform_last_error),

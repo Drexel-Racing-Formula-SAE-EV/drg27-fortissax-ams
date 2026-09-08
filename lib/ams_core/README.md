@@ -117,7 +117,10 @@ plausibility, deadband, telemetry filtering, zero calibration, persistent
 calibration provenance, uncertainty, and validity. It does not own an ADC
 handle or any Zephyr/HAL object.
 
-Raw ADC acquisition is supplied by `drivers/ams/current_adc_zephyr.c`. The
+Raw ADC acquisition is supplied by `drivers/ams/current_adc_stm32.c`. After the
+Z-015 HAL-driver audit it uses a private bounded STM32F767 polling backend so a
+transient conversion timeout can reset/reconfigure the common ADC block and
+retry on the next scan without leaving Zephyr async/ISR ownership behind. The
 adapter is deliberately policy-free and the live current thread remains
 unintegrated until Z-022 proves the v2.6.27 current-window mutex/publication
 ordering. See `docs/migration/Z011_CURRENT_ADC_PARITY.md`.

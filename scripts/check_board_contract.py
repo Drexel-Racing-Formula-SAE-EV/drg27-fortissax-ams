@@ -170,38 +170,28 @@ def main() -> int:
     spi = get_block(text, "spi6:")
     require_contains(spi, 'status = "disabled"', "stock SPI6 remains disabled")
 
-    # Z-011 is the first phase that intentionally enables physical current ADCs.
-    # CAN/SPI remain disabled and authority remains impossible. Exact channel
-    # acquisition-time/resolution properties are additionally checked by the
-    # dedicated current-ADC contract against both source and generated DTS.
+    # Post-Z-015 HAL audit hardening: current ADC1/ADC2 are privately owned by
+    # the bounded polling adapter. Generic adc_stm32 devices and their shared
+    # IRQ/context remain disabled; the typed AMS node owns pinctrl/reset and
+    # exact acquisition parameters. ADC3 is also frozen disabled because F767
+    # exposes one common ADCRST bit for ADC1/2/3.
     current = get_block(text, "ams_current_sense:")
     require_contains(current, 'compatible = "drexel,ams-current-sense"',
                      "typed current-sense node")
-    require_contains(current, "io-channels", "current ADC io-channels")
-    require(
-        string_list_property(current, "io-channel-names") == ["high", "low"],
-        "current ADC named order drift",
-    )
+    require_contains(current,
+                     "pinctrl-0 = < &adc1_in3_pa3 &adc2_in10_pc0 >",
+                     "private current ADC PA3/PC0 pinctrl")
+    require_contains(current, "high-channel = < 0x3 >", "current high channel")
+    require_contains(current, "low-channel = < 0xa >", "current low channel")
+    require_contains(current, "adc-prescaler = < 0x6 >", "current ADC /6 prescaler")
+    require_contains(current, "conversion-timeout-ms = < 0x5 >", "current ADC 5 ms timeout")
 
     adc1 = get_block(text, "adc1:")
-    require_contains(
-        adc1,
-        "pinctrl-0 = < &adc1_in3_pa3 >",
-        "ADC1 high-range PA3"
-    )
-    require_contains(adc1, 'status = "okay"', "ADC1 Z-011 state")
-    require_contains(adc1, 'st,adc-clock-source = "SYNC"', "ADC1 clock source")
-    require_contains(adc1, "st,adc-prescaler = < 0x6 >", "ADC1 /6 prescaler")
-
     adc2 = get_block(text, "adc2:")
-    require_contains(
-        adc2,
-        "pinctrl-0 = < &adc2_in10_pc0 >",
-        "ADC2 low-range PC0"
-    )
-    require_contains(adc2, 'status = "okay"', "ADC2 Z-011 state")
-    require_contains(adc2, 'st,adc-clock-source = "SYNC"', "ADC2 clock source")
-    require_contains(adc2, "st,adc-prescaler = < 0x6 >", "ADC2 /6 prescaler")
+    adc3 = get_block(text, "adc3:")
+    require_contains(adc1, 'status = "disabled"', "ADC1 private-owner state")
+    require_contains(adc2, 'status = "disabled"', "ADC2 private-owner state")
+    require_contains(adc3, 'status = "disabled"', "ADC3 common-reset exclusion state")
 
     # Z-012 fan PWM timers. Exact channel/pin/frequency semantics are checked
     # in the dedicated fan contract as well.

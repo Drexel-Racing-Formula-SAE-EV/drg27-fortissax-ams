@@ -26,6 +26,7 @@ typedef struct {
     uint32_t transfer_success_count;
     uint32_t transfer_timeout_count;
     uint32_t transfer_io_error_count;
+    uint32_t integrity_violation_count;
     uint32_t recovery_success_count;
     uint32_t recovery_failure_count;
     int last_error;

@@ -66,5 +66,5 @@ This suite deliberately does **not** emulate or validate:
 - physical SPI waveform timing.
 
 Those remain later migration/hardware gates.  Z-015 has zero runtime transfer
-callers, so target initialization must emit no SPI clocks and no CS-low/wake
+callers, and the final target ELF must contain no live raw-transfer entrypoints, so target initialization must emit no SPI clocks and no CS-low/wake
 pulse.

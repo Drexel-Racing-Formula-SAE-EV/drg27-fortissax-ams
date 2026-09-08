@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import re
+import struct
 import sys
 
 
@@ -17,6 +18,90 @@ def fail(msg: str) -> None:
 def require(cond: bool, msg: str) -> None:
     if not cond:
         fail(msg)
+
+
+
+
+def elf_defined_symbols(path: Path) -> set[str]:
+    """Return defined symbols from a linked ELF using only the Python stdlib.
+
+    Z-015 target proof must come from the final linked image, not a source-only
+    assumption.  Zephyr/STM32F767 emits a normal ELF32 symbol table, but this
+    parser also accepts ELF64 so the helper is easy to self-test on host tools.
+    """
+    data = path.read_bytes()
+    require(len(data) >= 16 and data[:4] == b"\x7fELF", f"not an ELF file: {path}")
+    elf_class = data[4]
+    elf_data = data[5]
+    require(elf_class in (1, 2), f"unsupported ELF class {elf_class}: {path}")
+    require(elf_data in (1, 2), f"unsupported ELF endianness {elf_data}: {path}")
+    endian = "<" if elf_data == 1 else ">"
+
+    if elf_class == 1:
+        eh_fmt = endian + "HHIIIIIHHHHHH"
+        sh_fmt = endian + "IIIIIIIIII"
+        sym_fmt = endian + "IIIBBH"
+    else:
+        eh_fmt = endian + "HHIQQQIHHHHHH"
+        sh_fmt = endian + "IIQQQQIIQQ"
+        sym_fmt = endian + "IBBHQQ"
+
+    eh_size = struct.calcsize(eh_fmt)
+    require(len(data) >= 16 + eh_size, f"truncated ELF header: {path}")
+    eh = struct.unpack_from(eh_fmt, data, 16)
+    shoff = int(eh[5])
+    shentsize = int(eh[10])
+    shnum = int(eh[11])
+    require(shoff > 0 and shentsize >= struct.calcsize(sh_fmt) and shnum > 0,
+            f"ELF section table unavailable for symbol proof: {path}")
+    require(shoff + shentsize * shnum <= len(data), f"truncated ELF section table: {path}")
+
+    sections: list[tuple[int, ...]] = []
+    for index in range(shnum):
+        off = shoff + index * shentsize
+        sections.append(tuple(int(x) for x in struct.unpack_from(sh_fmt, data, off)))
+
+    symbols: set[str] = set()
+    for section in sections:
+        sh_type = section[1]
+        if sh_type not in (2, 11):  # SHT_SYMTAB / SHT_DYNSYM
+            continue
+        sh_offset = section[4]
+        sh_size = section[5]
+        sh_link = section[6]
+        sh_entsize = section[9]
+        require(0 <= sh_link < len(sections), f"ELF symbol string-table link invalid: {path}")
+        require(sh_entsize >= struct.calcsize(sym_fmt) and sh_entsize != 0,
+                f"ELF symbol entry size invalid: {path}")
+        require(sh_offset + sh_size <= len(data), f"truncated ELF symbol table: {path}")
+
+        str_section = sections[sh_link]
+        str_offset = str_section[4]
+        str_size = str_section[5]
+        require(str_offset + str_size <= len(data), f"truncated ELF string table: {path}")
+        strtab = data[str_offset:str_offset + str_size]
+
+        for off in range(sh_offset, sh_offset + sh_size, sh_entsize):
+            if off + struct.calcsize(sym_fmt) > len(data):
+                fail(f"truncated ELF symbol entry: {path}")
+            sym = struct.unpack_from(sym_fmt, data, off)
+            if elf_class == 1:
+                st_name = int(sym[0])
+                st_shndx = int(sym[5])
+            else:
+                st_name = int(sym[0])
+                st_shndx = int(sym[3])
+            if st_shndx == 0 or st_name == 0 or st_name >= len(strtab):
+                continue
+            end = strtab.find(b"\0", st_name)
+            if end < 0:
+                continue
+            name = strtab[st_name:end].decode("utf-8", errors="replace")
+            if name:
+                symbols.add(name)
+
+    require(symbols, f"linked ELF has no readable defined symbol table: {path}")
+    return symbols
 
 
 def symbol_enabled(config: str, symbol: str) -> bool:
@@ -61,17 +146,19 @@ def main() -> int:
     config_p = build / "zephyr/.config"
     dts_p = build / "zephyr/zephyr.dts"
     map_p = build / "zephyr/zephyr.map"
+    elf_p = build / "zephyr/zephyr.elf"
     target_p = repo / "drivers/ams/adbms_spi_stm32.c"
     engine_p = repo / "drivers/ams/adbms_spi_engine.c"
     lifecycle_p = repo / "include/ams_platform/adbms_spi_lifecycle.h"
     internal_p = repo / "drivers/ams/adbms_spi_internal.h"
 
-    for p in (config_p, dts_p, map_p, target_p, engine_p, lifecycle_p, internal_p):
+    for p in (config_p, dts_p, map_p, elf_p, target_p, engine_p, lifecycle_p, internal_p):
         require(p.is_file(), f"missing Z-015 target-contract artifact: {p}")
 
     cfg = config_p.read_text(encoding="utf-8", errors="replace")
     dts = dts_p.read_text(encoding="utf-8", errors="replace")
     link_map = map_p.read_text(encoding="utf-8", errors="replace")
+    defined_symbols = elf_defined_symbols(elf_p)
     target = target_p.read_text(encoding="utf-8")
 
     for sym in (
@@ -87,6 +174,7 @@ def main() -> int:
         "CONFIG_SPI_ASYNC",
         "CONFIG_SPI_RTIO",
         "CONFIG_SPI_STM32_DMA",
+        "CONFIG_LTO",
         "CONFIG_AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED",
         "CONFIG_AMS_CAP_ADBMS_ACTOR_LIVE",
         "CONFIG_AMS_CAP_ADBMS_SAFETY_EVIDENCE",
@@ -141,15 +229,24 @@ def main() -> int:
     require(achieved == expected["spi-frequency-hz"] == 421_875,
             "generated clock/prescaler does not achieve exactly 421875 Hz")
 
-    # The lifecycle implementation must be linked because startup calls it.
+    # Prove lifecycle presence and zero runtime raw-transfer entrypoints from the
+    # final linked ELF.  With Zephyr's function-section GC, the private transfer
+    # wrappers are discarded at Z-015 because no production caller references
+    # them.  A future runtime caller makes these symbols live and fails this gate.
     for sym in ("ams_adbms_spi_platform_init", "ams_adbms_spi_platform_status"):
-        require(sym in link_map, f"linked Z-015 lifecycle symbol missing: {sym}")
+        require(sym in defined_symbols, f"linked Z-015 lifecycle symbol missing from ELF: {sym}")
+    for sym in ("ams_adbms_spi_write", "ams_adbms_spi_write_read"):
+        require(sym not in defined_symbols,
+                f"Z-015 linked ELF contains a runtime raw-transfer entrypoint/caller path: {sym}")
 
     # The generic STM32 SPI transaction driver must not exist in this image.
-    for forbidden in ("spi_stm32.c.obj", "spi_stm32_isr", "spi_stm32_complete",
-                      "spi_transceive_signal", "spi_transceive_cb"):
+    for forbidden in ("spi_stm32.c.obj",):
         require(forbidden not in link_map,
-                f"stock/async STM32 SPI path linked into private Z-015 image: {forbidden}")
+                f"stock STM32 SPI object linked into private Z-015 image: {forbidden}")
+    for forbidden in ("spi_stm32_isr", "spi_stm32_complete",
+                      "spi_transceive_signal", "spi_transceive_cb"):
+        require(forbidden not in defined_symbols,
+                f"stock/async STM32 SPI symbol linked into private Z-015 ELF: {forbidden}")
 
     for token in (
         "LL_SPI_POLARITY_HIGH", "LL_SPI_PHASE_2EDGE", "LL_SPI_DATAWIDTH_8BIT",
@@ -165,7 +262,7 @@ def main() -> int:
     print("PASS: Z-015 private bounded SPI6 target/build contract")
     print("  generic spi_stm32: absent; SPI6 DT device disabled")
     print("  clock chain: 216MHz SYSCLK -> APB2/2 -> 108MHz -> /256 -> 421875Hz")
-    print("  IRQ/DMA/async: absent; private lifecycle linked; runtime transfer callers absent")
+    print("  IRQ/DMA/async: absent; lifecycle linked; raw transfer entrypoints absent from final ELF")
     return 0
 
 

@@ -11,6 +11,12 @@ static unsigned checks, failures;
 #define CHECK(x) do { checks++; if(!(x)){ failures++; fprintf(stderr,"FAIL:%d: %s\n",__LINE__,#x); } } while(0)
 static uint32_t rng=0x615A015u;
 static uint32_t rnd(void){uint32_t x=rng; x^=x<<13; x^=x>>17; x^=x<<5; return rng=x;}
+
+static ams_adbms_spi_result_t reentry_result;
+static uint8_t reentry_byte=0xA5U;
+static void reentry_hook(void){
+    reentry_result=ams_adbms_spi_write(AMS_ADBMS_SPI_STRING_B,&reentry_byte,1U);
+}
 static void expect_ready(void){
     ams_adbms_spi_platform_status_t s=ams_adbms_spi_platform_status();
     CHECK(s.state==AMS_ADBMS_SPI_PLATFORM_READY); CHECK(s.input_clock_hz==108000000U);
@@ -59,7 +65,21 @@ int main(int argc,char**argv){
         fake_spi.txe_stuck=true; fake_spi.reset_fail=true;
         CHECK(ams_adbms_spi_write(AMS_ADBMS_SPI_STRING_A,tx,1)==AMS_ADBMS_SPI_RESULT_RECOVERY_FAILED);
         CHECK(ams_adbms_spi_platform_status().state==AMS_ADBMS_SPI_PLATFORM_FAULTED); CHECK(!fake_spi.cs_a_active&&!fake_spi.cs_b_active);
+        uint32_t before_violation=ams_adbms_spi_platform_status().integrity_violation_count;
         CHECK(ams_adbms_spi_write(AMS_ADBMS_SPI_STRING_A,tx,1)==AMS_ADBMS_SPI_RESULT_INTERNAL_FAULT);
+        CHECK(ams_adbms_spi_platform_status().integrity_violation_count==before_violation+1U);
+    } else if(!strcmp(scenario,"reentry")){
+        ams_adbms_spi_platform_status_t before=ams_adbms_spi_platform_status();
+        reentry_result=AMS_ADBMS_SPI_RESULT_OK; fake_spi.txe_hook_fired=false; fake_spi.txe_hook=reentry_hook;
+        CHECK(ams_adbms_spi_write(AMS_ADBMS_SPI_STRING_A,tx,1)==AMS_ADBMS_SPI_RESULT_OK);
+        fake_spi.txe_hook=NULL;
+        CHECK(reentry_result==AMS_ADBMS_SPI_RESULT_INTERNAL_FAULT);
+        CHECK(ams_adbms_spi_platform_status().integrity_violation_count==before.integrity_violation_count+1U);
+        CHECK(ams_adbms_spi_platform_status().transfer_success_count==before.transfer_success_count+1U);
+        expect_ready();
+        CHECK(ams_adbms_spi_write(AMS_ADBMS_SPI_STRING_A,tx,1)==AMS_ADBMS_SPI_RESULT_OK);
+        CHECK(ams_adbms_spi_platform_status().integrity_violation_count==before.integrity_violation_count+1U);
+        expect_ready();
     } else if(!strcmp(scenario,"random")){
         unsigned n=argc>2?(unsigned)strtoul(argv[2],0,0):50000U;
         for(unsigned i=0;i<n;i++){

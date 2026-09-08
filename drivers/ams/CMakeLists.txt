@@ -15,7 +15,7 @@ zephyr_library_named(ams_platform)
 
 zephyr_library_sources(
     bms_ok_zephyr.c
-    current_adc_zephyr.c
+    current_adc_stm32.c
     fan_pwm_zephyr.c
     imd_capture_zephyr.c
     watchdog_zephyr.c

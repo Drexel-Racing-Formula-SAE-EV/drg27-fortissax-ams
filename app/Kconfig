@@ -42,6 +42,17 @@ config AMS_FAN_TARGET_VALIDATED
       physical outputs have been verified on the installed target.
 
 
+config AMS_CURRENT_ADC_PRIVATE_BACKEND
+    bool
+    default y
+    select USE_STM32_LL_ADC
+    select RESET
+    help
+      Private bounded STM32F767 ADC1/ADC2 polling backend for the dual-range
+      current sensor. The generic Zephyr ADC subsystem intentionally does not
+      own these ADC instances; this avoids an uncancellable async adc_context
+      transaction and restores the v2.6.27 recover-after-timeout behavior.
+
 config AMS_ADBMS_SPI_PRIVATE_BACKEND
     bool
     default y

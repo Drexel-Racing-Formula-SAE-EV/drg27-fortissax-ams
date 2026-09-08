@@ -268,24 +268,27 @@ def main() -> int:
     # v4.4 does not have the later min-len/max-len schema keywords.
     for binding in binding_files:
         text = binding.read_text(encoding="utf-8")
-        require("include: base.yaml" in text, f"binding lacks base.yaml: {binding.name}")
+        require("base.yaml" in text, f"binding lacks base.yaml: {binding.name}")
     current_binding = binding_files[2].read_text(encoding="utf-8")
     fan_binding = binding_files[3].read_text(encoding="utf-8")
     require(
-        'const: ["high", "low"]' in current_binding,
-        "current binding must freeze high/low semantic order",
+        "high-controller:" in current_binding and "low-controller:" in current_binding
+        and "pinctrl-device.yaml" in current_binding and "reset-device.yaml" in current_binding,
+        "current binding must freeze private ADC1/ADC2 ownership plus pinctrl/reset metadata",
     )
     require(
         'const: ["fan1", "fan2", "fan3", "fan4", "fan5", "fan6"]' in fan_binding,
         "fan binding must freeze six-zone semantic order",
     )
 
-    current = (drivers / "current_adc_zephyr.c").read_text(encoding="utf-8")
+    current = (drivers / "current_adc_stm32.c").read_text(encoding="utf-8")
     fan = (drivers / "fan_pwm_zephyr.c").read_text(encoding="utf-8")
     imd = (drivers / "imd_capture_zephyr.c").read_text(encoding="utf-8")
     require(
-        "ADC_DT_SPEC_GET_BY_NAME" in current and "CURRENT_ADC_HIGH_INDEX" not in current,
-        "current adapter must use named adc_dt_spec consumers",
+        "DT_PHANDLE(CURRENT_ADC_NODE, high_controller)" in current
+        and "DT_PHANDLE(CURRENT_ADC_NODE, low_controller)" in current
+        and "adc_read_async" not in current and "k_poll(" not in current,
+        "current adapter must privately own typed ADC1/ADC2 metadata without Zephyr async ADC context",
     )
     require(
         "PWM_DT_SPEC_GET_BY_NAME" in fan and "DT_PROP_LEN(AMS_FAN_NODE, pwms)" in fan,

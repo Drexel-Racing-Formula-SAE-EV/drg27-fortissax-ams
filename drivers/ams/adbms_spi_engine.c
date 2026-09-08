@@ -59,6 +59,14 @@ static ams_adbms_spi_result_t recover_after_failure(
     return original_result;
 }
 
+/*
+ * These polling waits intentionally have no scheduler yield/sleep hook.  Z-015
+ * preserves the v2.6.27 HAL polling behavior and continuous manual-CS
+ * assertion while a transaction owns the bus.  The target ADBMS owner remains
+ * a normal preemptible Zephyr thread, so higher-priority safety work can still
+ * preempt it.  Inter-byte yielding or a shorter timeout is a measured Z-016+
+ * policy change, not a transport-migration side effect.
+ */
 static ams_adbms_spi_result_t wait_tx_ready(
     const struct ams_adbms_spi_backend *backend,
     uint32_t start_ms,

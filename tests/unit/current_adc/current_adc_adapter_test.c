@@ -1,10 +1,17 @@
 #include <errno.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <ams_platform/current_adc.h>
 #include "fake_zephyr/fake_zephyr_adc.h"
+#include "fake_zephyr/stm32_ll_adc.h"
+
+void ams_current_adc_test_reset_state(void);
+uint32_t ams_current_adc_test_recovery_count(void);
+uint32_t ams_current_adc_test_recovery_failure_count(void);
+uint32_t ams_current_adc_test_integrity_violation_count(void);
 
 static unsigned int checks;
 static unsigned int failures;
@@ -17,18 +24,237 @@ static unsigned int failures;
     } \
 } while (0)
 
-static void expect_trace(const fake_adc_event_t *expected, unsigned int n)
+static void reset_all(void)
 {
-    unsigned int i;
-    CHECK(fake_adc.trace_count == n);
-    for (i = 0U; i < n && i < fake_adc.trace_count; ++i) {
-        CHECK(fake_adc.trace[i] == expected[i]);
-    }
+    fake_adc_reset();
+    ams_current_adc_test_reset_state();
 }
 
+static void expect_initialized(void)
+{
+    CHECK(ams_current_adc_init() == 0);
+    CHECK(ams_current_adc_init() == 0);
+    CHECK(!ams_current_adc_is_faulted());
+    CHECK(fake_adc.reset_count == 1U);
+    CHECK(fake_adc.irq_enabled == false);
+    CHECK(fake_adc.irq_pending == false);
+    CHECK(fake_adc.irq_disable_count == 2U);
+    CHECK(fake_adc.irq_clear_count == 2U);
+    CHECK(fake_adc.start_high_count == 0U);
+    CHECK(fake_adc.start_low_count == 0U);
+}
+
+static void test_init_failures(void)
+{
+    reset_all();
+    fake_adc_reset_dev.ready = false;
+    CHECK(ams_current_adc_init() == -ENODEV);
+    CHECK(ams_current_adc_is_faulted());
+
+    reset_all();
+    fake_adc.pinctrl_fail = true;
+    CHECK(ams_current_adc_init() == -EIO);
+    CHECK(ams_current_adc_is_faulted());
+
+    reset_all();
+    fake_adc.clock_on_high_fail = true;
+    CHECK(ams_current_adc_init() == -EIO);
+    CHECK(ams_current_adc_is_faulted());
+
+    reset_all();
+    fake_adc.clock_rate_low = 107000000U;
+    CHECK(ams_current_adc_init() == -ERANGE);
+    CHECK(ams_current_adc_is_faulted());
+
+    reset_all();
+    fake_adc.reset_fail = true;
+    CHECK(ams_current_adc_init() == -EIO);
+    CHECK(ams_current_adc_is_faulted());
+}
+
+static void test_nominal_and_order(void)
+{
+    ams_current_adc_pair_t pair;
+    int ret;
+
+    reset_all();
+    expect_initialized();
+    fake_adc.high_count = 1234U;
+    fake_adc.low_count = 2345U;
+    fake_adc.high_complete_after_ms = 1U;
+    fake_adc.low_complete_after_ms = 2U;
+
+    ret = ams_current_adc_read_pair(&pair);
+    CHECK(ret == 0);
+    CHECK(pair.high_fresh && pair.low_fresh && pair.complete);
+    CHECK(!pair.adapter_faulted);
+    CHECK(pair.high_count == 1234U);
+    CHECK(pair.low_count == 2345U);
+    CHECK(pair.high_status == 0 && pair.low_status == 0);
+    CHECK(pair.high_wait_ms < AMS_CURRENT_ADC_TIMEOUT_MS);
+    CHECK(pair.low_wait_ms < AMS_CURRENT_ADC_TIMEOUT_MS);
+    CHECK(fake_adc.start_high_count == 1U);
+    CHECK(fake_adc.start_low_count == 1U);
+    CHECK((fake_adc1_regs.SR & (LL_ADC_FLAG_STRT | LL_ADC_FLAG_EOCS)) == 0U);
+    CHECK((fake_adc2_regs.SR & (LL_ADC_FLAG_STRT | LL_ADC_FLAG_EOCS)) == 0U);
+    CHECK(ams_current_adc_test_recovery_count() == 0U);
+}
+
+static void test_high_timeout_recovers(void)
+{
+    ams_current_adc_pair_t pair;
+    unsigned resets_before;
+
+    reset_all();
+    expect_initialized();
+    resets_before = fake_adc.reset_count;
+    fake_adc.high_stuck = true;
+
+    CHECK(ams_current_adc_read_pair(&pair) == -ETIMEDOUT);
+    CHECK(!pair.high_fresh && !pair.low_fresh && !pair.complete);
+    CHECK(!pair.adapter_faulted);
+    CHECK(!ams_current_adc_is_faulted());
+    CHECK(pair.high_status == -ETIMEDOUT);
+    CHECK(pair.low_status == -EAGAIN);
+    CHECK(pair.high_wait_ms >= AMS_CURRENT_ADC_TIMEOUT_MS);
+    CHECK(fake_adc.start_low_count == 0U);
+    CHECK(fake_adc.reset_count == resets_before + 1U);
+    CHECK(ams_current_adc_test_recovery_count() == 1U);
+    CHECK(ams_current_adc_test_recovery_failure_count() == 0U);
+
+    fake_adc.high_stuck = false;
+    CHECK(ams_current_adc_read_pair(&pair) == 0);
+    CHECK(pair.complete && pair.high_fresh && pair.low_fresh);
+}
+
+static void test_hal_timeout_boundary_semantics(void)
+{
+    ams_current_adc_pair_t pair;
+
+    /* HAL_ADC_PollForConversion(timeout=5) checks EOC first, commits timeout
+     * only after elapsed > 5, then rechecks EOC. A conversion completing on
+     * that recheck remains valid. */
+    reset_all();
+    expect_initialized();
+    fake_adc.high_complete_after_ms = 6U;
+    fake_adc.low_complete_after_ms = 1U;
+    CHECK(ams_current_adc_read_pair(&pair) == 0);
+    CHECK(pair.complete && pair.high_fresh && pair.low_fresh);
+    CHECK(ams_current_adc_test_recovery_count() == 0U);
+
+    /* One millisecond later is genuinely beyond the HAL boundary and must
+     * return a recoverable timeout rather than a successful sample. */
+    reset_all();
+    expect_initialized();
+    fake_adc.high_complete_after_ms = 7U;
+    CHECK(ams_current_adc_read_pair(&pair) == -ETIMEDOUT);
+    CHECK(!pair.high_fresh && !pair.complete);
+    CHECK(!pair.adapter_faulted);
+    CHECK(ams_current_adc_test_recovery_count() == 1U);
+}
+
+static void test_low_timeout_recovers_preserves_high(void)
+{
+    ams_current_adc_pair_t pair;
+
+    reset_all();
+    expect_initialized();
+    fake_adc.high_count = 1777U;
+    fake_adc.low_stuck = true;
+
+    CHECK(ams_current_adc_read_pair(&pair) == -ETIMEDOUT);
+    CHECK(pair.high_fresh);
+    CHECK(pair.high_count == 1777U);
+    CHECK(!pair.low_fresh && !pair.complete);
+    CHECK(!pair.adapter_faulted);
+    CHECK(!ams_current_adc_is_faulted());
+    CHECK(pair.low_status == -ETIMEDOUT);
+    CHECK(ams_current_adc_test_recovery_count() == 1U);
+
+    fake_adc.low_stuck = false;
+    CHECK(ams_current_adc_read_pair(&pair) == 0);
+    CHECK(pair.complete);
+}
+
+static void test_io_faults_recover(void)
+{
+    ams_current_adc_pair_t pair;
+
+    reset_all();
+    expect_initialized();
+    fake_adc.high_ovr = true;
+    CHECK(ams_current_adc_read_pair(&pair) == -EIO);
+    CHECK(!pair.adapter_faulted);
+    CHECK(!ams_current_adc_is_faulted());
+    CHECK(ams_current_adc_test_recovery_count() == 1U);
+    fake_adc.high_ovr = false;
+    CHECK(ams_current_adc_read_pair(&pair) == 0);
+
+    fake_adc.low_enable_fail = true;
+    CHECK(ams_current_adc_read_pair(&pair) == -EIO);
+    CHECK(pair.high_fresh && !pair.low_fresh);
+    CHECK(!pair.adapter_faulted);
+    CHECK(ams_current_adc_test_recovery_count() == 2U);
+    fake_adc.low_enable_fail = false;
+    CHECK(ams_current_adc_read_pair(&pair) == 0);
+}
+
+static void test_failed_recovery_latches(void)
+{
+    ams_current_adc_pair_t pair;
+
+    reset_all();
+    expect_initialized();
+    fake_adc.high_stuck = true;
+    fake_adc.reset_fail = true;
+    CHECK(ams_current_adc_read_pair(&pair) == -EIO);
+    CHECK(pair.adapter_faulted);
+    CHECK(ams_current_adc_is_faulted());
+    CHECK(ams_current_adc_test_recovery_failure_count() == 1U);
+    CHECK(ams_current_adc_read_pair(&pair) == -EIO);
+    CHECK(pair.adapter_faulted);
+
+    reset_all();
+    expect_initialized();
+    fake_adc.high_stuck = true;
+    fake_adc.corrupt_after_reset = true;
+    CHECK(ams_current_adc_read_pair(&pair) == -EIO);
+    CHECK(pair.adapter_faulted);
+    CHECK(ams_current_adc_is_faulted());
+    CHECK(ams_current_adc_test_recovery_failure_count() == 1U);
+}
+
+static int nested_ret;
+static ams_current_adc_pair_t nested_pair;
+static void nested_read(void)
+{
+    nested_ret = ams_current_adc_read_pair(&nested_pair);
+}
+
+static void test_reentry_is_observable(void)
+{
+    ams_current_adc_pair_t pair;
+
+    reset_all();
+    expect_initialized();
+    nested_ret = 0;
+    memset(&nested_pair, 0, sizeof(nested_pair));
+    fake_adc.reentry_hook = nested_read;
+
+    CHECK(ams_current_adc_read_pair(&pair) == 0);
+    CHECK(pair.complete);
+    CHECK(nested_ret == -EBUSY);
+    CHECK(nested_pair.high_status == -EBUSY);
+    CHECK(nested_pair.low_status == -EBUSY);
+    CHECK(!nested_pair.adapter_faulted);
+    CHECK(ams_current_adc_test_integrity_violation_count() == 1U);
+
+    fake_adc.reentry_hook = NULL;
+    CHECK(ams_current_adc_read_pair(&pair) == 0);
+    CHECK(pair.complete);
+}
 
 static uint32_t prng_state = 0xC0FFEEU;
-
 static uint32_t next_prng(void)
 {
     uint32_t x = prng_state;
@@ -39,260 +265,123 @@ static uint32_t next_prng(void)
     return x;
 }
 
+static void clear_transient_faults(void)
+{
+    fake_adc.high_stuck = false;
+    fake_adc.low_stuck = false;
+    fake_adc.high_ovr = false;
+    fake_adc.low_ovr = false;
+    fake_adc.high_enable_fail = false;
+    fake_adc.low_enable_fail = false;
+}
+
 static void run_stress(void)
 {
+    ams_current_adc_pair_t pair;
     unsigned int i;
+    uint32_t recovery_expected = 0U;
+
+    reset_all();
+    expect_initialized();
 
     for (i = 0U; i < 50000U; ++i) {
-        unsigned int mode = next_prng() % 9U;
-        ams_current_adc_pair_t pair;
-        int expected;
-        int ret;
+        uint32_t mode = next_prng() % 7U;
+        int expected = 0;
+        bool expect_high_fresh = true;
 
-        fake_adc_reset();
+        clear_transient_faults();
         fake_adc.high_count = (uint16_t)(next_prng() & 0x0FFFU);
         fake_adc.low_count = (uint16_t)(next_prng() & 0x0FFFU);
-        fake_adc.high_wait_ms = next_prng() % AMS_CURRENT_ADC_TIMEOUT_MS;
-        fake_adc.low_wait_ms = next_prng() % AMS_CURRENT_ADC_TIMEOUT_MS;
-        expected = 0;
+        fake_adc.high_complete_after_ms = next_prng() % 3U;
+        fake_adc.low_complete_after_ms = next_prng() % 3U;
 
         switch (mode) {
         case 0U:
             break;
         case 1U:
-            fake_adc.setup_high_status = -EIO;
-            expected = -EIO;
+            fake_adc.high_stuck = true;
+            expected = -ETIMEDOUT;
+            expect_high_fresh = false;
+            recovery_expected++;
             break;
         case 2U:
-            fake_adc.sequence_high_status = -EINVAL;
-            expected = -EINVAL;
+            fake_adc.low_stuck = true;
+            expected = -ETIMEDOUT;
+            recovery_expected++;
             break;
         case 3U:
-            fake_adc.async_high_status = -EBUSY;
-            expected = -EBUSY;
+            fake_adc.high_complete_after_ms = 1U;
+            fake_adc.high_ovr = true;
+            expected = -EIO;
+            expect_high_fresh = false;
+            recovery_expected++;
             break;
         case 4U:
-            fake_adc.completion_high_status = -EFAULT;
-            expected = -EFAULT;
+            fake_adc.low_complete_after_ms = 1U;
+            fake_adc.low_ovr = true;
+            expected = -EIO;
+            recovery_expected++;
             break;
         case 5U:
-            fake_adc.setup_low_status = -EIO;
+            fake_adc.high_enable_fail = true;
             expected = -EIO;
-            break;
-        case 6U:
-            fake_adc.sequence_low_status = -EINVAL;
-            expected = -EINVAL;
-            break;
-        case 7U:
-            fake_adc.async_low_status = -EBUSY;
-            expected = -EBUSY;
+            expect_high_fresh = false;
+            recovery_expected++;
             break;
         default:
-            fake_adc.completion_low_status = -EFAULT;
-            expected = -EFAULT;
+            fake_adc.low_enable_fail = true;
+            expected = -EIO;
+            recovery_expected++;
             break;
         }
 
-        ret = ams_current_adc_read_pair(&pair);
-        CHECK(ret == expected);
+        CHECK(ams_current_adc_read_pair(&pair) == expected);
         CHECK(!pair.adapter_faulted);
-
+        CHECK(!ams_current_adc_is_faulted());
+        CHECK(pair.high_fresh == expect_high_fresh);
         if (expected == 0) {
-            CHECK(pair.complete && pair.high_fresh && pair.low_fresh);
+            CHECK(pair.complete && pair.low_fresh);
             CHECK(pair.high_count == fake_adc.high_count);
             CHECK(pair.low_count == fake_adc.low_count);
-            CHECK(fake_adc.trace_count == 6U);
-            CHECK(fake_adc.trace[0] == FAKE_EVT_SETUP_HIGH);
-            CHECK(fake_adc.trace[1] == FAKE_EVT_ASYNC_HIGH);
-            CHECK(fake_adc.trace[2] == FAKE_EVT_POLL_HIGH);
-            CHECK(fake_adc.trace[3] == FAKE_EVT_SETUP_LOW);
-            CHECK(fake_adc.trace[4] == FAKE_EVT_ASYNC_LOW);
-            CHECK(fake_adc.trace[5] == FAKE_EVT_POLL_LOW);
-        } else if (mode <= 4U) {
-            CHECK(!pair.low_fresh && !pair.complete);
-            /* A HIGH completion error has consumed a conversion but still
-             * must not publish HIGH freshness or attempt LOW. */
-            CHECK(!pair.high_fresh);
-            CHECK(fake_adc.trace_count <= 3U);
-            if (fake_adc.trace_count > 0U) {
-                CHECK(fake_adc.trace[0] == FAKE_EVT_SETUP_HIGH);
-            }
-            for (unsigned int j = 0U; j < fake_adc.trace_count; ++j) {
-                CHECK(fake_adc.trace[j] != FAKE_EVT_SETUP_LOW);
-                CHECK(fake_adc.trace[j] != FAKE_EVT_ASYNC_LOW);
-                CHECK(fake_adc.trace[j] != FAKE_EVT_POLL_LOW);
-            }
         } else {
-            CHECK(pair.high_fresh);
-            CHECK(!pair.low_fresh && !pair.complete);
-            CHECK(fake_adc.trace_count >= 4U);
-            CHECK(fake_adc.trace[0] == FAKE_EVT_SETUP_HIGH);
-            CHECK(fake_adc.trace[1] == FAKE_EVT_ASYNC_HIGH);
-            CHECK(fake_adc.trace[2] == FAKE_EVT_POLL_HIGH);
-            CHECK(fake_adc.trace[3] == FAKE_EVT_SETUP_LOW);
+            CHECK(!pair.complete);
+            if (!expect_high_fresh) {
+                CHECK(!pair.low_fresh);
+            }
         }
     }
+
+    CHECK(ams_current_adc_test_recovery_count() == recovery_expected);
+    CHECK(ams_current_adc_test_recovery_failure_count() == 0U);
 }
 
 int main(int argc, char **argv)
 {
-    ams_current_adc_pair_t pair;
-    int ret;
-
-    if ((argc > 1) && (strcmp(argv[1], "ambiguous") == 0)) {
-        fake_adc_reset();
-        CHECK(ams_current_adc_init() == 0);
-        fake_adc.suppress_completion_signal = true;
-        ret = ams_current_adc_read_pair(&pair);
-        CHECK(ret == -EIO);
-        CHECK(pair.adapter_faulted);
-        CHECK(ams_current_adc_is_faulted());
-        CHECK(!pair.complete && !pair.high_fresh && !pair.low_fresh);
-        CHECK(ams_current_adc_init() == -EIO);
-        printf("PASS current ADC ambiguous-completion SIL: %u checks, %u failures\n",
-               checks, failures);
-        return failures == 0U ? 0 : 1;
+    if (argc > 1 && strcmp(argv[1], "high-timeout") == 0) {
+        test_high_timeout_recovers();
+    } else if (argc > 1 && strcmp(argv[1], "low-timeout") == 0) {
+        test_low_timeout_recovers_preserves_high();
+    } else if (argc > 1 && strcmp(argv[1], "timeout-boundary") == 0) {
+        test_hal_timeout_boundary_semantics();
+    } else if (argc > 1 && strcmp(argv[1], "recovery-fail") == 0) {
+        test_failed_recovery_latches();
+    } else if (argc > 1 && strcmp(argv[1], "reentry") == 0) {
+        test_reentry_is_observable();
+    } else if (argc > 1 && strcmp(argv[1], "stress") == 0) {
+        run_stress();
+    } else {
+        test_init_failures();
+        test_nominal_and_order();
+        test_high_timeout_recovers();
+        test_low_timeout_recovers_preserves_high();
+        test_hal_timeout_boundary_semantics();
+        test_io_faults_recover();
+        test_failed_recovery_latches();
+        test_reentry_is_observable();
+        run_stress();
     }
 
-    if ((argc > 1) && (strcmp(argv[1], "low-timeout") == 0)) {
-        fake_adc_reset();
-        CHECK(ams_current_adc_init() == 0);
-        fake_adc.poll_low_status = -EAGAIN;
-        fake_adc.low_wait_ms = AMS_CURRENT_ADC_TIMEOUT_MS;
-        ret = ams_current_adc_read_pair(&pair);
-        CHECK(ret == -ETIMEDOUT);
-        CHECK(pair.high_fresh);
-        CHECK(!pair.low_fresh && !pair.complete);
-        CHECK(pair.adapter_faulted);
-        CHECK(ams_current_adc_is_faulted());
-        CHECK(fake_adc.trace_count == 6U);
-        CHECK(fake_adc.trace[0] == FAKE_EVT_SETUP_HIGH);
-        CHECK(fake_adc.trace[1] == FAKE_EVT_ASYNC_HIGH);
-        CHECK(fake_adc.trace[2] == FAKE_EVT_POLL_HIGH);
-        CHECK(fake_adc.trace[3] == FAKE_EVT_SETUP_LOW);
-        CHECK(fake_adc.trace[4] == FAKE_EVT_ASYNC_LOW);
-        CHECK(fake_adc.trace[5] == FAKE_EVT_POLL_LOW);
-        CHECK(ams_current_adc_init() == -EIO);
-        printf("PASS current ADC low-timeout SIL: %u checks, %u failures\n",
-               checks, failures);
-        return failures == 0U ? 0 : 1;
-    }
-
-    /* Readiness failure must not partially initialize the adapter. */
-    fake_adc_reset();
-    fake_adc.ready_low = false;
-    CHECK(ams_current_adc_init() == -ENODEV);
-    fake_adc.ready_low = true;
-    CHECK(ams_current_adc_init() == 0);
-    CHECK(ams_current_adc_init() == 0);
-    CHECK(!ams_current_adc_is_faulted());
-
-    /* Exact nominal ordering: setup/read/wait HIGH, then LOW. */
-    fake_adc_trace_clear();
-    fake_adc.high_count = 1234U;
-    fake_adc.low_count = 2345U;
-    fake_adc.high_wait_ms = 2U;
-    fake_adc.low_wait_ms = 3U;
-    ret = ams_current_adc_read_pair(&pair);
-    CHECK(ret == 0);
-    CHECK(pair.high_count == 1234U);
-    CHECK(pair.low_count == 2345U);
-    CHECK(pair.high_fresh && pair.low_fresh && pair.complete);
-    CHECK(!pair.adapter_faulted);
-    CHECK(pair.high_wait_ms == 2U);
-    CHECK(pair.low_wait_ms == 3U);
-    {
-        const fake_adc_event_t expected[] = {
-            FAKE_EVT_SETUP_HIGH, FAKE_EVT_ASYNC_HIGH, FAKE_EVT_POLL_HIGH,
-            FAKE_EVT_SETUP_LOW, FAKE_EVT_ASYNC_LOW, FAKE_EVT_POLL_LOW,
-        };
-        expect_trace(expected, sizeof(expected) / sizeof(expected[0]));
-    }
-
-    /* HIGH setup failure suppresses every LOW operation and remains retryable. */
-    fake_adc_reset();
-    fake_adc.setup_high_status = -EIO;
-    ret = ams_current_adc_read_pair(&pair);
-    CHECK(ret == -EIO);
-    CHECK(!pair.high_fresh && !pair.low_fresh && !pair.complete);
-    CHECK(!pair.adapter_faulted);
-    {
-        const fake_adc_event_t expected[] = { FAKE_EVT_SETUP_HIGH };
-        expect_trace(expected, 1U);
-    }
-    fake_adc.setup_high_status = 0;
-
-    /* HIGH async-start failure also suppresses LOW and remains retryable. */
-    fake_adc_trace_clear();
-    fake_adc.async_high_status = -EBUSY;
-    ret = ams_current_adc_read_pair(&pair);
-    CHECK(ret == -EBUSY);
-    CHECK(!pair.high_fresh && !pair.low_fresh && !pair.complete);
-    CHECK(!pair.adapter_faulted);
-    {
-        const fake_adc_event_t expected[] = {
-            FAKE_EVT_SETUP_HIGH, FAKE_EVT_ASYNC_HIGH,
-        };
-        expect_trace(expected, 2U);
-    }
-    fake_adc.async_high_status = 0;
-
-    /* LOW setup failure preserves fresh HIGH but never claims complete. */
-    fake_adc_trace_clear();
-    fake_adc.setup_low_status = -EINVAL;
-    ret = ams_current_adc_read_pair(&pair);
-    CHECK(ret == -EINVAL);
-    CHECK(pair.high_fresh);
-    CHECK(!pair.low_fresh && !pair.complete);
-    CHECK(!pair.adapter_faulted);
-    {
-        const fake_adc_event_t expected[] = {
-            FAKE_EVT_SETUP_HIGH, FAKE_EVT_ASYNC_HIGH, FAKE_EVT_POLL_HIGH,
-            FAKE_EVT_SETUP_LOW,
-        };
-        expect_trace(expected, 4U);
-    }
-    fake_adc.setup_low_status = 0;
-
-    /* Completion status is propagated, but a completed transaction can retry. */
-    fake_adc_trace_clear();
-    fake_adc.completion_high_status = -EIO;
-    ret = ams_current_adc_read_pair(&pair);
-    CHECK(ret == -EIO);
-    CHECK(!pair.high_fresh && !pair.low_fresh && !pair.complete);
-    CHECK(!pair.adapter_faulted);
-    fake_adc.completion_high_status = 0;
-
-    ret = ams_current_adc_read_pair(&pair);
-    CHECK(ret == 0);
-    CHECK(pair.complete);
-
-    /* Stateful SIL stress before the deliberately terminal timeout case. */
-    run_stress();
-
-    /* Final test: timeout makes in-flight storage permanently non-reusable. */
-    fake_adc_trace_clear();
-    fake_adc.poll_high_status = -EAGAIN;
-    fake_adc.high_wait_ms = AMS_CURRENT_ADC_TIMEOUT_MS;
-    ret = ams_current_adc_read_pair(&pair);
-    CHECK(ret == -ETIMEDOUT);
-    CHECK(pair.adapter_faulted);
-    CHECK(ams_current_adc_is_faulted());
-    CHECK(!pair.high_fresh && !pair.low_fresh && !pair.complete);
-    {
-        const fake_adc_event_t expected[] = {
-            FAKE_EVT_SETUP_HIGH, FAKE_EVT_ASYNC_HIGH, FAKE_EVT_POLL_HIGH,
-        };
-        expect_trace(expected, 3U);
-    }
-
-    fake_adc_trace_clear();
-    CHECK(ams_current_adc_init() == -EIO);
-    CHECK(ams_current_adc_read_pair(&pair) == -EIO);
-    CHECK(pair.adapter_faulted);
-    CHECK(fake_adc.trace_count == 0U);
-
-    printf("PASS current ADC adapter SIL: %u checks, %u failures\n",
+    printf("PASS current ADC private-backend SIL: %u checks, %u failures\n",
            checks, failures);
     return failures == 0U ? 0 : 1;
 }

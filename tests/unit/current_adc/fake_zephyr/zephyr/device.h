@@ -1,6 +1,6 @@
-#ifndef FAKE_ZEPHYR_DEVICE_H_
-#define FAKE_ZEPHYR_DEVICE_H_
-struct device { int id; };
-extern const struct device fake_adc1_device;
-extern const struct device fake_adc2_device;
+#ifndef ZEPHYR_DEVICE_H_
+#define ZEPHYR_DEVICE_H_
+#include "fake_zephyr_adc.h"
+static inline bool device_is_ready(const struct device *dev) { return dev != 0 && dev->ready; }
+#define DEVICE_DT_GET(node) (&fake_adc_clock_dev)
 #endif

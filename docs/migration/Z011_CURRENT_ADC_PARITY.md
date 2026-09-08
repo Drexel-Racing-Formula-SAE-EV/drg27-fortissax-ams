@@ -1,6 +1,6 @@
 # Z-011 — DER26 current ADC / DHAB parity
 
-Status in this candidate: **host/SIL validated, target build pending**.
+Status in this candidate: **host/SIL validated with post-Z-015 HAL hardening; target rebuild pending**.
 
 Z-011 ports the DER26 pack-current acquisition substrate while intentionally
 leaving the live 20 ms current-thread transaction for Z-022. The purpose is to
@@ -61,47 +61,66 @@ ADC configuration is frozen to the FreeRTOS setup:
 - no oversampling;
 - each channel is configured immediately before its conversion.
 
-## Zephyr completion-bound design decision
+## Current ADC platform design — post-Z-015 HAL hardening
 
-The FreeRTOS implementation performed:
+The original Z-011 adapter used Zephyr 4.4 `adc_read_async_dt()` plus a static
+`k_poll_signal` and permanently faulted the adapter after a 5 ms application
+timeout. A later HAL/driver audit during Z-015 showed that this was safe but too
+pessimistic, and that simply resetting ADC hardware around the Zephyr async
+driver would not be sufficient.
 
-`HAL_ADC_Start()` → `HAL_ADC_PollForConversion(..., 5 ms)` → read → stop.
+The pinned Zephyr STM32 ADC driver retains software transaction ownership in
+`adc_context`, including the active buffer pointer and ISR completion state. An
+external application timeout therefore does not prove that the driver will no
+longer write the old buffer or raise the old completion object. The hardened
+implementation removes that uncertain lifetime instead of attempting to cancel
+it.
 
-The ordinary Zephyr 4.4 STM32 synchronous `adc_read()` uses the common ADC
-context completion wait, whose default timeout is `K_FOREVER`. That is not an
-acceptable substitute for a safety-current path with an explicit 5 ms oracle
-bound.
+Current architecture:
 
-Z-011 therefore uses:
+- `CONFIG_ADC=n`, `CONFIG_ADC_ASYNC=n`, and `CONFIG_ADC_STM32_DMA=n`;
+- ADC1, ADC2, and ADC3 remain disabled as generic Zephyr ADC devices;
+- `drivers/ams/current_adc_stm32.c` privately owns ADC1/ADC2 through STM32 LL;
+- no ADC ISR, DMA, async callback, `adc_context`, or `k_poll_signal` is used;
+- ADC1/ADC2 shared IRQ 18 is disabled and pending-cleared at init and recovery;
+- the common STM32F767 ADCRST boundary is used for recovery; ADC3 must remain
+  disabled because the same RCC reset affects all three ADC instances;
+- exact clock/configuration readback is verified after every reset.
 
-`adc_read_async_dt()` → static `k_poll_signal` → `k_poll(..., K_MSEC(5))`.
+The per-conversion sequence now mirrors the v2.6.27 HAL contract directly:
 
-The sample buffer, poll signal, and poll event live in static adapter storage;
-no stack object remains referenced after `ams_current_adc_read_pair()` returns.
+`configure fixed channel` -> `clear EOC/OVR` -> `enable ADC` -> `3 us stabilize`
+-> `software start` -> `bounded poll` -> `clear STRT+EOC` -> `read DR` ->
+`disable ADC`.
+
+The 5 ms timeout semantics are intentionally the exact F7 HAL semantics, not a
+generic Zephyr timeout approximation. The timeout clock starts after conversion
+start; timeout is committed only when unsigned elapsed time is **greater than**
+5 ms; and EOC is rechecked before returning timeout so preemption/boundary
+completion cannot create a false timeout. On success, both STRT and EOC are
+write-zero-cleared before the data register is consumed, matching
+`HAL_ADC_PollForConversion()`.
 
 ### Timeout recovery policy
 
-Zephyr 4.4 does not expose a public STM32 ADC cancel primitive for an already
-started asynchronous transaction. If the 5 ms poll expires, an ADC interrupt
-could theoretically complete later. Reusing the same buffer/signal immediately
-would create an ambiguous ownership race.
+A transient timeout or conversion-path error is now recoverable:
 
-The chosen Z-011 policy is therefore conservative:
+1. disable and pending-clear the shared ADC IRQ;
+2. disable ADC1/ADC2;
+3. toggle the common ADC RCC reset;
+4. disable/pending-clear the shared IRQ again because RCC reset does not own the
+   NVIC pending latch;
+5. reapply the full frozen ADC contract;
+6. verify register readback;
+7. return the original operation error while leaving the adapter READY.
 
-- timeout marks that channel context wedged;
-- timeout latches the whole current ADC adapter faulted;
-- no LOW read follows a HIGH timeout;
-- no future ADC read is permitted;
-- `ams_current_adc_init()` cannot clear the latch;
-- recovery requires reboot.
+Only reset/reconfiguration/readback failure latches the adapter `FAULTED`. This
+restores the important v2.6.27 availability behavior: one conversion timeout is
+a bad sample, not a permanent loss of pack-current measurement.
 
-This differs from the old HAL `Stop()`/retry capability but preserves the more
-important safety properties: bounded application wait, no stale ownership
-reuse, and fail-closed behavior. It is deliberately recorded as a platform
-adaptation rather than described as bit-for-bit HAL equivalence.
-
-A normal setup failure, async-start failure, or completed ADC transaction that
-returns an error is retryable, because no unknown in-flight operation remains.
+HIGH remains first and suppresses LOW on any HIGH failure. A LOW failure may
+leave the already-completed HIGH count marked fresh for diagnostics, but the pair
+remains incomplete and has no coherent current-measurement authority.
 
 ## Exact portable DHAB behavior
 
@@ -183,12 +202,12 @@ Portable current-fault differential SIL used the same matrix:
 
 Combined exact differential coverage: **5 million operations**.
 
-The real `current_adc_zephyr.c` is also compiled against a fake Zephyr ADC/kernel
-surface. The adapter SIL executes 50,000 stateful randomized transactions plus
-directed timeout/failure cases and validates more than 500,000 invariants,
-including HIGH-before-LOW ordering, failure suppression, freshness, completion,
-retryability, HIGH/LOW timeout handling, ambiguous completion handling, and
-reboot-only timeout latching.
+The production `current_adc_stm32.c` is compiled against a fake
+Zephyr/STM32-LL backend. The adapter SIL executes 50,000 randomized transactions
+plus directed init, HIGH timeout, LOW timeout, exact HAL timeout-boundary,
+recovery-failure, IO-fault, and reentry scenarios. It proves transient timeout
+recovery, HIGH-before-LOW suppression, common-reset reconfiguration, durable
+integrity-violation evidence, and exact STRT/EOC success-flag clearing.
 
 These are firmware/SIL results only. They do not prove STM32 analog accuracy,
 real conversion latency, ADC interrupt behavior, electrical noise, DHAB sign,

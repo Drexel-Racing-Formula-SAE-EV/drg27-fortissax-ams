@@ -24,6 +24,10 @@ static struct call_record calls[200000];
 static uint32_t call_count;
 static uint32_t fail_call_mask;
 static uint64_t timer_hz = AMS_FAN_PWM_EXPECTED_TIMER_CLOCK_HZ;
+unsigned fake_fan_irq_disable_count;
+unsigned fake_fan_irq_clear_count;
+uint32_t fake_fan_last_disabled_irq;
+uint32_t fake_fan_last_cleared_irq;
 static unsigned checks;
 static unsigned failures;
 
@@ -66,10 +70,15 @@ int main(void)
     fake_device_pwm3.ready = fake_device_pwm4.ready = fake_device_pwm5.ready = true;
     timer_hz = AMS_FAN_PWM_EXPECTED_TIMER_CLOCK_HZ;
     call_count = 0U; fail_call_mask = 0U;
+    fake_fan_irq_disable_count = fake_fan_irq_clear_count = 0U;
     CHECK(ams_fan_pwm_init() == 0);
     CHECK(ams_fan_pwm_platform_ready());
     CHECK(ams_fan_pwm_startup_fail_mask() == 0U);
     CHECK(call_count == 6U);
+    CHECK(fake_fan_irq_disable_count == 3U);
+    CHECK(fake_fan_irq_clear_count == 3U);
+    CHECK(fake_fan_last_disabled_irq == 50U);
+    CHECK(fake_fan_last_cleared_irq == 50U);
     for (uint32_t i = 0; i < 6U; ++i) {
         CHECK(calls[i].period == 3361U);
         CHECK(calls[i].pulse == 0U);

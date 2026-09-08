@@ -12,7 +12,7 @@
   "thread_sanitizer_requested": true,
   "thread_sanitizer_performed": true,
   "skipped": [],
-  "seconds": 72.74,
+  "seconds": 74.187,
   "stages": [
     {
       "name": "Python contract/checker syntax",
@@ -44,13 +44,14 @@
         "/mnt/data/z015_work/scripts/check_z014_contract_mutations.py",
         "/mnt/data/z015_work/scripts/check_z014_source_hygiene.py",
         "/mnt/data/z015_work/scripts/check_z015_contract_mutations.py",
+        "/mnt/data/z015_work/scripts/check_z015_elf_caller_gate_selftest.py",
         "/mnt/data/z015_work/scripts/check_z015_source_hygiene.py",
         "/mnt/data/z015_work/scripts/run_z014_host_validation.py",
         "/mnt/data/z015_work/scripts/run_z015_host_validation.py"
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.746
+      "seconds": 0.696
     },
     {
       "name": "FreeRTOS v2.6.27 runtime/safety source parity",
@@ -61,7 +62,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.686
+      "seconds": 0.608
     },
     {
       "name": "Z-015 source-only architecture/safety hygiene",
@@ -72,7 +73,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.662
+      "seconds": 0.722
     },
     {
       "name": "Z-015 private SPI6 source/architecture contract",
@@ -83,7 +84,18 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.687
+      "seconds": 0.788
+    },
+    {
+      "name": "Z-015 final-ELF zero-transfer-caller gate self-test",
+      "command": [
+        "/opt/pyvenv/bin/python",
+        "/mnt/data/z015_work/scripts/check_z015_elf_caller_gate_selftest.py",
+        "/mnt/data/z015_work"
+      ],
+      "cwd": "/mnt/data/z015_work",
+      "returncode": 0,
+      "seconds": 1.151
     },
     {
       "name": "Frozen SoP/SoH/fuse exact portable-source identity",
@@ -94,7 +106,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.762
+      "seconds": 0.874
     },
     {
       "name": "ams_core true null-platform isolation",
@@ -105,7 +117,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 1.811
+      "seconds": 1.87
     },
     {
       "name": "watchdog: clean test strict",
@@ -119,7 +131,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 2.469
+      "seconds": 2.313
     },
     {
       "name": "safety_fatal: clean test strict",
@@ -133,7 +145,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.143
+      "seconds": 0.139
     },
     {
       "name": "bms_ok: clean test",
@@ -146,7 +158,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.08
+      "seconds": 0.079
     },
     {
       "name": "current_path: clean test",
@@ -159,7 +171,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.622
+      "seconds": 0.566
     },
     {
       "name": "fan: clean test",
@@ -172,7 +184,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.271
+      "seconds": 0.233
     },
     {
       "name": "imd: clean test",
@@ -185,7 +197,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.452
+      "seconds": 0.411
     },
     {
       "name": "measurement_store: clean test",
@@ -198,7 +210,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.219
+      "seconds": 0.198
     },
     {
       "name": "current_window: clean test",
@@ -211,7 +223,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.182
+      "seconds": 0.187
     },
     {
       "name": "estimator: clean test",
@@ -224,7 +236,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.548
+      "seconds": 0.551
     },
     {
       "name": "adbms_spi: clean test",
@@ -237,7 +249,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 1.069
+      "seconds": 1.095
     },
     {
       "name": "system/z014_safety_sil: clean test strict",
@@ -251,7 +263,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.53
+      "seconds": 0.535
     },
     {
       "name": "watchdog: asan ubsan",
@@ -264,7 +276,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 2.54
+      "seconds": 2.594
     },
     {
       "name": "safety_fatal: asan ubsan",
@@ -277,7 +289,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.189
+      "seconds": 0.172
     },
     {
       "name": "bms_ok: asan ubsan",
@@ -290,7 +302,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.192
+      "seconds": 0.195
     },
     {
       "name": "current_path: asan ubsan",
@@ -303,7 +315,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 1.712
+      "seconds": 1.63
     },
     {
       "name": "fan: asan ubsan",
@@ -316,7 +328,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.67
+      "seconds": 0.65
     },
     {
       "name": "imd: asan ubsan",
@@ -329,7 +341,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 1.132
+      "seconds": 1.142
     },
     {
       "name": "measurement_store: asan ubsan",
@@ -342,7 +354,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.766
+      "seconds": 0.756
     },
     {
       "name": "current_window: asan ubsan",
@@ -355,7 +367,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.535
+      "seconds": 0.545
     },
     {
       "name": "estimator: asan ubsan",
@@ -368,7 +380,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 2.021
+      "seconds": 2.067
     },
     {
       "name": "adbms_spi: asan ubsan",
@@ -381,7 +393,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 1.767
+      "seconds": 1.824
     },
     {
       "name": "system/z014_safety_sil: asan ubsan",
@@ -394,7 +406,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.882
+      "seconds": 0.979
     },
     {
       "name": "watchdog: tsan",
@@ -406,7 +418,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.405
+      "seconds": 0.424
     },
     {
       "name": "watchdog: analyze",
@@ -418,7 +430,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.099
+      "seconds": 0.104
     },
     {
       "name": "safety_fatal: analyze",
@@ -430,7 +442,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.017
+      "seconds": 0.019
     },
     {
       "name": "bms_ok: analyze",
@@ -442,7 +454,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.019
+      "seconds": 0.02
     },
     {
       "name": "current_path: analyze",
@@ -454,7 +466,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.511
+      "seconds": 0.553
     },
     {
       "name": "fan: analyze",
@@ -466,7 +478,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.082
+      "seconds": 0.088
     },
     {
       "name": "imd: analyze",
@@ -478,7 +490,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.104
+      "seconds": 0.102
     },
     {
       "name": "measurement_store: analyze",
@@ -490,7 +502,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.041
+      "seconds": 0.048
     },
     {
       "name": "current_window: analyze",
@@ -502,7 +514,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.106
+      "seconds": 0.109
     },
     {
       "name": "estimator: analyze",
@@ -514,7 +526,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 1.149
+      "seconds": 1.16
     },
     {
       "name": "adbms_spi: analyze",
@@ -526,7 +538,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.391
+      "seconds": 0.426
     },
     {
       "name": "system/z014_safety_sil: analyze",
@@ -538,7 +550,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.34
+      "seconds": 0.359
     },
     {
       "name": "watchdog: clang-analyze",
@@ -550,7 +562,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.116
+      "seconds": 0.132
     },
     {
       "name": "safety_fatal: clang-analyze",
@@ -562,7 +574,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.019
+      "seconds": 0.018
     },
     {
       "name": "bms_ok: clang-analyze",
@@ -574,7 +586,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.019
+      "seconds": 0.018
     },
     {
       "name": "current_path: clang-analyze",
@@ -586,7 +598,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.148
+      "seconds": 0.135
     },
     {
       "name": "fan: clang-analyze",
@@ -598,7 +610,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.062
+      "seconds": 0.081
     },
     {
       "name": "imd: clang-analyze",
@@ -610,7 +622,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.071
+      "seconds": 0.066
     },
     {
       "name": "measurement_store: clang-analyze",
@@ -622,7 +634,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.03
+      "seconds": 0.034
     },
     {
       "name": "current_window: clang-analyze",
@@ -634,7 +646,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.621
+      "seconds": 0.515
     },
     {
       "name": "estimator: clang-analyze",
@@ -646,7 +658,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 4.123
+      "seconds": 4.429
     },
     {
       "name": "adbms_spi: clang-analyze",
@@ -658,7 +670,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 0.471
+      "seconds": 0.521
     },
     {
       "name": "system/z014_safety_sil: clang-analyze",
@@ -670,7 +682,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 1.232
+      "seconds": 1.154
     },
     {
       "name": "Z-015 safety-contract mutation/negative controls",
@@ -681,7 +693,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 16.227
+      "seconds": 15.973
     },
     {
       "name": "Z-015 SPI transport mutation/negative controls",
@@ -692,7 +704,7 @@
       ],
       "cwd": "/mnt/data/z015_work",
       "returncode": 0,
-      "seconds": 21.982
+      "seconds": 22.118
     }
   ]
 }
