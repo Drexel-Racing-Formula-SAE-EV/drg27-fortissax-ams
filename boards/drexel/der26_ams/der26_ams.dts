@@ -10,6 +10,11 @@
     model = "Drexel Racing DER26 AMS";
     compatible = "st,stm32f767";
 
+    aliases {
+        /* Standard Zephyr watchdog device; no custom AMS watchdog binding. */
+        ams-watchdog = &iwdg;
+    };
+
     chosen {
         zephyr,console = &usart3;
         zephyr,shell-uart = &usart3;
@@ -274,4 +279,13 @@
         pinctrl-names = "default";
         status = "okay";
     };
+};
+
+
+/* Z-014 standard STM32 independent watchdog mechanism. Merely enabling the
+ * device does not start IWDG in Zephyr 4.4; the AMS platform adapter installs
+ * its timeout during prepare and crosses the irreversible wdt_setup() boundary
+ * only in the explicit validation configuration. */
+&iwdg {
+    status = "okay";
 };

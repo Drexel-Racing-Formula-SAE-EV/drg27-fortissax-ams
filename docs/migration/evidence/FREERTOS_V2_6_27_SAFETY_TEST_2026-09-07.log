@@ -1,0 +1,113 @@
+cc -std=c11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -DSTM32F767xx -DUSE_HAL_DRIVER -DAMS_HOST_TEST=1 -Iinclude -I.. -I../Core/Inc -I../Core/Inc/tasks -I../Core/Inc/ext_drivers -I../Drivers/CMSIS/Include -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1 -DAMS_ENABLE_IWDG=1 -DAMS_FAULT_INJECTION_CLI=1 -DAMS_BUILD_PROFILE=1 -DAMS_HW_BRINGUP=0 -DAMS_HW_BRINGUP_BALANCE_INHIBIT_DEFAULT=0 -DAMS_ENABLE_HIL_CAN=1 -DAMS_ENABLE_MISSION_CAN=1 -DAMS_ENABLE_SERVICE_CLI=1 -DNSMBS=5 -DACCUMULATOR_PHYSICAL_CHAIN_COUNT=6 -DAMS_ENABLE_APM_2950=1 -DAMS_APM_ENABLE_HV_DIVIDERS=0 src/ams_host_test_runner.c ../Core/Src/ext_drivers/can_tx_scheduler.c ../Core/Src/ext_drivers/air_monitor.c ../Core/Src/ext_drivers/main_fuse_monitor.c ../Core/Src/ext_drivers/parallel_connection_observer.c ../Core/Src/ext_drivers/thermistor_model.c ../Core/Src/soh/ams_soh.c ../Core/Src/sop/ams_sop.c ../Core/Src/sop/ams_fuse_observer.c ../Core/Src/sop/ams_power_strategy.c ../Core/Src/sop/ams_power_state.c ../Core/Src/sop/ams_power_can.c -o build/ams_host_tests -lm
+build/ams_host_tests
+PASS accumulator stats/balance
+PASS ADBMS wake/reference/conversion timing contract
+PASS voltage boundary/fuzz stats
+PASS voltage fault strict scan freshness policy
+PASS system SIL boot/readiness/BMS conjunction
+PASS system SIL single PEC miss authority-degrade/recovery
+PASS system SIL persistent voltage stale fail-closed
+PASS system SIL charge-stop balancing vs hard OV
+PASS system SIL balance inhibit ladder bring-up lockout
+PASS system SIL bench CLI abuse/balance idempotence
+PASS system SIL bench state-transition balance cleanup
+PASS system SIL state-transition guard/audit
+PASS system SIL bench BMS_OK inhibit survives ready tasks
+PASS system SIL bench ADBMS write failures/recovery
+PASS system SIL voltage severe diagnostics/latch
+PASS system SIL current warning/fast-trip/latch
+PASS system SIL current stale ADC pair fail-safe
+PASS system SIL regen/charge current placeholder behavior
+PASS system SIL 2950 advisory sampling/CLI
+PASS system SIL 2950 final-ring init/reset ownership
+PASS system SIL final-ring topology corruption fail-closed
+PASS system SIL 2950 full-ring scan coordination
+PASS system SIL combined fault precedence/reset path
+PASS system SIL harsh timeline/no false enable
+PASS system SIL current-invalid immediate BMS drop/recovery
+PASS system SIL hard-fault/corrupt SMB config fail-closed
+PASS system SIL exact voltage threshold edges
+PASS system SIL charger disable dynamic gates
+PASS system SIL deterministic fault-injection invariants
+PASS system SIL task-order permutations fail closed
+PASS system SIL warning recovery/latch reset paths
+PASS system SIL current debounce boundary timing
+PASS system SIL CLI/CAN diagnostic consistency
+PASS current service calibration ownership boundary
+PASS CLI numeric/telemetry conversion guards
+PASS ADBMS6830 diagnostic commands/CLI health
+PASS ADBMS6830 periodic diagnostics/safe open-wire
+PASS ADBMS CLI scan guard/CS probe commands
+PASS software heartbeat monitor faults/recovery
+PASS supervisor rejects non-operating/corrupt states
+PASS system SIL bring-up status/BMS_OK inhibit
+PASS bring-up CLI board/ready/ADBMS summaries
+PASS bring-up CLI APM/charger phase split
+PASS system SIL DHAB vs 2950 contradiction observable/non-gating
+PASS system SIL startup garbage never enables BMS_OK
+PASS system SIL seeded fuzz invariants
+PASS system SIL concurrent heartbeat starvation/recovery
+PASS system SIL charger enable revalidated at HW load
+PASS system SIL concurrent charger TX recovery ordering
+PASS system SIL concurrent seeded scheduler abuse
+PASS temp stats
+PASS temp invalid/cold-valid fault behavior
+PASS system SIL temperature mux cadence no false stale
+PASS system SIL temperature invalid update overrides history
+PASS system SIL temperature startup/stale fail-closed
+PASS system SIL temperature fan ramp/warning/recovery
+PASS system SIL temperature charge-stop thresholds
+PASS system SIL temperature hard/severe latch/reset
+PASS system SIL temperature CLI/CAN diagnostics
+PASS CAN telemetry packetization
+PASS CAN telemetry pacing/snapshot contract
+PASS CAN priority metrics/deadline accounting
+PASS CAN TX pump handoff/mailbox FSM races
+PASS logger CAN contract packetization
+PASS telemetry absent segments/invalid channels
+PASS charger RX/TX parse
+PASS measurement epoch/current-window contract
+PASS estimator RA8M1 architecture parity
+PASS estimator LUT/config matrix
+PASS estimator step faults/scalability
+PASS estimator epoch sequence/timing
+PASS estimator model-domain flags
+PASS HIL parser edge cases
+PASS HIL parser and estimator core
+PASS HIL ADBMS image replacement
+PASS accumulator tick-wrap freshness
+PASS estimator task HIL/hardware paths
+PASS estimator rejects invalid hardware inputs
+PASS estimator status packet edges
+PASS estimator tuning CAN producer compile/runtime gate
+PASS CAN RX filter matrix
+PASS CAN RX ISR queue ownership/overflow
+PASS charge-state disable matrix
+PASS charger state-exit shutdown burst/retry
+PASS charger command priority/TX failure/CLI diagnostics
+PASS current sensor measurement model
+PASS current task measurement state
+PASS current task threshold faults
+PASS AIR feedback disabled/fail-closed scaffold
+PASS AIR monitor nominal sequence/weld clear
+PASS AIR monitor shutdown rearm/live precharge proof
+PASS AIR monitor transition state-space/stale recovery
+PASS AIR monitor ready snapshot integrity
+PASS AIR monitor fault/freshness/tick-wrap policy
+PASS AIR monitor seeded invariants
+PASS fan/current/null guards
+PASS IMD capture validation
+PASS periods and driver edge cases
+PASS one-iteration task injection tests
+PASS safety panic/reset/log path
+PASS retained fault-log integrity/recovery
+PASS watchdog feed gate
+PASS watchdog boot arm/startup grace
+PASS watchdog start-failure fail-closed gate
+PASS RTOS stack/heap diagnostics
+PASS CAN bus-off fault/recovery
+PASS CAN state-dependent safety policy
+PASS fault matrix extra
+ALL COMPREHENSIVE HOST INJECTION TESTS PASSED
+
+TIME 0:03.31

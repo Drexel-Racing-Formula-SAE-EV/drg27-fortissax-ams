@@ -1,13 +1,14 @@
 AMS_CORE ?= ../../../lib/ams_core
 DRIVERS ?= ../../../drivers/ams
 CC ?= gcc
+CLANG ?= clang
 
 COMMON := -std=c11 -Wall -Wextra -Werror -pedantic -O2
 CORE_INC := -I$(AMS_CORE)/include
 ADC_TEST := ../current_adc
 ADC_FAKE_INC := -I$(ADC_TEST)/fake_zephyr -I$(ADC_TEST) -I$(DRIVERS) -I../../../include
 
-.PHONY: all test sensor fault adc asan analyze clean
+.PHONY: all test sensor fault adc asan ubsan analyze clang-analyze clean
 
 all: test
 
@@ -51,6 +52,23 @@ asan:
 	ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./current_adc_asan low-timeout
 	ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./current_adc_asan ambiguous
 
+ubsan:
+	$(CC) $(COMMON) -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+		$(CORE_INC) $(AMS_CORE)/current/ams_current_sensor.c \
+		../current_sensor/current_sensor_test.c -lm -o current_sensor_ubsan
+	./current_sensor_ubsan
+	$(CC) $(COMMON) -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+		$(CORE_INC) $(AMS_CORE)/faults/ams_current_fault.c \
+		../current_fault/current_fault_test.c -lm -o current_fault_ubsan
+	./current_fault_ubsan
+	$(CC) $(COMMON) -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+		$(ADC_FAKE_INC) $(DRIVERS)/current_adc_zephyr.c \
+		$(ADC_TEST)/fake_zephyr/fake_zephyr_adc.c \
+		$(ADC_TEST)/current_adc_adapter_test.c -o current_adc_ubsan
+	./current_adc_ubsan
+	./current_adc_ubsan low-timeout
+	./current_adc_ubsan ambiguous
+
 analyze:
 	$(CC) -std=c11 -Wall -Wextra -Werror -fanalyzer $(CORE_INC) \
 		-c $(AMS_CORE)/current/ams_current_sensor.c -o sensor_an.o
@@ -59,7 +77,14 @@ analyze:
 	$(CC) -std=c11 -Wall -Wextra -Werror -fanalyzer $(ADC_FAKE_INC) \
 		-c $(DRIVERS)/current_adc_zephyr.c -o adc_an.o
 
+clang-analyze:
+	$(CLANG) -std=c11 -Wall -Wextra -Werror --analyze $(CORE_INC) $(AMS_CORE)/current/ams_current_sensor.c
+	$(CLANG) -std=c11 -Wall -Wextra -Werror --analyze $(CORE_INC) $(AMS_CORE)/faults/ams_current_fault.c
+	$(CLANG) -std=c11 -Wall -Wextra -Werror --analyze $(ADC_FAKE_INC) $(DRIVERS)/current_adc_zephyr.c
+
 clean:
 	rm -f current_sensor_test current_fault_test current_adc_adapter_test \
 		current_sensor_asan current_fault_asan current_adc_asan \
+		current_sensor_ubsan current_fault_ubsan current_adc_ubsan \
 		sensor_an.o fault_an.o adc_an.o
+	@rm -f *.plist

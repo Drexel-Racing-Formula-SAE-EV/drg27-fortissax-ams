@@ -1,0 +1,81 @@
+Z-014 final source-only closeout gates — 2026-09-07
+No target build or hardware validation performed.
+
+PASS: Z-014 FreeRTOS v2.6.27 runtime/watchdog safety parity contract
+PASS: Z-014 source-only architecture/safety hygiene contract
+  scanned production C/H files: 52
+  portable core: no RTOS/HAL/platform imports
+  runtime: static/no-workqueue; app hardware ownership remains abstracted
+  authority: no BMS_OK assert path, no balancing surface
+  watchdog: sole feeder, no disable path, runtime-owned heartbeat evidence
+PASS: exact frozen v2.6.27 SoP/SoH/fuse portable-source contract
+>>> cmake -S /mnt/data/z014_deep_hardened/tests/null_platform -B /mnt/data/z014_deep_hardened/build/null_platform_core -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_DISABLE_FIND_PACKAGE_Zephyr=TRUE -Wno-unused-cli
+-- The C compiler identification is GNU 14.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_DISABLE_FIND_PACKAGE_Zephyr
+
+
+-- Build files have been written to: /mnt/data/z014_deep_hardened/build/null_platform_core
+>>> cmake --build /mnt/data/z014_deep_hardened/build/null_platform_core --parallel
+[  5%] Building C object ams_core/CMakeFiles/ams_core.dir/current/ams_current_sensor.c.o
+[ 10%] Building C object ams_core/CMakeFiles/ams_core.dir/common/ams_core_contract.c.o
+[ 15%] Building C object ams_core/CMakeFiles/ams_core.dir/measurement/ams_current_window.c.o
+[ 21%] Building C object ams_core/CMakeFiles/ams_core.dir/measurement/ams_measurement.c.o
+[ 26%] Building C object ams_core/CMakeFiles/ams_core.dir/common/ams_core_time.c.o
+[ 36%] Building C object ams_core/CMakeFiles/ams_core.dir/soh/ams_soh.c.o
+[ 36%] Building C object ams_core/CMakeFiles/ams_core.dir/faults/ams_current_fault.c.o
+[ 42%] Building C object ams_core/CMakeFiles/ams_core.dir/estimator/ams_estimator_lut.c.o
+[ 47%] Building C object ams_core/CMakeFiles/ams_core.dir/estimator/ams_soc_ekf.c.o
+[ 52%] Building C object ams_core/CMakeFiles/ams_core.dir/sop/ams_sop.c.o
+[ 57%] Building C object ams_core/CMakeFiles/ams_core.dir/integrity/ams_stack_health.c.o
+[ 63%] Building C object ams_core/CMakeFiles/ams_core.dir/imd/ams_imd.c.o
+[ 68%] Building C object ams_core/CMakeFiles/ams_core.dir/watchdog/ams_watchdog_policy.c.o
+[ 73%] Building C object ams_core/CMakeFiles/ams_core.dir/fan/ams_fan_control.c.o
+[ 78%] Building C object ams_core/CMakeFiles/ams_core.dir/sop/ams_fuse_observer.c.o
+[ 84%] Building C object ams_core/CMakeFiles/ams_core.dir/watchdog/ams_watchdog_heartbeat.c.o
+[ 89%] Linking C static library libams_core.a
+[ 89%] Built target ams_core
+[ 94%] Building C object CMakeFiles/ams_core_null_platform_smoke.dir/null_platform_smoke.c.o
+[100%] Linking C executable ams_core_null_platform_smoke
+[100%] Built target ams_core_null_platform_smoke
+>>> ctest --test-dir /mnt/data/z014_deep_hardened/build/null_platform_core --output-on-failure
+Internal ctest changing into directory: /mnt/data/z014_deep_hardened/build/null_platform_core
+Test project /mnt/data/z014_deep_hardened/build/null_platform_core
+    Start 1: ams_core_null_platform_smoke
+1/1 Test #1: ams_core_null_platform_smoke .....   Passed    0.00 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.00 sec
+PASS: ams_core true null-platform build/test and compile-path audit (16 core TUs; compile_commands.json)
+PASS: Z-014 contract mutation suite (18 unsafe mutations rejected)
+  rejected: direct wdt_feed bypass
+  rejected: second platform feeder
+  rejected: placeholder safety evidence
+  rejected: stack percentage size weakening
+  rejected: heartbeat time outside lock
+  rejected: BMS authority enabled
+  rejected: unmigrated TEMP evidence
+  rejected: IWDG disable path
+  rejected: invalid heartbeat-mask guard removal
+  rejected: invalid stale-mask guard removal
+  rejected: heartbeat grace duplicate source
+  rejected: platform/policy timeout bind removal
+  rejected: dynamic allocation in production runtime
+  rejected: raw MCU register in app
+  rejected: positive BMS_OK authority API
+  rejected: frozen power-core source drift
+  rejected: fatal halt before direct fail-low
+  rejected: runtime-start failure returns instead of panicking
+  pass: generated Zephyr syscall C ignored as non-production source
+  pass: hidden default-n capabilities may be absent from .config
+PASS: run_z014_host_validation.py syntax/report-evidence truthfulness after final metadata patch

@@ -68,7 +68,7 @@ int main(void)
     } else {
         printk("AMS fan PWM adapter: READY (all zones initialized off)\n");
     }
-    printk("DRG27 Fortissax AMS - Zephyr Z-013\n");
+    printk("DRG27 Fortissax AMS - Zephyr Z-014 watchdog candidate\n");
     printk("BMS_OK: forced LOW\n");
     printk("BMS authority: DISABLED\n");
     printk("Balance authority: DISABLED\n");
@@ -101,6 +101,15 @@ int main(void)
      * data before printing the initial diagnostics snapshot.
      */
     k_sleep(K_MSEC(250));
+
+    struct ams_watchdog_runtime_snapshot watchdog_snapshot;
+    if (ams_watchdog_runtime_snapshot_get(&watchdog_snapshot) == 0) {
+        printk("AMS watchdog: runtime=%s platform_state=%u reason=%s coverage=%s\n",
+               watchdog_snapshot.runtime_enabled ? "ACTIVE" : "PREPARED-NOT-ARMED",
+               (unsigned int)watchdog_snapshot.platform_state,
+               ams_watchdog_block_reason_str(watchdog_snapshot.block_reason),
+               watchdog_snapshot.coverage_complete ? "FULL" : "PARTIAL");
+    }
 
     ams_threads_request_diagnostics();
 

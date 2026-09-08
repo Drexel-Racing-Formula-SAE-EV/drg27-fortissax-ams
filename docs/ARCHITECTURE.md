@@ -49,7 +49,8 @@ Owns deterministic AMS behavior:
 - coherent measurement store;
 - thermal fan command policy;
 - IMD decoding/freshness logic;
-- future watchdog feed policy and CAN scheduling/state logic where practical.
+- watchdog feed policy / proactive software-integrity policy;
+- future CAN scheduling/state logic where practical.
 
 This code must remain directly host-testable without Zephyr.
 
@@ -57,15 +58,16 @@ This code must remain directly host-testable without Zephyr.
 
 Contains the narrow interfaces that application code may call to perform
 platform actions.  Interface names describe the AMS operation, not the Zephyr
-or STM32 implementation.  Current Z-013 interfaces are:
+or STM32 implementation.  Current Z-014 interfaces are:
 
 - `bms_ok.h`;
 - `fail_low.h`;
 - `current_adc.h`;
 - `fan_pwm.h`;
-- `imd_capture.h`.
+- `imd_capture.h`;
+- `watchdog.h`.
 
-Future watchdog/SPI/CAN interfaces should follow the same pattern.
+Future SPI/CAN interfaces should follow the same pattern.
 
 ### `drivers/ams`
 
@@ -110,7 +112,7 @@ explicit threads rather than generic system-workqueue items.
 ## Devicetree policy
 
 Application-facing hardware contracts use typed custom bindings rather than
-`/zephyr,user`.  Z-013 defines:
+`/zephyr,user`.  Z-014 retains:
 
 - `drexel,ams-safety-io`;
 - `drexel,ams-adbms-interface`;

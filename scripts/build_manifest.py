@@ -111,7 +111,7 @@ def main() -> int:
 
     manifest = {
         "schema_version": 1,
-        "migration_stage": "Z-013",
+        "migration_stage": "Z-014",
         "oracle": {
             "package": "v2.6.27",
             "firmware": "0.5.30",
@@ -160,6 +160,8 @@ def main() -> int:
             "watchdog_adapter_present": "CONFIG_AMS_CAP_WATCHDOG_ADAPTER_PRESENT=y" in config,
             "watchdog_active": "CONFIG_AMS_CAP_WATCHDOG_ACTIVE=y" in config,
             "watchdog_full_oracle_coverage": "CONFIG_AMS_CAP_WATCHDOG_FULL_ORACLE_COVERAGE=y" in config,
+            "watchdog_physical_validated": "CONFIG_AMS_CAP_WATCHDOG_PHYSICAL_VALIDATED=y" in config,
+            "watchdog_target_validation_claim": "CONFIG_AMS_WATCHDOG_TARGET_VALIDATED=y" in config,
         },
         "architecture": {
             "portable_core_platform_independent": True,
@@ -254,7 +256,7 @@ def main() -> int:
             "air_placeholder_started": False,
             "imd_placeholder_started": False,
             "temperature_heartbeat_integrated": False,
-            "watchdog_policy_integrated": False,
+            "watchdog_policy_integrated": True,
             "bms_authority_enabled": False,
             "balance_authority_enabled": False,
             "placeholder_runtime_cycles_are_safety_evidence": False,
@@ -279,7 +281,10 @@ def main() -> int:
             "retained_panic_record_ported": False,
             "fault_log_ported": False,
             "reset_cause_log_ported": False,
-            "hardware_watchdog_ported": False,
+            "watchdog_reset_cause_capture_ported": True,
+            "proactive_stack_integrity_ported": True,
+            "watchdog_sole_feeder": "ams_safety",
+            "hardware_watchdog_ported": True,
             "normal_bms_supervisor_authority_ported": False,
             "vehicle_authority_eligible": False,
         },
@@ -389,6 +394,7 @@ def main() -> int:
             "timers3_enabled": dts_enabled(dts, "timers3:"),
             "timers4_enabled": dts_enabled(dts, "timers4:"),
             "timers5_enabled": dts_enabled(dts, "timers5:"),
+            "iwdg_enabled": dts_enabled(dts, "iwdg:"),
             "authority_expected": False,
         },
         "artifacts": artifact_sizes,

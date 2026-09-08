@@ -2,9 +2,13 @@
 
 #include <ams_core/ams_fan_control.h>
 #include <ams_core/ams_imd.h>
+#include <ams_core/ams_stack_health.h>
+#include <ams_core/ams_watchdog_policy.h>
+#include <ams_core/ams_watchdog_heartbeat.h>
 
 #include <ams_platform/fan_pwm.h>
 #include <ams_platform/imd_capture.h>
+#include <ams_platform/watchdog.h>
 #include "ams_safety.h"
 #include <ams_platform/fail_low.h>
 
@@ -19,10 +23,11 @@
 
 /*
  * --------------------------------------------------------------------------
- * Z-013 AMS runtime contract
+ * Z-014 AMS runtime/watchdog contract
  * --------------------------------------------------------------------------
  *
- * Z-013 keeps the real 5 Hz fan workload and promotes IMD from a placeholder
+ * Z-014 keeps the real 5 Hz fan and 10 Hz IMD workloads while adding the
+ * isolated watchdog policy/platform composition. IMD was promoted in Z-013
  * to the real 10 Hz PA5/TIM2 PWM-input + PC5 OK_HS workload. Current ADC
  * hardware remains initialized but the current worker still does not acquire
  * samples until Z-022 proves mutex/publication ordering.
@@ -85,15 +90,9 @@
  * The separate temperature heartbeat belongs to the future ADBMS acquisition
  * integration and is frozen here even though Z-013 does not yet produce it.
  */
-#define AMS_HEARTBEAT_STARTUP_GRACE_MS       3000U
-#define AMS_HEARTBEAT_ADBMS_TIMEOUT_MS       3000U
-#define AMS_HEARTBEAT_CURRENT_TIMEOUT_MS      200U
-#define AMS_HEARTBEAT_TEMP_TIMEOUT_MS        3000U
-#define AMS_HEARTBEAT_CAN_TIMEOUT_MS         2000U
-#define AMS_HEARTBEAT_LOGGER_TIMEOUT_MS      2000U
-#define AMS_HEARTBEAT_IMD_TIMEOUT_MS          500U
-#define AMS_HEARTBEAT_FAN_TIMEOUT_MS         1000U
-#define AMS_HEARTBEAT_ESTIMATOR_TIMEOUT_MS    500U
+/* Exact watchdog heartbeat timing lives in the portable
+ * ams_watchdog_heartbeat core. Generic runtime diagnostics below retain their
+ * own per-thread stale metadata but do not authorize IWDG feeding. */
 
 #define AMS_STALE_SAFETY_MS          0U
 #define AMS_STALE_CURRENT_MS         200U
@@ -124,7 +123,7 @@
 #define AMS_CURRENT_WINDOW_MUTEX_TIMEOUT_MS  20U
 
 /*
- * Z-013 remains compile-time no-authority. AIR auxiliary feedback still does
+ * Z-014 remains compile-time no-authority. AIR auxiliary feedback still does
  * not exist on this hardware revision, so AIR stays disabled. IMD is now a
  * real migrated workload: enabling it here does NOT claim
  * AMS_IMD_TARGET_VALIDATED; it permits no-authority capture/diagnostic parity
@@ -136,7 +135,7 @@
 
 /*
  * Estimator heartbeat is safety-critical in v2.6.27 only when SoP authority
- * is required. Z-013 has no BMS/SoP authority, so it remains diagnostic only.
+ * is required. Z-014 has no BMS/SoP authority, so it remains diagnostic only.
  */
 #define AMS_RUNTIME_ESTIMATOR_SAFETY_REQUIRED 0U
 
@@ -167,6 +166,10 @@
 
 BUILD_ASSERT(CONFIG_NUM_PREEMPT_PRIORITIES > AMS_PRIO_DIAGNOSTICS,
              "AMS runtime requires at least 13 preemptible priorities");
+BUILD_ASSERT(AMS_THREAD_COUNT <= 16U,
+             "runtime stack/integrity masks are uint16_t");
+BUILD_ASSERT(AMS_WATCHDOG_HEARTBEAT_COUNT <= 16U,
+             "watchdog heartbeat masks are uint16_t");
 
 /* Preserve the v2.6.27 relative safety-priority policy. */
 BUILD_ASSERT(AMS_PRIO_SAFETY < AMS_PRIO_CURRENT,
@@ -206,43 +209,52 @@ BUILD_ASSERT(AMS_STACK_IMD >= AMS_ORACLE_STACK_IMD_BYTES,
 BUILD_ASSERT(AMS_STACK_DIAGNOSTICS >= AMS_ORACLE_STACK_DIAGNOSTICS_BYTES,
              "diagnostics stack below v2.6.27 CLI allocation");
 
-/* Hidden Z-013 capability symbols distinguish adapter presence, live actors,
+/* Hidden migration capability symbols distinguish adapter presence, live actors,
  * valid safety evidence and physical validation. These are migration-state
  * facts, not user knobs. */
 BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_BMS_OK_PLATFORM_ADAPTER_PRESENT),
-             "Z-013 requires normal BMS_OK platform adapter presence");
+             "Z-014 requires normal BMS_OK platform adapter presence");
 BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_CURRENT_ADC_ADAPTER_PRESENT),
-             "Z-013 requires current ADC adapter presence");
+             "Z-014 requires current ADC adapter presence");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CURRENT_ACTOR_LIVE),
-             "current actor remains deferred at Z-013");
+             "current actor remains deferred at Z-014");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CURRENT_SAFETY_EVIDENCE),
              "placeholder current must not be safety evidence");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT) &&
              !IS_ENABLED(CONFIG_AMS_CAP_ADBMS_ACTOR_LIVE) &&
              !IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SAFETY_EVIDENCE),
-             "ADBMS transport/actor/evidence remain deferred at Z-013");
+             "ADBMS transport/actor/evidence remain deferred at Z-014");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE),
-             "temperature safety evidence remains deferred at Z-013");
+             "temperature safety evidence remains deferred at Z-014");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CAN_ADAPTER_PRESENT) &&
              !IS_ENABLED(CONFIG_AMS_CAP_CAN_ACTOR_LIVE) &&
              !IS_ENABLED(CONFIG_AMS_CAP_CAN_SAFETY_EVIDENCE),
-             "CAN transport/actor/evidence remain deferred at Z-013");
+             "CAN transport/actor/evidence remain deferred at Z-014");
 BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_FAN_PWM_ADAPTER_PRESENT) &&
              IS_ENABLED(CONFIG_AMS_CAP_FAN_ACTOR_LIVE) &&
              IS_ENABLED(CONFIG_AMS_CAP_FAN_SAFETY_EVIDENCE),
-             "fan adapter/actor/evidence must remain live at Z-013");
+             "fan adapter/actor/evidence must remain live at Z-014");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_FAN_PHYSICAL_VALIDATED),
              "fan physical validation remains an open hardware gate");
 BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_IMD_CAPTURE_ADAPTER_PRESENT) &&
              IS_ENABLED(CONFIG_AMS_CAP_IMD_ACTOR_LIVE) &&
              IS_ENABLED(CONFIG_AMS_CAP_IMD_SAFETY_EVIDENCE),
-             "IMD adapter/actor/evidence must remain live at Z-013");
+             "IMD adapter/actor/evidence must remain live at Z-014");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_IMD_PHYSICAL_VALIDATED),
              "IMD physical validation remains an open hardware gate");
-BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_WATCHDOG_ADAPTER_PRESENT) &&
-             !IS_ENABLED(CONFIG_AMS_CAP_WATCHDOG_ACTIVE) &&
-             !IS_ENABLED(CONFIG_AMS_CAP_WATCHDOG_FULL_ORACLE_COVERAGE),
-             "watchdog remains deferred until Z-014");
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_WATCHDOG_ADAPTER_PRESENT),
+             "Z-014 requires the isolated watchdog platform adapter");
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_WATCHDOG_ACTIVE) ==
+             IS_ENABLED(CONFIG_AMS_IWDG_VALIDATION_MODE),
+             "watchdog active capability must exactly match validation mode");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_WATCHDOG_PHYSICAL_VALIDATED),
+             "watchdog physical validation remains an open hardware gate");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_WATCHDOG_FULL_ORACLE_COVERAGE),
+             "Z-014 is intentionally partial watchdog evidence coverage");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_WATCHDOG_TARGET_VALIDATED),
+             "Z-014 candidate must not claim target watchdog validation");
+BUILD_ASSERT(AMS_WATCHDOG_PLATFORM_TIMEOUT_MS == AMS_WATCHDOG_TIMEOUT_MS,
+             "watchdog policy/platform timeout contract drift");
 
 struct ams_runtime_stat {
     atomic_t heartbeat_seq;
@@ -261,6 +273,16 @@ struct ams_runtime_stat {
     atomic_t wcet_us;
 
     atomic_t stale;
+
+    /* Z-014 proactive stack-integrity scan. Snapshot readers consume the
+     * latest safety-supervisor result instead of issuing their own query and
+     * losing the k_thread_stack_space_get() return code. */
+    atomic_t stack_query_valid;
+    atomic_t stack_unused;
+    atomic_t stack_warning_threshold;
+    atomic_t stack_critical_threshold;
+    atomic_t stack_warning;
+    atomic_t stack_critical;
 };
 
 
@@ -282,6 +304,7 @@ struct ams_thread_descriptor {
     struct k_thread *thread;
     k_thread_stack_t *stack;
     size_t stack_size;
+    size_t configured_stack_bytes;
 
     struct ams_runtime_stat *stat;
 };
@@ -343,10 +366,56 @@ static atomic_t imd_frequency_millihz;
 static atomic_t imd_last_valid_ms;
 static atomic_t imd_last_update_ms;
 
+/* Z-014 software-integrity/watchdog diagnostics. Safety supervisor is the
+ * sole writer; atomics/seqlock make diagnostics observation race-free. */
+static ams_watchdog_policy_state_t watchdog_policy_state;
+/* Safety-liveness heartbeat state is independent from generic runtime stats.
+ * v2.6.27 protected kick/update with a short critical section; Zephyr uses the
+ * same ownership model through this bounded spinlock. Only real migrated
+ * safety actors are permitted to call watchdog_heartbeat_kick(). */
+static ams_watchdog_heartbeat_monitor_t watchdog_heartbeat_monitor;
+static struct k_spinlock watchdog_heartbeat_lock;
+static atomic_t watchdog_publish_sequence;
+static atomic_t watchdog_runtime_enabled;
+static atomic_t watchdog_health_good;
+static atomic_t watchdog_coverage_complete;
+static atomic_t watchdog_stop_feed_test;
+static atomic_t watchdog_oracle_required_mask;
+static atomic_t watchdog_migration_evidence_mask;
+static atomic_t watchdog_effective_required_mask;
+static atomic_t watchdog_effective_stale_mask;
+static atomic_t watchdog_stack_warning_mask;
+static atomic_t watchdog_stack_critical_mask;
+static atomic_t watchdog_stack_query_error_mask;
+static atomic_t watchdog_min_stack_unused;
+static atomic_t watchdog_block_reason;
+static atomic_t watchdog_feed_count;
+static atomic_t watchdog_block_count;
+static atomic_t watchdog_last_feed_ms;
+static atomic_t watchdog_platform_state;
+static atomic_t watchdog_platform_last_error;
+static atomic_t watchdog_platform_prepare_attempt_count;
+static atomic_t watchdog_platform_start_attempt_count;
+static atomic_t watchdog_platform_feed_success_count;
+static atomic_t watchdog_platform_feed_failure_count;
+static atomic_t watchdog_reset_cause_valid;
+static atomic_t watchdog_reset_was_watchdog;
+static atomic_t watchdog_reset_cause_error;
+static atomic_t watchdog_reset_cause_clear_error;
+
 K_SEM_DEFINE(diagnostics_request, 0, 1);
 
 static atomic_t runtime_started;
 static atomic_t runtime_start_ms;
+
+struct watchdog_heartbeat_snapshot {
+    uint32_t now_ms;
+    uint16_t stale_mask;
+};
+
+static void watchdog_heartbeat_kick(ams_watchdog_heartbeat_id_t id,
+                                    uint32_t now_ms);
+static struct watchdog_heartbeat_snapshot watchdog_heartbeat_snapshot_get(void);
 
 
 /*
@@ -369,6 +438,7 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .thread = &safety_thread,
         .stack = safety_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(safety_stack),
+        .configured_stack_bytes = AMS_STACK_SAFETY,
         .stat = &runtime_stats[AMS_THREAD_SAFETY],
     },
 
@@ -385,6 +455,7 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .thread = &current_thread,
         .stack = current_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(current_stack),
+        .configured_stack_bytes = AMS_STACK_CURRENT,
         .stat = &runtime_stats[AMS_THREAD_CURRENT],
     },
 
@@ -401,6 +472,7 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .thread = &adbms_thread,
         .stack = adbms_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(adbms_stack),
+        .configured_stack_bytes = AMS_STACK_ADBMS,
         .stat = &runtime_stats[AMS_THREAD_ADBMS],
     },
 
@@ -417,6 +489,7 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .thread = &can_thread,
         .stack = can_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(can_stack),
+        .configured_stack_bytes = AMS_STACK_CAN,
         .stat = &runtime_stats[AMS_THREAD_CAN],
     },
 
@@ -433,6 +506,7 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .thread = &estimator_thread,
         .stack = estimator_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(estimator_stack),
+        .configured_stack_bytes = AMS_STACK_ESTIMATOR,
         .stat = &runtime_stats[AMS_THREAD_ESTIMATOR],
     },
 
@@ -449,6 +523,7 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .thread = &fan_thread,
         .stack = fan_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(fan_stack),
+        .configured_stack_bytes = AMS_STACK_FAN,
         .stat = &runtime_stats[AMS_THREAD_FAN],
     },
 
@@ -465,6 +540,7 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .thread = &air_thread,
         .stack = air_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(air_stack),
+        .configured_stack_bytes = AMS_STACK_AIR,
         .stat = &runtime_stats[AMS_THREAD_AIR],
     },
 
@@ -481,6 +557,7 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .thread = &imd_thread,
         .stack = imd_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(imd_stack),
+        .configured_stack_bytes = AMS_STACK_IMD,
         .stat = &runtime_stats[AMS_THREAD_IMD],
     },
 
@@ -497,6 +574,7 @@ static struct ams_thread_descriptor threads[AMS_THREAD_COUNT] = {
         .thread = &diagnostics_thread,
         .stack = diagnostics_stack,
         .stack_size = K_THREAD_STACK_SIZEOF(diagnostics_stack),
+        .configured_stack_bytes = AMS_STACK_DIAGNOSTICS,
         .stat = &runtime_stats[AMS_THREAD_DIAGNOSTICS],
     },
 };
@@ -761,8 +839,11 @@ static void fan_thread_entry(void *p1,
         exec_us = k_cyc_to_us_floor32(elapsed_cycles);
         complete_ms = k_uptime_get();
 
-        /* The heartbeat is published only after the real six-zone actuation
-         * attempt. It proves software execution, not physical airflow. */
+        /* Watchdog liveness is explicit and separate from generic thread
+         * diagnostics. Kick only after the real six-zone actuation attempt;
+         * process/driver faults still kick because they are not software death. */
+        watchdog_heartbeat_kick(AMS_WATCHDOG_HEARTBEAT_FAN,
+                                (uint32_t)complete_ms);
         runtime_publish_complete(thread, complete_ms, exec_us);
 
         /*
@@ -865,8 +946,11 @@ static void imd_thread_entry(void *p1,
         exec_us = k_cyc_to_us_floor32(elapsed_cycles);
         complete_ms = k_uptime_get();
 
-        /* v2.6.27 kicks the IMD heartbeat after fail-low handling. Therefore a
-         * bad IMD process value is distinct from a dead IMD software task. */
+        /* v2.6.27 kicks IMD after fail-low handling. A bad IMD value remains
+         * a process fault while successful task execution remains watchdog
+         * liveness evidence. */
+        watchdog_heartbeat_kick(AMS_WATCHDOG_HEARTBEAT_IMD,
+                                (uint32_t)complete_ms);
         runtime_publish_complete(thread, complete_ms, exec_us);
 
         /* Match osDelayUntil(entry + 100 ms): re-anchor from the current
@@ -950,6 +1034,268 @@ static void runtime_update_stale_flags(void)
 }
 
 
+static uint16_t watchdog_oracle_required_mask_value(void)
+{
+    /* Exact v2.6.27 final safety heartbeat mask for this no-SoP-authority
+     * stage. LOGGER is intentionally excluded and ESTIMATOR is not required
+     * until SoP authority is restored. */
+    return (uint16_t)(
+        AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_ADBMS) |
+        AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_CURRENT) |
+        AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_TEMP) |
+        AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_CAN) |
+        AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_IMD) |
+        AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_FAN));
+}
+
+static uint16_t watchdog_migration_evidence_mask_value(void)
+{
+    uint16_t mask = 0U;
+
+    /* Never infer safety evidence from a placeholder heartbeat. Capabilities
+     * are the compile-time migration source of truth. */
+    if (IS_ENABLED(CONFIG_AMS_CAP_CURRENT_SAFETY_EVIDENCE)) {
+        mask |= AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_CURRENT);
+    }
+    if (IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SAFETY_EVIDENCE)) {
+        mask |= AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_ADBMS);
+    }
+    if (IS_ENABLED(CONFIG_AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE)) {
+        mask |= AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_TEMP);
+    }
+    if (IS_ENABLED(CONFIG_AMS_CAP_CAN_SAFETY_EVIDENCE)) {
+        mask |= AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_CAN);
+    }
+    if (IS_ENABLED(CONFIG_AMS_CAP_FAN_SAFETY_EVIDENCE)) {
+        mask |= AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_FAN);
+    }
+    if (IS_ENABLED(CONFIG_AMS_CAP_IMD_SAFETY_EVIDENCE)) {
+        mask |= AMS_WATCHDOG_HEARTBEAT_BIT(AMS_WATCHDOG_HEARTBEAT_IMD);
+    }
+
+    return mask;
+}
+
+static void watchdog_heartbeat_kick(ams_watchdog_heartbeat_id_t id,
+                                    uint32_t now_ms)
+{
+    k_spinlock_key_t key = k_spin_lock(&watchdog_heartbeat_lock);
+
+    (void)ams_watchdog_heartbeat_kick(&watchdog_heartbeat_monitor, id, now_ms);
+    k_spin_unlock(&watchdog_heartbeat_lock, key);
+}
+
+static struct watchdog_heartbeat_snapshot watchdog_heartbeat_snapshot_get(void)
+{
+    struct watchdog_heartbeat_snapshot snapshot;
+    k_spinlock_key_t key = k_spin_lock(&watchdog_heartbeat_lock);
+
+    /* Capture time while the heartbeat monitor is locked. A worker may have
+     * computed its completion timestamp immediately before waiting for this
+     * lock; sampling inside the same serialization boundary guarantees the
+     * supervisor never evaluates a committed heartbeat against an older time
+     * and turns unsigned wrap arithmetic into a false stale event. This is
+     * equivalent on the single-core F767 and remains correct under host/SMP
+     * concurrency. */
+    snapshot.now_ms = k_uptime_get_32();
+    snapshot.stale_mask =
+        ams_watchdog_heartbeat_update(&watchdog_heartbeat_monitor,
+                                      snapshot.now_ms,
+                                      watchdog_oracle_required_mask_value());
+    k_spin_unlock(&watchdog_heartbeat_lock, key);
+    return snapshot;
+}
+
+static void runtime_scan_stack_integrity(uint16_t *warning_mask,
+                                         uint16_t *critical_mask,
+                                         uint16_t *query_error_mask,
+                                         size_t *min_unused)
+{
+    uint16_t warn = 0U;
+    uint16_t critical = 0U;
+    uint16_t query_errors = 0U;
+    size_t minimum = SIZE_MAX;
+
+    for (size_t i = 0U; i < AMS_THREAD_COUNT; ++i) {
+        struct ams_thread_descriptor *desc = &threads[i];
+        size_t unused = 0U;
+        int query_ret = 0;
+        bool query_valid = true;
+        ams_stack_health_t health;
+
+        if (desc->enabled) {
+            query_ret = k_thread_stack_space_get(desc->thread, &unused);
+            query_valid = query_ret == 0;
+        }
+
+        /* k_thread_stack_space_get() reports against the usable Zephyr stack
+         * object passed to k_thread_create(). Use that same size for the
+         * percentage thresholds. The requested source constant remains a
+         * compile-time lower-bound contract, but MPU/alignment expansion must
+         * not silently weaken the 25%/15% proactive margin policy. */
+        health = ams_stack_health_evaluate(desc->stack_size,
+                                           unused,
+                                           query_valid,
+                                           desc->enabled);
+
+        atomic_set(&desc->stat->stack_query_valid,
+                   health.query_valid ? 1 : 0);
+        atomic_set(&desc->stat->stack_unused,
+                   (atomic_val_t)(uint32_t)unused);
+        atomic_set(&desc->stat->stack_warning_threshold,
+                   (atomic_val_t)(uint32_t)health.warning_threshold_bytes);
+        atomic_set(&desc->stat->stack_critical_threshold,
+                   (atomic_val_t)(uint32_t)health.critical_threshold_bytes);
+        atomic_set(&desc->stat->stack_warning, health.warning ? 1 : 0);
+        atomic_set(&desc->stat->stack_critical, health.critical ? 1 : 0);
+
+        if (!desc->enabled) {
+            continue;
+        }
+
+        if (!query_valid) {
+            query_errors |= (uint16_t)(1U << i);
+        } else if (unused < minimum) {
+            minimum = unused;
+        }
+        if (health.warning) {
+            warn |= (uint16_t)(1U << i);
+        }
+        if (health.critical) {
+            critical |= (uint16_t)(1U << i);
+        }
+    }
+
+    if (minimum == SIZE_MAX) {
+        minimum = 0U;
+    }
+
+    if (warning_mask != NULL) {
+        *warning_mask = warn;
+    }
+    if (critical_mask != NULL) {
+        *critical_mask = critical;
+    }
+    if (query_error_mask != NULL) {
+        *query_error_mask = query_errors;
+    }
+    if (min_unused != NULL) {
+        *min_unused = minimum;
+    }
+}
+
+static bool watchdog_stop_feed_test_active(uint32_t now_ms)
+{
+#if defined(CONFIG_AMS_IWDG_STOP_FEED_TEST_AFTER_MS) && \
+    (CONFIG_AMS_IWDG_STOP_FEED_TEST_AFTER_MS > 0)
+    uint32_t started_ms = (uint32_t)atomic_get(&runtime_start_ms);
+    return IS_ENABLED(CONFIG_AMS_IWDG_VALIDATION_MODE) &&
+           ((uint32_t)(now_ms - started_ms) >=
+            (uint32_t)CONFIG_AMS_IWDG_STOP_FEED_TEST_AFTER_MS);
+#else
+    ARG_UNUSED(now_ms);
+    return false;
+#endif
+}
+
+static void watchdog_publish_runtime_snapshot(
+    const ams_watchdog_policy_action_t *action,
+    const ams_watchdog_platform_status_t *platform,
+    uint16_t oracle_required_mask,
+    uint16_t migration_evidence_mask,
+    uint16_t stack_warning_mask,
+    uint16_t stack_critical_mask,
+    uint16_t stack_query_error_mask,
+    size_t min_stack_unused,
+    bool stop_feed_test)
+{
+    uint32_t sequence = (uint32_t)atomic_get(&watchdog_publish_sequence);
+
+    if ((sequence & 1U) != 0U) {
+        sequence++;
+    }
+
+    atomic_set(&watchdog_publish_sequence, (atomic_val_t)(sequence + 1U));
+    atomic_set(&watchdog_runtime_enabled,
+               IS_ENABLED(CONFIG_AMS_IWDG_VALIDATION_MODE) ? 1 : 0);
+    atomic_set(&watchdog_health_good, action->health_good ? 1 : 0);
+    atomic_set(&watchdog_coverage_complete, action->coverage_complete ? 1 : 0);
+    atomic_set(&watchdog_stop_feed_test, stop_feed_test ? 1 : 0);
+    atomic_set(&watchdog_oracle_required_mask, (atomic_val_t)oracle_required_mask);
+    atomic_set(&watchdog_migration_evidence_mask,
+               (atomic_val_t)migration_evidence_mask);
+    atomic_set(&watchdog_effective_required_mask,
+               (atomic_val_t)action->effective_required_mask);
+    atomic_set(&watchdog_effective_stale_mask,
+               (atomic_val_t)action->effective_stale_mask);
+    atomic_set(&watchdog_stack_warning_mask, (atomic_val_t)stack_warning_mask);
+    atomic_set(&watchdog_stack_critical_mask, (atomic_val_t)stack_critical_mask);
+    atomic_set(&watchdog_stack_query_error_mask,
+               (atomic_val_t)stack_query_error_mask);
+    atomic_set(&watchdog_min_stack_unused,
+               (atomic_val_t)(uint32_t)min_stack_unused);
+    atomic_set(&watchdog_block_reason, (atomic_val_t)action->block_reason);
+    atomic_set(&watchdog_feed_count,
+               (atomic_val_t)watchdog_policy_state.feed_count);
+    atomic_set(&watchdog_block_count,
+               (atomic_val_t)watchdog_policy_state.block_count);
+    atomic_set(&watchdog_last_feed_ms,
+               (atomic_val_t)watchdog_policy_state.last_feed_ms);
+    atomic_set(&watchdog_platform_state, (atomic_val_t)platform->state);
+    atomic_set(&watchdog_platform_last_error, (atomic_val_t)platform->last_error);
+    atomic_set(&watchdog_platform_prepare_attempt_count,
+               (atomic_val_t)platform->prepare_attempt_count);
+    atomic_set(&watchdog_platform_start_attempt_count,
+               (atomic_val_t)platform->start_attempt_count);
+    atomic_set(&watchdog_platform_feed_success_count,
+               (atomic_val_t)platform->feed_success_count);
+    atomic_set(&watchdog_platform_feed_failure_count,
+               (atomic_val_t)platform->feed_failure_count);
+    atomic_set(&watchdog_reset_cause_valid,
+               platform->reset_cause_valid ? 1 : 0);
+    atomic_set(&watchdog_reset_was_watchdog,
+               platform->reset_was_watchdog ? 1 : 0);
+    atomic_set(&watchdog_reset_cause_error,
+               (atomic_val_t)platform->reset_cause_error);
+    atomic_set(&watchdog_reset_cause_clear_error,
+               (atomic_val_t)platform->reset_cause_clear_error);
+    atomic_set(&watchdog_publish_sequence, (atomic_val_t)(sequence + 2U));
+}
+
+static ams_watchdog_policy_action_t watchdog_evaluate_current(
+    uint32_t now_ms,
+    uint16_t stale_mask,
+    uint16_t stack_critical_mask,
+    bool stop_feed_test)
+{
+    ams_watchdog_platform_status_t platform = ams_watchdog_platform_status();
+    ams_watchdog_policy_input_t input = {0};
+    ams_watchdog_policy_action_t action = {0};
+
+    input.now_ms = now_ms;
+    input.boot_ms = (uint32_t)atomic_get(&runtime_start_ms);
+    input.runtime_enabled = IS_ENABLED(CONFIG_AMS_IWDG_VALIDATION_MODE);
+    input.platform_ready_to_start =
+        platform.state == AMS_WATCHDOG_PLATFORM_READY_NOT_STARTED;
+    input.platform_started = platform.state == AMS_WATCHDOG_PLATFORM_STARTED;
+    input.platform_prepare_failed =
+        platform.state == AMS_WATCHDOG_PLATFORM_PREPARE_FAILED_RETRYABLE;
+    input.platform_start_terminal_fault =
+        platform.state == AMS_WATCHDOG_PLATFORM_START_AMBIGUOUS_TERMINAL;
+    input.platform_feed_terminal_fault =
+        platform.state == AMS_WATCHDOG_PLATFORM_FEED_FAILED_TERMINAL;
+    input.panic_latched = ams_safety_panic_latched();
+    input.stop_feed_test = stop_feed_test;
+    input.oracle_required_mask = watchdog_oracle_required_mask_value();
+    input.migration_evidence_mask = watchdog_migration_evidence_mask_value();
+    input.stale_mask = stale_mask;
+    input.rtos_integrity_fault = false;
+    input.stack_critical_mask = stack_critical_mask;
+
+    ams_watchdog_policy_evaluate(&watchdog_policy_state, &input, &action);
+    return action;
+}
+
 static void safety_supervisor_thread(void *p1,
                                      void *p2,
                                      void *p3)
@@ -966,48 +1312,131 @@ static void safety_supervisor_thread(void *p1,
         int64_t start_ms;
         int64_t complete_ms;
         int64_t next_release_ms;
-
         uint32_t start_cycles;
         uint32_t elapsed_cycles;
         uint32_t exec_us;
+        struct watchdog_heartbeat_snapshot heartbeat_snapshot;
+        uint32_t watchdog_now_ms;
+        uint16_t watchdog_stale_mask = 0U;
+        uint16_t stack_warning_mask = 0U;
+        uint16_t stack_critical_mask = 0U;
+        uint16_t stack_query_error_mask = 0U;
+        size_t min_stack_unused = 0U;
+        bool stop_feed_test;
+        ams_watchdog_policy_action_t action;
+        ams_watchdog_platform_status_t platform;
 
         k_sleep(K_TIMEOUT_ABS_MS(release_ms));
 
         start_ms = k_uptime_get();
         start_cycles = k_cycle_get_32();
-
-        runtime_publish_start(thread,
-                              release_ms,
-                              start_ms);
+        runtime_publish_start(thread, release_ms, start_ms);
 
         if (atomic_get(&runtime_started) != 0) {
             runtime_update_stale_flags();
         }
 
-        /*
-         * Z-012 supervisor is observational only.
-         *
-         * It has no BMS_OK assertion authority. The complete v2.6.27
-         * readiness/state aggregation returns in the later authority stage.
-         */
+        /* Capture watchdog heartbeat evidence as one coherent monitor
+         * transaction. Workers can complete concurrently, but a supervisor
+         * decision is based on exactly one stale-mask snapshot. */
+        heartbeat_snapshot = watchdog_heartbeat_snapshot_get();
+        watchdog_now_ms = heartbeat_snapshot.now_ms;
+        watchdog_stale_mask = heartbeat_snapshot.stale_mask;
 
-        elapsed_cycles =
-            k_cycle_get_32() - start_cycles;
+        /* Proactive stack margin parity runs every 50 ms, before any feed.
+         * Query failure is distinguishable from a genuine zero-byte margin and
+         * is fail-closed critical for every enabled/created thread. */
+        runtime_scan_stack_integrity(&stack_warning_mask,
+                                     &stack_critical_mask,
+                                     &stack_query_error_mask,
+                                     &min_stack_unused);
 
-        exec_us =
-            k_cyc_to_us_floor32(elapsed_cycles);
+        if ((stack_critical_mask != 0U) || (stack_query_error_mask != 0U)) {
+            ams_bms_ok_force_low_direct();
+        }
 
+        stop_feed_test = watchdog_stop_feed_test_active(watchdog_now_ms);
+
+        /* A prepare failure is provably pre-IWDG-start with the pinned Zephyr
+         * v4.4 STM32 driver, so the safety owner may retry it. Base builds do
+         * not need repeated preparation because the watchdog is not armed. */
+        platform = ams_watchdog_platform_status();
+        if (IS_ENABLED(CONFIG_AMS_IWDG_VALIDATION_MODE) &&
+            ((platform.state == AMS_WATCHDOG_PLATFORM_UNPREPARED) ||
+             (platform.state == AMS_WATCHDOG_PLATFORM_PREPARE_FAILED_RETRYABLE))) {
+            (void)ams_watchdog_platform_prepare();
+        }
+
+        action = watchdog_evaluate_current(watchdog_now_ms,
+                                           watchdog_stale_mask,
+                                           stack_critical_mask,
+                                           stop_feed_test);
+
+        if (action.request_start) {
+            ams_watchdog_start_result_t start_result =
+                ams_watchdog_platform_start();
+
+            if (start_result == AMS_WATCHDOG_START_RESULT_AMBIGUOUS_TERMINAL) {
+                /* setup() may have enabled IWDG before reporting failure. Do
+                 * not retry/reconfigure/disable; force safe output and let a
+                 * possibly-running watchdog expire. */
+                ams_bms_ok_force_low_direct();
+            }
+
+            action = watchdog_evaluate_current(watchdog_now_ms,
+                                               watchdog_stale_mask,
+                                               stack_critical_mask,
+                                               stop_feed_test);
+        }
+
+        if (action.feed_permitted) {
+            int feed_ret = ams_watchdog_platform_feed();
+            if (feed_ret == 0) {
+                ams_watchdog_policy_record_feed(&watchdog_policy_state,
+                                                watchdog_now_ms,
+                                                action.block_reason);
+            } else {
+                /* Never count a failed platform call as a watchdog feed. */
+                ams_bms_ok_force_low_direct();
+                action = watchdog_evaluate_current(watchdog_now_ms,
+                                                   watchdog_stale_mask,
+                                                   stack_critical_mask,
+                                                   stop_feed_test);
+                if (action.block_reason != AMS_WATCHDOG_BLOCK_RTOS_INTEGRITY) {
+                    action.block_reason = AMS_WATCHDOG_BLOCK_RTOS_INTEGRITY;
+                    action.feed_permitted = false;
+                    action.health_good = false;
+                    action.count_block = true;
+                }
+                ams_watchdog_policy_record_block(&watchdog_policy_state,
+                                                 action.block_reason);
+            }
+        } else if (!action.request_start) {
+            ams_watchdog_policy_record_block(&watchdog_policy_state,
+                                             action.block_reason);
+        }
+
+        platform = ams_watchdog_platform_status();
+        watchdog_publish_runtime_snapshot(&action,
+                                          &platform,
+                                          watchdog_oracle_required_mask_value(),
+                                          watchdog_migration_evidence_mask_value(),
+                                          stack_warning_mask,
+                                          stack_critical_mask,
+                                          stack_query_error_mask,
+                                          min_stack_unused,
+                                          stop_feed_test);
+
+        elapsed_cycles = k_cycle_get_32() - start_cycles;
+        exec_us = k_cyc_to_us_floor32(elapsed_cycles);
         complete_ms = k_uptime_get();
 
-        runtime_publish_complete(thread,
-                                 complete_ms,
-                                 exec_us);
+        /* Feed occurs near the end and before this completion publication, so
+         * a feed proves stale/stack/policy checks completed in this cycle. */
+        runtime_publish_complete(thread, complete_ms, exec_us);
 
-        /* Match v2.6.27 error_task_fn()/osDelayUntil(entry + 50 ms).
-         * An overrun must not create an extra skipped safety-supervisor
-         * period: retry immediately, then re-anchor from that new entry. */
+        /* Match v2.6.27 error_task_fn()/osDelayUntil(entry + 50 ms). */
         next_release_ms = start_ms + thread->period_ms;
-
         if (complete_ms >= next_release_ms) {
             atomic_inc(&thread->stat->overrun_count);
             release_ms = complete_ms;
@@ -1041,8 +1470,8 @@ static void diagnostics_thread_entry(void *p1,
 
         start_cycles = k_cycle_get_32();
 
-        printk("\nAMS Z-013 runtime snapshot\n");
-        printk("thread           en sf ev p  per age stale late maxL exec wcet stack-used\n");
+        printk("\nAMS Z-014 runtime snapshot\n");
+        printk("thread           en sf ev p  per age stale late maxL exec wcet stack-used q w c\n");
 
         for (size_t i = 0U;
              i < AMS_THREAD_COUNT;
@@ -1056,7 +1485,7 @@ static void diagnostics_thread_entry(void *p1,
             }
 
             printk(
-                "%-16s %2u %2u %2u %2d %4u %4u %5u %4u %4u %4u %4u %5u/%u\n",
+                "%-16s %2u %2u %2u %2d %4u %4u %5u %4u %4u %4u %4u %5u/%u %u %u %u\n",
                 snapshot.name,
                 snapshot.enabled ? 1U : 0U,
                 snapshot.safety_heartbeat_required ? 1U : 0U,
@@ -1070,7 +1499,10 @@ static void diagnostics_thread_entry(void *p1,
                 snapshot.last_exec_us,
                 snapshot.wcet_us,
                 (unsigned int)snapshot.stack_used_high_water,
-                (unsigned int)snapshot.stack_size);
+                (unsigned int)snapshot.stack_size,
+                snapshot.stack_query_valid ? 1U : 0U,
+                snapshot.stack_warning ? 1U : 0U,
+                snapshot.stack_critical ? 1U : 0U);
         }
 
         printk("fan              fault=%u fails=%u cmd=%.2f%% on=%u reason=%s last=%u\n",
@@ -1093,6 +1525,39 @@ static void diagnostics_thread_entry(void *p1,
                    (unsigned int)imd_snapshot.capture_callback_count,
                    (unsigned int)imd_snapshot.capture_callback_error_count,
                    (unsigned int)imd_snapshot.last_valid_ms);
+        }
+
+        struct ams_watchdog_runtime_snapshot watchdog_snapshot;
+        if (ams_watchdog_runtime_snapshot_get(&watchdog_snapshot) == 0) {
+            printk("watchdog         en=%u health=%u coverage=%u reason=%s feed=%u block=%u last=%u\n",
+                   watchdog_snapshot.runtime_enabled ? 1U : 0U,
+                   watchdog_snapshot.health_good ? 1U : 0U,
+                   watchdog_snapshot.coverage_complete ? 1U : 0U,
+                   ams_watchdog_block_reason_str(watchdog_snapshot.block_reason),
+                   (unsigned int)watchdog_snapshot.feed_count,
+                   (unsigned int)watchdog_snapshot.block_count,
+                   (unsigned int)watchdog_snapshot.last_feed_ms);
+            printk("watchdog masks   oracle=0x%02x evidence=0x%02x effective=0x%02x stale=0x%02x stackW=0x%03x stackC=0x%03x stackQ=0x%03x min=%u\n",
+                   (unsigned int)watchdog_snapshot.oracle_required_mask,
+                   (unsigned int)watchdog_snapshot.migration_evidence_mask,
+                   (unsigned int)watchdog_snapshot.effective_required_mask,
+                   (unsigned int)watchdog_snapshot.effective_stale_mask,
+                   (unsigned int)watchdog_snapshot.stack_warning_mask,
+                   (unsigned int)watchdog_snapshot.stack_critical_mask,
+                   (unsigned int)watchdog_snapshot.stack_query_error_mask,
+                   (unsigned int)watchdog_snapshot.min_stack_unused);
+            printk("watchdog hw      state=%u err=%d prep=%u start=%u feedok=%u feederr=%u reset_valid=%u iwdg_reset=%u reset_err=%d clear_err=%d stoptest=%u\n",
+                   (unsigned int)watchdog_snapshot.platform_state,
+                   watchdog_snapshot.platform_last_error,
+                   (unsigned int)watchdog_snapshot.platform_prepare_attempt_count,
+                   (unsigned int)watchdog_snapshot.platform_start_attempt_count,
+                   (unsigned int)watchdog_snapshot.platform_feed_success_count,
+                   (unsigned int)watchdog_snapshot.platform_feed_failure_count,
+                   watchdog_snapshot.reset_cause_valid ? 1U : 0U,
+                   watchdog_snapshot.reset_was_watchdog ? 1U : 0U,
+                   watchdog_snapshot.reset_cause_error,
+                   watchdog_snapshot.reset_cause_clear_error,
+                   watchdog_snapshot.stop_feed_test ? 1U : 0U);
         }
         elapsed_cycles =
             k_cycle_get_32() - start_cycles;
@@ -1195,6 +1660,35 @@ int ams_threads_start(void)
     atomic_set(&imd_last_valid_ms, 0);
     atomic_set(&imd_last_update_ms, 0);
 
+    /* Z-014 preparation is deliberately before the heartbeat epoch and is
+     * non-irreversible with the pinned Zephyr v4.4 STM32 driver. It installs
+     * the timeout and captures reset cause but never calls wdt_setup(). A
+     * failure is retained for the safety supervisor to retry in validation
+     * mode; it is not promoted to a generic startup panic. */
+    ams_watchdog_policy_init(&watchdog_policy_state);
+    (void)ams_watchdog_platform_prepare();
+
+    atomic_set(&watchdog_publish_sequence, 0);
+    atomic_set(&watchdog_runtime_enabled,
+               IS_ENABLED(CONFIG_AMS_IWDG_VALIDATION_MODE) ? 1 : 0);
+    atomic_set(&watchdog_health_good, 0);
+    atomic_set(&watchdog_coverage_complete, 0);
+    atomic_set(&watchdog_stop_feed_test, 0);
+    atomic_set(&watchdog_oracle_required_mask,
+               (atomic_val_t)watchdog_oracle_required_mask_value());
+    atomic_set(&watchdog_migration_evidence_mask,
+               (atomic_val_t)watchdog_migration_evidence_mask_value());
+    atomic_set(&watchdog_effective_required_mask, 0);
+    atomic_set(&watchdog_effective_stale_mask, 0);
+    atomic_set(&watchdog_stack_warning_mask, 0);
+    atomic_set(&watchdog_stack_critical_mask, 0);
+    atomic_set(&watchdog_stack_query_error_mask, 0);
+    atomic_set(&watchdog_min_stack_unused, 0);
+    atomic_set(&watchdog_block_reason, AMS_WATCHDOG_BLOCK_NOT_ENABLED);
+    atomic_set(&watchdog_feed_count, 0);
+    atomic_set(&watchdog_block_count, 0);
+    atomic_set(&watchdog_last_feed_ms, 0);
+
     /*
      * Start the heartbeat/startup-grace epoch before creating application
      * threads. v2.6.27 calls ams_heartbeat_init() before its safety-critical
@@ -1204,6 +1698,29 @@ int ams_threads_start(void)
     atomic_set(
         &runtime_start_ms,
         (atomic_val_t)k_uptime_get_32());
+    {
+        k_spinlock_key_t key = k_spin_lock(&watchdog_heartbeat_lock);
+        ams_watchdog_heartbeat_init(
+            &watchdog_heartbeat_monitor,
+            (uint32_t)atomic_get(&runtime_start_ms));
+        k_spin_unlock(&watchdog_heartbeat_lock, key);
+    }
+
+    /* Preserve v2.6.27 heartbeat_init -> watchdog_boot_arm -> task creation.
+     * Base migration builds stop here at safe preparation. Only the explicit
+     * validation image crosses wdt_setup()'s irreversible boundary. */
+    if (IS_ENABLED(CONFIG_AMS_IWDG_VALIDATION_MODE)) {
+        ams_watchdog_platform_status_t platform =
+            ams_watchdog_platform_status();
+
+        if (platform.state == AMS_WATCHDOG_PLATFORM_READY_NOT_STARTED) {
+            ams_watchdog_start_result_t start_result =
+                ams_watchdog_platform_start();
+            if (start_result == AMS_WATCHDOG_START_RESULT_AMBIGUOUS_TERMINAL) {
+                ams_bms_ok_force_low_direct();
+            }
+        }
+    }
 
     /*
      * Create all thread objects suspended first.
@@ -1291,7 +1808,7 @@ int ams_threads_start(void)
      * Match the safety architecture rather than the historical creation order:
      * the supervisor is the highest-priority application thread and is active
      * before lower-priority work begins.  BMS_OK still cannot be asserted in
-     * Z-013 because assertion authority is compile-time forbidden.
+     * Z-014 because assertion authority is compile-time forbidden.
      */
     start_thread_if_enabled(AMS_THREAD_SAFETY);
 
@@ -1313,12 +1830,11 @@ int ams_thread_snapshot_get(enum ams_thread_id id,
 {
     struct ams_thread_descriptor *thread;
 
-    size_t unused = 0U;
+    size_t unused;
+    bool stack_query_valid;
 
     uint32_t now_ms;
     uint32_t runtime_epoch_ms;
-
-    int ret;
 
     if ((id < 0) ||
         (id >= AMS_THREAD_COUNT) ||
@@ -1328,14 +1844,11 @@ int ams_thread_snapshot_get(enum ams_thread_id id,
 
     thread = &threads[id];
 
-    ret =
-        k_thread_stack_space_get(
-            thread->thread,
-            &unused);
-
-    if (ret != 0) {
-        unused = 0U;
-    }
+    /* Consume the latest safety-supervisor scan. Z-013 used to issue a
+     * second query here and collapse query failure into unused=0, making
+     * "unknown" indistinguishable from a real exhausted stack. */
+    unused = (size_t)(uint32_t)atomic_get(&thread->stat->stack_unused);
+    stack_query_valid = atomic_get(&thread->stat->stack_query_valid) != 0;
 
     snapshot->name =
         thread->name;
@@ -1405,18 +1918,23 @@ int ams_thread_snapshot_get(enum ams_thread_id id,
         atomic_get(
             &thread->stat->stale) != 0;
 
-    snapshot->stack_size =
-        thread->stack_size;
+    snapshot->stack_size = thread->stack_size;
+    snapshot->stack_configured_size = thread->configured_stack_bytes;
+    snapshot->stack_query_valid = stack_query_valid;
+    snapshot->stack_unused = unused;
+    snapshot->stack_warning_threshold =
+        (size_t)(uint32_t)atomic_get(&thread->stat->stack_warning_threshold);
+    snapshot->stack_critical_threshold =
+        (size_t)(uint32_t)atomic_get(&thread->stat->stack_critical_threshold);
+    snapshot->stack_warning = atomic_get(&thread->stat->stack_warning) != 0;
+    snapshot->stack_critical = atomic_get(&thread->stat->stack_critical) != 0;
 
-    snapshot->stack_unused =
-        unused;
-
-    if (unused <= thread->stack_size) {
-        snapshot->stack_used_high_water =
-            thread->stack_size - unused;
+    if (stack_query_valid && (unused <= thread->stack_size)) {
+        snapshot->stack_used_high_water = thread->stack_size - unused;
     } else {
-        snapshot->stack_used_high_water =
-            thread->stack_size;
+        /* Unknown stack query is explicitly marked invalid and represented
+         * conservatively rather than fabricated as a genuine measurement. */
+        snapshot->stack_used_high_water = thread->stack_size;
     }
 
     now_ms =
@@ -1492,6 +2010,84 @@ int ams_imd_runtime_snapshot_get(struct ams_imd_runtime_snapshot *snapshot)
 
     return -EAGAIN;
 }
+
+
+int ams_watchdog_runtime_snapshot_get(struct ams_watchdog_runtime_snapshot *snapshot)
+{
+    if (snapshot == NULL) {
+        return -EINVAL;
+    }
+
+    for (uint8_t attempt = 0U; attempt < 3U; ++attempt) {
+        uint32_t before = (uint32_t)atomic_get(&watchdog_publish_sequence);
+        uint32_t after;
+
+        if ((before & 1U) != 0U) {
+            continue;
+        }
+
+        snapshot->runtime_enabled = atomic_get(&watchdog_runtime_enabled) != 0;
+        snapshot->health_good = atomic_get(&watchdog_health_good) != 0;
+        snapshot->coverage_complete = atomic_get(&watchdog_coverage_complete) != 0;
+        snapshot->stop_feed_test = atomic_get(&watchdog_stop_feed_test) != 0;
+
+        snapshot->oracle_required_mask =
+            (uint16_t)(uint32_t)atomic_get(&watchdog_oracle_required_mask);
+        snapshot->migration_evidence_mask =
+            (uint16_t)(uint32_t)atomic_get(&watchdog_migration_evidence_mask);
+        snapshot->effective_required_mask =
+            (uint16_t)(uint32_t)atomic_get(&watchdog_effective_required_mask);
+        snapshot->effective_stale_mask =
+            (uint16_t)(uint32_t)atomic_get(&watchdog_effective_stale_mask);
+
+        snapshot->stack_warning_mask =
+            (uint16_t)(uint32_t)atomic_get(&watchdog_stack_warning_mask);
+        snapshot->stack_critical_mask =
+            (uint16_t)(uint32_t)atomic_get(&watchdog_stack_critical_mask);
+        snapshot->stack_query_error_mask =
+            (uint16_t)(uint32_t)atomic_get(&watchdog_stack_query_error_mask);
+        snapshot->min_stack_unused =
+            (size_t)(uint32_t)atomic_get(&watchdog_min_stack_unused);
+
+        snapshot->block_reason =
+            (ams_watchdog_block_reason_t)atomic_get(&watchdog_block_reason);
+        snapshot->feed_count =
+            (uint32_t)atomic_get(&watchdog_feed_count);
+        snapshot->block_count =
+            (uint32_t)atomic_get(&watchdog_block_count);
+        snapshot->last_feed_ms =
+            (uint32_t)atomic_get(&watchdog_last_feed_ms);
+
+        snapshot->platform_state =
+            (uint32_t)atomic_get(&watchdog_platform_state);
+        snapshot->platform_last_error =
+            (int)atomic_get(&watchdog_platform_last_error);
+        snapshot->platform_prepare_attempt_count =
+            (uint32_t)atomic_get(&watchdog_platform_prepare_attempt_count);
+        snapshot->platform_start_attempt_count =
+            (uint32_t)atomic_get(&watchdog_platform_start_attempt_count);
+        snapshot->platform_feed_success_count =
+            (uint32_t)atomic_get(&watchdog_platform_feed_success_count);
+        snapshot->platform_feed_failure_count =
+            (uint32_t)atomic_get(&watchdog_platform_feed_failure_count);
+
+        snapshot->reset_cause_valid = atomic_get(&watchdog_reset_cause_valid) != 0;
+        snapshot->reset_was_watchdog = atomic_get(&watchdog_reset_was_watchdog) != 0;
+        snapshot->reset_cause_error =
+            (int)atomic_get(&watchdog_reset_cause_error);
+        snapshot->reset_cause_clear_error =
+            (int)atomic_get(&watchdog_reset_cause_clear_error);
+
+        after = (uint32_t)atomic_get(&watchdog_publish_sequence);
+        if ((before == after) && ((after & 1U) == 0U)) {
+            snapshot->sequence = after;
+            return 0;
+        }
+    }
+
+    return -EAGAIN;
+}
+
 
 void ams_threads_request_diagnostics(void)
 {

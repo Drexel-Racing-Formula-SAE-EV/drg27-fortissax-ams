@@ -52,6 +52,10 @@ def require(condition: bool, message: str) -> None:
         fail(message)
 
 
+def symbol_enabled(config: str, symbol: str) -> bool:
+    return re.search(rf"^{re.escape(symbol)}=y$", config, re.MULTILINE) is not None
+
+
 def parse_numeric_macro(text: str, name: str) -> int:
     match = re.search(
         rf"^\s*#define\s+{re.escape(name)}\s+([0-9]+)[uU]?\s*$",
@@ -144,6 +148,11 @@ def main() -> int:
         "ams_elapsed_ms",
         "ams_age_within_ms",
         "ams_age_expired_ms",
+        "ams_watchdog_policy_evaluate",
+        "ams_watchdog_heartbeat_init",
+        "ams_watchdog_heartbeat_kick",
+        "ams_watchdog_heartbeat_update",
+        "ams_stack_health_evaluate",
     )
 
     for symbol in required_symbols:
@@ -158,14 +167,12 @@ def main() -> int:
     )
 
     require(
-        "# CONFIG_AMS_BMS_AUTHORITY is not set"
-        in build_config,
+        not symbol_enabled(build_config, "CONFIG_AMS_BMS_AUTHORITY"),
         "portable core must remain no-authority",
     )
 
     require(
-        "# CONFIG_AMS_BALANCE_AUTHORITY is not set"
-        in build_config,
+        not symbol_enabled(build_config, "CONFIG_AMS_BALANCE_AUTHORITY"),
         "portable core must remain no-balance-authority",
     )
 

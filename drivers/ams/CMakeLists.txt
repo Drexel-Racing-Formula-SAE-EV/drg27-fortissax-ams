@@ -18,6 +18,7 @@ zephyr_library_sources(
     current_adc_zephyr.c
     fan_pwm_zephyr.c
     imd_capture_zephyr.c
+    watchdog_zephyr.c
 )
 
 zephyr_library_include_directories(

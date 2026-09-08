@@ -22,9 +22,11 @@ TARGET_CONTRACTS = (
     "check_imd_capture_contract.py",
     "check_capability_contract.py",
     "check_safety_integrity_contract.py",
+    "check_watchdog_contract.py",
 )
 
 SOURCE_ONLY_CONTRACTS = (
+    "check_z014_source_hygiene.py",
     "check_null_platform_core.py",
     "check_freertos_runtime_parity.py",
 )
@@ -39,7 +41,7 @@ def run(cmd, cwd: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run the complete Z-013 target/source contract gate in one command."
+        description="Run the complete Z-014 target/source contract gate in one command."
     )
     parser.add_argument("repo_root", type=Path)
     parser.add_argument("build_dir", type=Path)
@@ -81,7 +83,7 @@ def main() -> int:
     if probe.returncode == 0:
         run(("git", "diff", "--check"), repo)
 
-    print("\nPASS: complete Z-013 target/source contract suite")
+    print("\nPASS: complete Z-014 target/source contract suite")
     print(f"Manifest: {manifest}")
     return 0
 

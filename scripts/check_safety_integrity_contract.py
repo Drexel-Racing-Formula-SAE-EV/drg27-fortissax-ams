@@ -2,6 +2,7 @@
 
 import argparse
 from pathlib import Path
+import re
 import sys
 
 
@@ -13,6 +14,14 @@ def fail(message: str) -> None:
 def require(condition: bool, message: str) -> None:
     if not condition:
         fail(message)
+
+
+def symbol_enabled(config: str, symbol: str) -> bool:
+    return re.search(rf"^{re.escape(symbol)}=y$", config, re.MULTILINE) is not None
+
+
+def symbol_disabled(config: str, symbol: str) -> bool:
+    return not symbol_enabled(config, symbol)
 
 
 def function_block(text: str, signature: str) -> str:
@@ -59,10 +68,10 @@ def main() -> int:
 
     # Authority is intentionally stricter than the operating FreeRTOS image at
     # this migration stage.
-    require("# CONFIG_AMS_BMS_AUTHORITY is not set" in config,
-            "BMS_OK assertion authority enabled during Z-013")
-    require("# CONFIG_AMS_BALANCE_AUTHORITY is not set" in config,
-            "balancing authority enabled during Z-013")
+    require(symbol_disabled(config, "CONFIG_AMS_BMS_AUTHORITY"),
+            "BMS_OK assertion authority enabled during Z-014")
+    require(symbol_disabled(config, "CONFIG_AMS_BALANCE_AUTHORITY"),
+            "balancing authority enabled during Z-014")
 
     # Corresponding Zephyr integrity mechanisms for the FreeRTOS assert/stack
     # overflow policy are release invariants, not optional debug preferences.
@@ -70,6 +79,8 @@ def main() -> int:
         ("CONFIG_ASSERT=y", "kernel assertions"),
         ("CONFIG_ARM_MPU=y", "ARM MPU"),
         ("CONFIG_HW_STACK_PROTECTION=y", "hardware stack protection"),
+        ("CONFIG_THREAD_STACK_INFO=y", "thread stack metadata"),
+        ("CONFIG_INIT_STACKS=y", "initialized stack watermarking"),
         ("CONFIG_HEAP_MEM_POOL_SIZE=0", "zero application heap"),
     ):
         require(token in config, f"required safety configuration missing: {description}")
@@ -80,6 +91,8 @@ def main() -> int:
         "BUILD_ASSERT(IS_ENABLED(CONFIG_ASSERT)",
         "BUILD_ASSERT(IS_ENABLED(CONFIG_ARM_MPU)",
         "BUILD_ASSERT(IS_ENABLED(CONFIG_HW_STACK_PROTECTION)",
+        "BUILD_ASSERT(IS_ENABLED(CONFIG_THREAD_STACK_INFO)",
+        "BUILD_ASSERT(IS_ENABLED(CONFIG_INIT_STACKS)",
         "BUILD_ASSERT(CONFIG_HEAP_MEM_POOL_SIZE == 0",
     ):
         require(token in safety, f"compile-time safety invariant missing: {token}")
@@ -159,15 +172,33 @@ def main() -> int:
     require(".safety_evidence_ready = true" not in non_real,
             "unmigrated placeholder is being treated as safety evidence")
 
+    fan_worker_start = runtime.find("static void fan_thread_entry")
+    fan_worker_end = runtime.find("static void periodic_placeholder_thread", fan_worker_start)
+    fan_worker = runtime[fan_worker_start:fan_worker_end]
+    require("ams_fan_pwm_set_percent" in fan_worker,
+            "FAN safety workload is not using the real PWM adapter")
+    fan_actuate = fan_worker.find("ams_fan_pwm_set_percent")
+    fan_watchdog = fan_worker.find("watchdog_heartbeat_kick(AMS_WATCHDOG_HEARTBEAT_FAN")
+    fan_generic = fan_worker.find("runtime_publish_complete(")
+    require(0 <= fan_actuate < fan_watchdog < fan_generic,
+            "FAN watchdog liveness must follow actuation attempt and precede generic completion")
+
     imd_worker_start = runtime.find("static void imd_thread_entry")
     imd_worker_end = runtime.find("static void runtime_update_stale_flags", imd_worker_start)
     imd_worker = runtime[imd_worker_start:imd_worker_end]
     require("ams_imd_capture_read_at" in imd_worker,
             "IMD safety workload is not using the real capture adapter")
     fail_low = imd_worker.find("ams_bms_ok_force_low_direct();")
-    heartbeat = imd_worker.find("runtime_publish_complete(")
-    require((fail_low >= 0) and (heartbeat > fail_low),
-            "bad IMD must force BMS_OK low before liveness heartbeat")
+    watchdog = imd_worker.find("watchdog_heartbeat_kick(AMS_WATCHDOG_HEARTBEAT_IMD")
+    generic = imd_worker.find("runtime_publish_complete(")
+    require(0 <= fail_low < watchdog < generic,
+            "bad IMD must force BMS_OK low before watchdog/generic liveness publication")
+
+    stack_scan_start = runtime.find("static void runtime_scan_stack_integrity")
+    stack_scan_end = runtime.find("static bool watchdog_stop_feed_test_active", stack_scan_start)
+    stack_scan = runtime[stack_scan_start:stack_scan_end]
+    require("ams_stack_health_evaluate(desc->stack_size," in stack_scan,
+            "proactive stack percentage policy must use actual usable Zephyr stack size")
 
     for symbol in (
         "ams_bms_ok_force_low_direct",
@@ -186,7 +217,7 @@ def main() -> int:
         require(forbidden not in link_map,
                 f"forbidden authority symbol linked: {forbidden}")
 
-    print("PASS: Z-013 deep fail-low/runtime-integrity safety contract")
+    print("PASS: Z-014 deep fail-low/runtime-integrity safety contract")
     return 0
 
 

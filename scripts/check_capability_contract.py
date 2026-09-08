@@ -2,6 +2,7 @@
 
 import argparse
 from pathlib import Path
+import re
 import sys
 
 
@@ -16,11 +17,17 @@ def require(condition: bool, message: str) -> None:
 
 
 def symbol_enabled(config: str, symbol: str) -> bool:
-    return f"{symbol}=y" in config
+    # Kconfiglib may omit hidden bool symbols whose effective value is n.
+    # Match exact .config assignments so similarly-prefixed symbols cannot
+    # create a false positive.
+    return re.search(rf"^{re.escape(symbol)}=y$", config, re.MULTILINE) is not None
 
 
 def symbol_disabled(config: str, symbol: str) -> bool:
-    return f"# {symbol} is not set" in config or f"{symbol}=n" in config
+    # For a Kconfig bool, absence from .config is an effective n.  Hidden
+    # default-n migration facts are commonly omitted entirely by Kconfiglib,
+    # so requiring a literal '# CONFIG_FOO is not set' line is incorrect.
+    return not symbol_enabled(config, symbol)
 
 
 def dts_block(text: str, label: str) -> str:
@@ -80,6 +87,7 @@ def main() -> int:
         "CONFIG_AMS_CAP_IMD_CAPTURE_ADAPTER_PRESENT",
         "CONFIG_AMS_CAP_IMD_ACTOR_LIVE",
         "CONFIG_AMS_CAP_IMD_SAFETY_EVIDENCE",
+        "CONFIG_AMS_CAP_WATCHDOG_ADAPTER_PRESENT",
     )
     disabled = (
         "CONFIG_AMS_CAP_CURRENT_ACTOR_LIVE",
@@ -93,20 +101,20 @@ def main() -> int:
         "CONFIG_AMS_CAP_CAN_SAFETY_EVIDENCE",
         "CONFIG_AMS_CAP_FAN_PHYSICAL_VALIDATED",
         "CONFIG_AMS_CAP_IMD_PHYSICAL_VALIDATED",
-        "CONFIG_AMS_CAP_WATCHDOG_ADAPTER_PRESENT",
-        "CONFIG_AMS_CAP_WATCHDOG_ACTIVE",
         "CONFIG_AMS_CAP_WATCHDOG_FULL_ORACLE_COVERAGE",
+        "CONFIG_AMS_CAP_WATCHDOG_PHYSICAL_VALIDATED",
     )
 
     for symbol in enabled:
         require(symbol_enabled(config, symbol),
-                f"Z-013 capability must be enabled: {symbol}")
+                f"Z-014 capability must be enabled: {symbol}")
     for symbol in disabled:
         require(symbol_disabled(config, symbol),
-                f"Z-013 capability must remain disabled: {symbol}")
+                f"Z-014 capability must remain disabled: {symbol}")
 
     # Capability symbols are hidden migration facts, not user-selectable knobs.
-    for symbol in tuple(s.removeprefix("CONFIG_") for s in enabled + disabled):
+    hidden_capabilities = enabled + disabled + ("CONFIG_AMS_CAP_WATCHDOG_ACTIVE",)
+    for symbol in tuple(s.removeprefix("CONFIG_") for s in hidden_capabilities):
         block = kconfig_block(kconfig, symbol)
         first_line_tail = block.splitlines()[0].removeprefix(f"config {symbol}").strip()
         require(first_line_tail == "" and not any(
@@ -124,18 +132,23 @@ def main() -> int:
     require(".safety_evidence_ready = false" in current_desc,
             "current capability says deferred but runtime descriptor claims evidence")
 
-    require('status = "disabled"' in dts_block(dts, "iwdg:"),
-            "watchdog capability is off but generated IWDG is not disabled")
-    require("# CONFIG_AMS_IMD_TARGET_VALIDATED is not set" in config,
+    require('status = "okay"' in dts_block(dts, "iwdg:"),
+            "Z-014 watchdog adapter requires an enabled IWDG device node")
+    validation_mode = symbol_enabled(config, "CONFIG_AMS_IWDG_VALIDATION_MODE")
+    require(symbol_enabled(config, "CONFIG_AMS_CAP_WATCHDOG_ACTIVE") == validation_mode,
+            "watchdog-active capability must exactly match explicit validation mode")
+    require(symbol_disabled(config, "CONFIG_AMS_WATCHDOG_TARGET_VALIDATED"),
+            "Z-014 source/build closeout must not claim physical watchdog validation")
+    require(symbol_disabled(config, "CONFIG_AMS_IMD_TARGET_VALIDATED"),
             "live IMD actor must not be confused with physical IMD validation")
-    require("# CONFIG_AMS_FAN_TARGET_VALIDATED is not set" in config,
+    require(symbol_disabled(config, "CONFIG_AMS_FAN_TARGET_VALIDATED"),
             "live fan actor must not be confused with physical fan validation")
-    require("# CONFIG_AMS_BMS_AUTHORITY is not set" in config,
+    require(symbol_disabled(config, "CONFIG_AMS_BMS_AUTHORITY"),
             "capability migration must not grant BMS authority")
-    require("# CONFIG_AMS_BALANCE_AUTHORITY is not set" in config,
+    require(symbol_disabled(config, "CONFIG_AMS_BALANCE_AUTHORITY"),
             "capability migration must not grant balancing authority")
 
-    print("PASS: Z-013 explicit migration-capability contract")
+    print("PASS: Z-014 explicit migration-capability contract")
     return 0
 
 

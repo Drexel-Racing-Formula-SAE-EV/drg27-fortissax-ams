@@ -1,0 +1,22 @@
+PASS: Z-014 contract mutation suite (18 unsafe mutations rejected)
+  rejected: direct wdt_feed bypass
+  rejected: second platform feeder
+  rejected: placeholder safety evidence
+  rejected: stack percentage size weakening
+  rejected: heartbeat time outside lock
+  rejected: BMS authority enabled
+  rejected: unmigrated TEMP evidence
+  rejected: IWDG disable path
+  rejected: invalid heartbeat-mask guard removal
+  rejected: invalid stale-mask guard removal
+  rejected: heartbeat grace duplicate source
+  rejected: platform/policy timeout bind removal
+  rejected: dynamic allocation in production runtime
+  rejected: raw MCU register in app
+  rejected: positive BMS_OK authority API
+  rejected: frozen power-core source drift
+  rejected: fatal halt before direct fail-low
+  rejected: runtime-start failure returns instead of panicking
+  pass: generated Zephyr syscall C ignored as non-production source
+  pass: hidden default-n capabilities may be absent from .config
+__SECONDS__=15.26

@@ -1,0 +1,16 @@
+#ifndef ZEPHYR_SYS_UTIL_H_
+#define ZEPHYR_SYS_UTIL_H_
+#define CONFIG_BOARD_DER26_AMS 1
+#define CONFIG_SOC_STM32F767XX 1
+#define CONFIG_AMS_BMS_AUTHORITY 0
+#define CONFIG_AMS_BALANCE_AUTHORITY 0
+#define CONFIG_ASSERT 1
+#define CONFIG_ARM_MPU 1
+#define CONFIG_HW_STACK_PROTECTION 1
+#define CONFIG_THREAD_STACK_INFO 1
+#define CONFIG_INIT_STACKS 1
+#define CONFIG_HEAP_MEM_POOL_SIZE 0
+#define IS_ENABLED(x) (x)
+#define BUILD_ASSERT(cond, msg) _Static_assert((cond), msg)
+#define ARG_UNUSED(x) ((void)(x))
+#endif

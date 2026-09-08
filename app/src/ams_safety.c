@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include <zephyr/fatal.h>
+#include <zephyr/sys/atomic.h>
 #include <zephyr/sys/util.h>
 
 
@@ -46,9 +47,23 @@ BUILD_ASSERT(IS_ENABLED(CONFIG_ARM_MPU),
 BUILD_ASSERT(IS_ENABLED(CONFIG_HW_STACK_PROTECTION),
              "AMS migration requires hardware stack protection");
 
+BUILD_ASSERT(IS_ENABLED(CONFIG_THREAD_STACK_INFO),
+             "AMS migration requires thread stack metadata");
+
+BUILD_ASSERT(IS_ENABLED(CONFIG_INIT_STACKS),
+             "AMS migration requires initialized stacks for proactive headroom queries");
+
 BUILD_ASSERT(CONFIG_HEAP_MEM_POOL_SIZE == 0,
              "AMS migration must remain application-heap-free");
 
+
+
+static atomic_t ams_panic_latched;
+
+bool ams_safety_panic_latched(void)
+{
+    return atomic_get(&ams_panic_latched) != 0;
+}
 
 /*
  * Establish the normal Zephyr GPIO ownership once device initialization has
@@ -82,6 +97,7 @@ void k_sys_fatal_error_handler(unsigned int reason,
     ARG_UNUSED(esf);
 
     ams_bms_ok_force_low_direct();
+    atomic_set(&ams_panic_latched, 1);
 
     k_fatal_halt(reason);
 }

@@ -1,0 +1,622 @@
+{
+  "schema": "der27-ams-z014-host-validation-v2",
+  "success": true,
+  "repo": "/mnt/data/z014_deep_hardened",
+  "scope": "Z-014 host/source/SIL only",
+  "target_build_performed": false,
+  "hardware_validation_performed": false,
+  "later_migration_stage_performed": false,
+  "extended_sop_soh_fuse_campaigns_performed": false,
+  "frozen_power_source_identity_checked": true,
+  "integrated_z014_system_sil_performed": true,
+  "thread_sanitizer_requested": true,
+  "thread_sanitizer_performed": true,
+  "skipped": [],
+  "seconds": 47.005,
+  "stages": [
+    {
+      "name": "Python contract/checker syntax",
+      "command": [
+        "/opt/pyvenv/bin/python3",
+        "-m",
+        "py_compile",
+        "/mnt/data/z014_deep_hardened/scripts/build_manifest.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_all_contracts.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_architecture_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_authority_profile.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_board_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_capability_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_core_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_current_adc_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_current_sensor_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_current_window_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_estimator_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_fan_pwm_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_freertos_runtime_parity.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_imd_capture_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_measurement_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_null_platform_core.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_power_core_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_runtime_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_safety_integrity_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_watchdog_contract.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_z014_contract_mutations.py",
+        "/mnt/data/z014_deep_hardened/scripts/check_z014_source_hygiene.py",
+        "/mnt/data/z014_deep_hardened/scripts/run_z014_host_validation.py"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.993
+    },
+    {
+      "name": "FreeRTOS v2.6.27 runtime/safety source parity",
+      "command": [
+        "/opt/pyvenv/bin/python3",
+        "/mnt/data/z014_deep_hardened/scripts/check_freertos_runtime_parity.py",
+        "/mnt/data/z014_deep_hardened"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.871
+    },
+    {
+      "name": "Z-014 source-only architecture/safety hygiene",
+      "command": [
+        "/opt/pyvenv/bin/python3",
+        "/mnt/data/z014_deep_hardened/scripts/check_z014_source_hygiene.py",
+        "/mnt/data/z014_deep_hardened"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.793
+    },
+    {
+      "name": "Frozen SoP/SoH/fuse exact portable-source identity",
+      "command": [
+        "/opt/pyvenv/bin/python3",
+        "/mnt/data/z014_deep_hardened/scripts/check_power_core_contract.py",
+        "/mnt/data/z014_deep_hardened"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.792
+    },
+    {
+      "name": "ams_core true null-platform isolation",
+      "command": [
+        "/opt/pyvenv/bin/python3",
+        "/mnt/data/z014_deep_hardened/scripts/check_null_platform_core.py",
+        "/mnt/data/z014_deep_hardened"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 1.685
+    },
+    {
+      "name": "watchdog: clean test strict",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/watchdog",
+        "clean",
+        "test",
+        "strict"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 2.417
+    },
+    {
+      "name": "safety_fatal: clean test strict",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/safety_fatal",
+        "clean",
+        "test",
+        "strict"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.146
+    },
+    {
+      "name": "bms_ok: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/bms_ok",
+        "clean",
+        "test"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.079
+    },
+    {
+      "name": "current_path: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/current_path",
+        "clean",
+        "test"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.556
+    },
+    {
+      "name": "fan: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/fan",
+        "clean",
+        "test"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.256
+    },
+    {
+      "name": "imd: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/imd",
+        "clean",
+        "test"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.394
+    },
+    {
+      "name": "measurement_store: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/measurement_store",
+        "clean",
+        "test"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.195
+    },
+    {
+      "name": "current_window: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/current_window",
+        "clean",
+        "test"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.17
+    },
+    {
+      "name": "estimator: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/estimator",
+        "clean",
+        "test"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.536
+    },
+    {
+      "name": "system/z014_safety_sil: clean test strict",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/system/z014_safety_sil",
+        "clean",
+        "test",
+        "strict"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.559
+    },
+    {
+      "name": "watchdog: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/watchdog",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 2.708
+    },
+    {
+      "name": "safety_fatal: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/safety_fatal",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.187
+    },
+    {
+      "name": "bms_ok: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/bms_ok",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.213
+    },
+    {
+      "name": "current_path: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/current_path",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 1.698
+    },
+    {
+      "name": "fan: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/fan",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.654
+    },
+    {
+      "name": "imd: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/imd",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 1.115
+    },
+    {
+      "name": "measurement_store: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/measurement_store",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.74
+    },
+    {
+      "name": "current_window: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/current_window",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.549
+    },
+    {
+      "name": "estimator: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/estimator",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 2.075
+    },
+    {
+      "name": "system/z014_safety_sil: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/system/z014_safety_sil",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.855
+    },
+    {
+      "name": "watchdog: tsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/watchdog",
+        "tsan"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.408
+    },
+    {
+      "name": "watchdog: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/watchdog",
+        "analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.106
+    },
+    {
+      "name": "safety_fatal: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/safety_fatal",
+        "analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.019
+    },
+    {
+      "name": "bms_ok: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/bms_ok",
+        "analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.021
+    },
+    {
+      "name": "current_path: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/current_path",
+        "analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.556
+    },
+    {
+      "name": "fan: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/fan",
+        "analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.085
+    },
+    {
+      "name": "imd: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/imd",
+        "analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.094
+    },
+    {
+      "name": "measurement_store: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/measurement_store",
+        "analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.042
+    },
+    {
+      "name": "current_window: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/current_window",
+        "analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.114
+    },
+    {
+      "name": "estimator: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/estimator",
+        "analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 1.119
+    },
+    {
+      "name": "system/z014_safety_sil: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/system/z014_safety_sil",
+        "analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.339
+    },
+    {
+      "name": "watchdog: clang-analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/watchdog",
+        "clang-analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.127
+    },
+    {
+      "name": "safety_fatal: clang-analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/safety_fatal",
+        "clang-analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.017
+    },
+    {
+      "name": "bms_ok: clang-analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/bms_ok",
+        "clang-analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.018
+    },
+    {
+      "name": "current_path: clang-analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/current_path",
+        "clang-analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.152
+    },
+    {
+      "name": "fan: clang-analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/fan",
+        "clang-analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.063
+    },
+    {
+      "name": "imd: clang-analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/imd",
+        "clang-analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.058
+    },
+    {
+      "name": "measurement_store: clang-analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/measurement_store",
+        "clang-analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.031
+    },
+    {
+      "name": "current_window: clang-analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/current_window",
+        "clang-analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 0.473
+    },
+    {
+      "name": "estimator: clang-analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/unit/estimator",
+        "clang-analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 4.029
+    },
+    {
+      "name": "system/z014_safety_sil: clang-analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/mnt/data/z014_deep_hardened/tests/system/z014_safety_sil",
+        "clang-analyze"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 1.497
+    },
+    {
+      "name": "Z-014 safety-contract mutation/negative controls",
+      "command": [
+        "/opt/pyvenv/bin/python3",
+        "/mnt/data/z014_deep_hardened/scripts/check_z014_contract_mutations.py",
+        "/mnt/data/z014_deep_hardened"
+      ],
+      "cwd": "/mnt/data/z014_deep_hardened",
+      "returncode": 0,
+      "seconds": 16.391
+    }
+  ]
+}

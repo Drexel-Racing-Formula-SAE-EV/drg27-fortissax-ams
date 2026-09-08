@@ -1,0 +1,106 @@
+{
+  "schema": "der27-ams-z014-deep-host-evidence-v1",
+  "date": "2026-09-07",
+  "scope": "Z-014 source/host/SIL only",
+  "oracle": "DER26 FreeRTOS v2.6.27 / firmware 0.5.30",
+  "oracle_safety_test": {
+    "passed": true,
+    "pass_lines": 108,
+    "final": "ALL COMPREHENSIVE HOST INJECTION TESTS PASSED",
+    "seconds": 3.31
+  },
+  "target_build_performed_for_hardened_snapshot": false,
+  "hardware_validation_performed": false,
+  "later_migration_stage_performed": false,
+  "authority_enabled": false,
+  "canonical_runner_single_invocation_completed": true,
+  "canonical_runner_note": "Canonical command completed in one uninterrupted background invocation with exit code 0: python scripts/run_z014_host_validation.py . --require-clang --tsan. All 47 recorded stages passed in 47.005 s; no evidence was skipped.",
+  "host_evidence": {
+    "null_platform_core_translation_units": 16,
+    "watchdog_directed_checks": 179,
+    "heartbeat_directed_checks": 128,
+    "heartbeat_differential_operations": 2500000,
+    "watchdog_policy_differential_decisions": 2500000,
+    "differential_optimizations": [
+      "O0",
+      "O1",
+      "O2",
+      "O3",
+      "Os"
+    ],
+    "differential_seeds": [
+      "0x00000001",
+      "0x12345678",
+      "0x00C0FFEE",
+      "0xDEADBEEF",
+      "0x31415926"
+    ],
+    "watchdog_adapter_checks": 397681,
+    "watchdog_concurrency": {
+      "fan_kicks": 100000,
+      "imd_kicks": 100000,
+      "supervisor_steps": 150000,
+      "thread_sanitizer_passed": true
+    },
+    "fatal_fail_low_checks": 20,
+    "bms_ok_adapter_checks": 19,
+    "current_sensor_checks": 76,
+    "current_fault_checks": 22,
+    "current_adc_adapter_checks": 516547,
+    "current_adc_low_timeout_checks": 14,
+    "current_adc_ambiguous_completion_checks": 6,
+    "fan_core_checks": 688,
+    "fan_pwm_adapter_checks": 150679,
+    "imd_core_checks": 57,
+    "imd_capture_adapter_checks": 776535,
+    "measurement_store_tests": 8,
+    "current_window_regression_classes": 9,
+    "estimator_checks": 89,
+    "integrated_system_sil": {
+      "seeds": 5,
+      "steps_per_seed": 250000,
+      "total_event_steps": 1250000,
+      "supervisor_steps": 162990,
+      "actor_completions": 488707,
+      "scenario_classes": 7
+    },
+    "mutation_unsafe_edits_rejected": 18,
+    "asan_passed": true,
+    "ubsan_passed": true,
+    "gcc_fanalyzer_passed": true,
+    "clang_analyzer_passed": true,
+    "source_hygiene_passed_after_final_mutations": true,
+    "python_checker_syntax_passed_after_final_mutations": true
+  },
+  "intentionally_not_rerun": {
+    "extended_sop_soh_fuse_campaigns": true,
+    "reason": "canonical portable source identity is hash-frozen and unchanged during Z-014"
+  },
+  "evidence_files": [
+    "docs/migration/evidence/FREERTOS_V2_6_27_SAFETY_TEST_2026-09-07.log",
+    "docs/migration/evidence/Z014_DEEP_HOST_SIL_CANONICAL_2026-09-07.log",
+    "docs/migration/evidence/Z014_DEEP_HOST_SIL_CANONICAL_REPORT_2026-09-07.json",
+    "docs/migration/evidence/Z014_MUTATION_FINAL_2026-09-07.log",
+    "docs/migration/evidence/Z014_FINAL_SOURCE_GATES_2026-09-07.log"
+  ],
+  "evidence_files_in_repository": [
+    "docs/migration/evidence/FREERTOS_V2_6_27_SAFETY_TEST_2026-09-07.log",
+    "docs/migration/evidence/Z014_DEEP_HOST_SIL_CANONICAL_2026-09-07.log",
+    "docs/migration/evidence/Z014_DEEP_HOST_SIL_CANONICAL_REPORT_2026-09-07.json",
+    "docs/migration/evidence/Z014_MUTATION_FINAL_2026-09-07.log",
+    "docs/migration/evidence/Z014_FINAL_SOURCE_GATES_2026-09-07.log"
+  ],
+  "canonical_runner": {
+    "command": "python scripts/run_z014_host_validation.py . --require-clang --tsan",
+    "success": true,
+    "exit_code": 0,
+    "stages": 47,
+    "seconds": 47.005,
+    "skipped": [],
+    "thread_sanitizer_performed": true,
+    "integrated_system_sil_performed": true,
+    "target_build_performed": false,
+    "hardware_validation_performed": false,
+    "later_migration_stage_performed": false
+  }
+}

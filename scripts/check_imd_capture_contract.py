@@ -221,7 +221,7 @@ def main() -> int:
 
     require('status = "disabled"' in block(g, "can1:"), "CAN1 enabled during Z-013")
     require('status = "disabled"' in block(g, "spi6:"), "SPI6 enabled during Z-013")
-    require('status = "disabled"' in block(g, "iwdg:"), "watchdog enabled before Z-014")
+    require('status = "okay"' in block(g, "iwdg:"), "Z-014 watchdog device node missing")
 
     for symbol in (
         "ams_imd_init", "ams_imd_capture_publish", "ams_imd_read_at", "ams_imd_is_ok",

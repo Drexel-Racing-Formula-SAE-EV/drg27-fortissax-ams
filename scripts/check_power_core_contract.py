@@ -66,11 +66,20 @@ def canonical_bytes(path: Path) -> bytes:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("repo_root", type=Path)
-    parser.add_argument("build_dir", type=Path)
+    parser.add_argument(
+        "build_dir",
+        nargs="?",
+        type=Path,
+        default=None,
+        help=(
+            "Zephyr build directory for linked/config authority checks. "
+            "Omit for the exact frozen portable-source gate used by host SIL."
+        ),
+    )
     args = parser.parse_args()
 
     repo = args.repo_root.resolve()
-    build = args.build_dir.resolve()
+    build = args.build_dir.resolve() if args.build_dir is not None else None
     core = repo / "lib" / "ams_core"
     include = core / "include" / "ams_core"
 
@@ -201,6 +210,10 @@ def main() -> int:
         "sop/ams_fuse_observer.c",
     ):
         require(source in cmake, f"power-core source not linked: {source}")
+
+    if build is None:
+        print("PASS: exact frozen v2.6.27 SoP/SoH/fuse portable-source contract")
+        return 0
 
     dot_config = (build / "zephyr" / ".config").read_text(
         encoding="utf-8", errors="replace"

@@ -29,17 +29,6 @@ EXPECTED_MACROS = {
     "AMS_PERIOD_IMD_MS": 100,
     "AMS_PERIOD_DIAGNOSTICS_MS": 0,
 
-    # Exact v2.6.27 heartbeat policy rather than a generic N-period rule.
-    "AMS_HEARTBEAT_STARTUP_GRACE_MS": 3000,
-    "AMS_HEARTBEAT_ADBMS_TIMEOUT_MS": 3000,
-    "AMS_HEARTBEAT_CURRENT_TIMEOUT_MS": 200,
-    "AMS_HEARTBEAT_TEMP_TIMEOUT_MS": 3000,
-    "AMS_HEARTBEAT_CAN_TIMEOUT_MS": 2000,
-    "AMS_HEARTBEAT_LOGGER_TIMEOUT_MS": 2000,
-    "AMS_HEARTBEAT_IMD_TIMEOUT_MS": 500,
-    "AMS_HEARTBEAT_FAN_TIMEOUT_MS": 1000,
-    "AMS_HEARTBEAT_ESTIMATOR_TIMEOUT_MS": 500,
-
     "AMS_STALE_SAFETY_MS": 0,
     "AMS_STALE_CURRENT_MS": 200,
     "AMS_STALE_ADBMS_MS": 3000,
@@ -94,6 +83,18 @@ EXPECTED_MACROS = {
 }
 
 
+
+HEARTBEAT_EXPECTED_MACROS = {
+    "AMS_WATCHDOG_HEARTBEAT_ADBMS_TIMEOUT_MS": 3000,
+    "AMS_WATCHDOG_HEARTBEAT_CURRENT_TIMEOUT_MS": 200,
+    "AMS_WATCHDOG_HEARTBEAT_TEMP_TIMEOUT_MS": 3000,
+    "AMS_WATCHDOG_HEARTBEAT_CAN_TIMEOUT_MS": 2000,
+    "AMS_WATCHDOG_HEARTBEAT_LOGGER_TIMEOUT_MS": 2000,
+    "AMS_WATCHDOG_HEARTBEAT_IMD_TIMEOUT_MS": 500,
+    "AMS_WATCHDOG_HEARTBEAT_FAN_TIMEOUT_MS": 1000,
+    "AMS_WATCHDOG_HEARTBEAT_ESTIMATOR_TIMEOUT_MS": 500,
+}
+
 REQUIRED_STACK_SYMBOLS = (
     "safety_stack",
     "current_stack",
@@ -138,16 +139,24 @@ def main() -> int:
 
     source_path = args.repo_root / "app" / "src" / "ams_threads.c"
     header_path = args.repo_root / "app" / "src" / "ams_threads.h"
+    heartbeat_header_path = (args.repo_root / "lib" / "ams_core" / "include" /
+                             "ams_core" / "ams_watchdog_heartbeat.h")
+    watchdog_policy_header_path = (args.repo_root / "lib" / "ams_core" / "include" /
+                                   "ams_core" / "ams_watchdog_policy.h")
     map_path = args.build_dir / "zephyr" / "zephyr.map"
     config_path = args.build_dir / "zephyr" / ".config"
 
     require(source_path.is_file(), f"missing {source_path}")
     require(header_path.is_file(), f"missing {header_path}")
+    require(heartbeat_header_path.is_file(), f"missing {heartbeat_header_path}")
+    require(watchdog_policy_header_path.is_file(), f"missing {watchdog_policy_header_path}")
     require(map_path.is_file(), f"missing {map_path}")
     require(config_path.is_file(), f"missing {config_path}")
 
     source = source_path.read_text(encoding="utf-8")
     header = header_path.read_text(encoding="utf-8")
+    heartbeat_header = heartbeat_header_path.read_text(encoding="utf-8")
+    watchdog_policy_header = watchdog_policy_header_path.read_text(encoding="utf-8")
     link_map = map_path.read_text(encoding="utf-8", errors="replace")
     config = config_path.read_text(encoding="utf-8")
 
@@ -156,6 +165,22 @@ def main() -> int:
         actual = parse_macro(source, macro)
         values[macro] = actual
         require(actual == expected, f"{macro}: expected {expected}, got {actual}")
+
+    require(parse_macro(watchdog_policy_header, "AMS_WATCHDOG_STARTUP_GRACE_MS") == 3000,
+            "watchdog policy startup grace drifted from 3000 ms")
+    require(
+        re.search(
+            r"^\s*#define\s+AMS_WATCHDOG_HEARTBEAT_STARTUP_GRACE_MS\s+"
+            r"AMS_WATCHDOG_STARTUP_GRACE_MS\s*$",
+            heartbeat_header,
+            flags=re.MULTILINE,
+        ) is not None,
+        "heartbeat startup grace must alias watchdog policy grace",
+    )
+    for macro, expected in HEARTBEAT_EXPECTED_MACROS.items():
+        actual = parse_macro(heartbeat_header, macro)
+        require(actual == expected,
+                f"{macro}: expected {expected}, got {actual}")
 
     # Preserve the exact v2.6.27 relative priority policy after translating
     # larger-is-higher FreeRTOS priorities to smaller-is-higher Zephyr values.
@@ -237,6 +262,11 @@ def main() -> int:
             "execution timing instrumentation missing")
     require("k_thread_stack_space_get" in source,
             "stack watermark instrumentation missing")
+    require("ams_watchdog_heartbeat.h" in source and
+            "watchdog_heartbeat_snapshot_get" in source,
+            "watchdog heartbeat liveness must use the portable monitor")
+    require("watchdog_migrated_stale_mask_value" not in source,
+            "watchdog feed must not be inferred from generic runtime stale flags")
 
     # Disabled placeholders must not be used as fabricated liveness proof.
     require("if (!thread->enabled || (thread->stale_deadline_ms == 0U))" in source,
@@ -294,7 +324,7 @@ def main() -> int:
     require((safety_start >= 0) and (current_start > safety_start),
             "safety supervisor must start before worker threads")
 
-    print("PASS: AMS runtime contract (v2.6.27 safety-policy parity, Z-013 fan+IMD live)")
+    print("PASS: AMS runtime contract (v2.6.27 timing + Z-014 explicit watchdog evidence)")
     return 0
 
 

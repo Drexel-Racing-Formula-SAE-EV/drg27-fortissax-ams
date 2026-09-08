@@ -41,6 +41,38 @@ config AMS_FAN_TARGET_VALIDATED
       disabled until reset/pinctrl behavior, frequency, polarity and all six
       physical outputs have been verified on the installed target.
 
+config AMS_IWDG_VALIDATION_MODE
+    bool "Arm STM32 IWDG for explicit Z-014 hardware validation"
+    default n
+    help
+      Compile the Z-014 watchdog port in irreversible active mode. When this
+      is disabled the adapter is still built and safely prepared, but
+      wdt_setup() is never called and IWDG is not armed.
+
+      Keep this disabled in the ordinary migration build. Enable only in the
+      dedicated watchdog validation configuration while BMS and balancing
+      authority remain disabled.
+
+config AMS_WATCHDOG_TARGET_VALIDATED
+    bool "Claim physical watchdog target validation"
+    depends on AMS_IWDG_VALIDATION_MODE
+    default n
+    help
+      Evidence gate only. Do not enable from a successful compile/link. This
+      remains false until healthy feeding, deliberate starvation, supervisor
+      death, process-fault non-reset, stack-margin and reset-cause tests have
+      been demonstrated on the installed STM32F767 target.
+
+config AMS_IWDG_STOP_FEED_TEST_AFTER_MS
+    int "Validation-only automatic watchdog starvation delay (ms)"
+    depends on AMS_IWDG_VALIDATION_MODE
+    default 0
+    range 0 600000
+    help
+      Zero disables automatic starvation. A nonzero value causes the safety
+      supervisor to stop feeding after the requested runtime age so the real
+      IWDG reset path can be measured. This option never grants authority.
+
 endmenu
 menu "DRG27 AMS migration capabilities"
 
@@ -127,10 +159,16 @@ config AMS_CAP_IMD_PHYSICAL_VALIDATED
 
 config AMS_CAP_WATCHDOG_ADAPTER_PRESENT
     bool
-    default n
+    default y
 
 config AMS_CAP_WATCHDOG_ACTIVE
     bool
+    default y if AMS_IWDG_VALIDATION_MODE
+    default n
+
+config AMS_CAP_WATCHDOG_PHYSICAL_VALIDATED
+    bool
+    default y if AMS_WATCHDOG_TARGET_VALIDATED
     default n
 
 config AMS_CAP_WATCHDOG_FULL_ORACLE_COVERAGE

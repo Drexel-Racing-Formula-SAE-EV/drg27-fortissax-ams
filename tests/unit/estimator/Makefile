@@ -1,0 +1,33 @@
+AMS_CORE ?= ../../../lib/ams_core
+CC ?= gcc
+CLANG ?= clang
+BASE := -std=c11 -Wall -Wextra -Werror -pedantic -I$(AMS_CORE)/include
+CORE_SRC := $(AMS_CORE)/estimator/ams_estimator_lut.c $(AMS_CORE)/estimator/ams_soc_ekf.c
+SRC := estimator_core_test.c $(CORE_SRC)
+
+.PHONY: all test asan ubsan analyze clang-analyze clean
+all: test
+
+test:
+	$(CC) $(BASE) -O2 $(SRC) -lm -o estimator_core_test
+	./estimator_core_test
+
+asan:
+	$(CC) $(BASE) -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer $(SRC) -lm -o estimator_core_test_asan
+	ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./estimator_core_test_asan
+
+ubsan:
+	$(CC) $(BASE) -O1 -g -fsanitize=undefined -fno-sanitize-recover=all $(SRC) -lm -o estimator_core_test_ubsan
+	./estimator_core_test_ubsan
+
+analyze:
+	$(CC) -std=c11 -Wall -Wextra -Werror -fanalyzer -I$(AMS_CORE)/include -c $(AMS_CORE)/estimator/ams_estimator_lut.c -o estimator_lut_an.o
+	$(CC) -std=c11 -Wall -Wextra -Werror -fanalyzer -I$(AMS_CORE)/include -c $(AMS_CORE)/estimator/ams_soc_ekf.c -o estimator_ekf_an.o
+
+clang-analyze:
+	$(CLANG) -std=c11 -Wall -Wextra -Werror --analyze -I$(AMS_CORE)/include $(AMS_CORE)/estimator/ams_estimator_lut.c
+	$(CLANG) -std=c11 -Wall -Wextra -Werror --analyze -I$(AMS_CORE)/include $(AMS_CORE)/estimator/ams_soc_ekf.c
+
+clean:
+	rm -f estimator_core_test estimator_core_test_asan estimator_core_test_ubsan estimator_lut_an.o estimator_ekf_an.o
+	@rm -f *.plist

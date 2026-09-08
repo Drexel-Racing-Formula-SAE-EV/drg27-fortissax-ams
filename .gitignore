@@ -24,3 +24,24 @@ __pycache__/
 /tests/unit/bms_ok/bms_ok_adapter_test
 /tests/unit/bms_ok/*_asan
 /tests/unit/bms_ok/*_an.o
+# Z-014 deep host/SIL generated products
+/tests/unit/watchdog/watchdog_policy_test
+/tests/unit/watchdog/watchdog_policy_test_*
+/tests/unit/watchdog/watchdog_heartbeat_test
+/tests/unit/watchdog/watchdog_heartbeat_test_*
+/tests/unit/watchdog/watchdog_heartbeat_diff_*
+/tests/unit/watchdog/watchdog_diff_*
+/tests/unit/watchdog/watchdog_adapter_test
+/tests/unit/watchdog/watchdog_adapter_test_*
+/tests/unit/watchdog/watchdog_concurrency_test
+/tests/unit/watchdog/watchdog_concurrency_test_*
+/tests/unit/safety_fatal/safety_fatal_test
+/tests/unit/safety_fatal/safety_fatal_test_*
+/tests/unit/measurement_store/measurement_store_test
+/tests/unit/measurement_store/measurement_store_test_*
+/tests/unit/current_window/current_window_test
+/tests/unit/current_window/current_window_test_*
+/tests/unit/estimator/estimator_core_test
+/tests/unit/estimator/estimator_core_test_*
+/tests/system/z014_safety_sil/z014_safety_sil
+/tests/system/z014_safety_sil/z014_safety_sil_*

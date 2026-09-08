@@ -12,6 +12,9 @@ add_library(ams_core STATIC
     sop/ams_fuse_observer.c
     fan/ams_fan_control.c
     imd/ams_imd.c
+    integrity/ams_stack_health.c
+    watchdog/ams_watchdog_policy.c
+    watchdog/ams_watchdog_heartbeat.c
 )
 
 target_include_directories(ams_core
