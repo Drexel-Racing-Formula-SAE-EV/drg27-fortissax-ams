@@ -460,6 +460,42 @@ fail:
     return ret;
 }
 
+#ifdef CONFIG_AMS_Z016_LINK_PROBE
+#include "adbms_time_internal.h"
+static k_tid_t link_owner;
+bool ams_adbms_spi_bind_owner(void)
+{
+ /* Only the dedicated ADBMS thread calls this private entry once, before
+  * its first operation. There are no other bind callers or external requests. */
+ if (k_is_in_isr() || link_owner != NULL) return false;
+ link_owner=k_current_get();
+ return true;
+}
+static bool link_owner_valid(void)
+{
+ return !k_is_in_isr() && link_owner != NULL && link_owner==k_current_get();
+}
+bool ams_adbms_spi_wake_b(bool cold)
+{
+ if (!link_owner_valid()) return false;
+ if (!atomic_cas(&platform_state,AMS_ADBMS_SPI_PLATFORM_READY,
+                 AMS_ADBMS_SPI_PLATFORM_ACTIVE)) return false;
+ bool ok=force_both_cs_inactive()==0;
+ LL_SPI_Disable(spi6);
+ for (unsigned train=0; ok && train<(cold?2U:1U); ++train) {
+  ok=backend_set_cs(NULL,AMS_ADBMS_SPI_STRING_B,true)==0;
+  if (ok) ok=ams_adbms_time_delay(1000U);
+  /* Cleanup is unconditional, including an interrupted/failed low phase. */
+  if (force_both_cs_inactive()!=0) ok=false;
+  if (ok) ok=ams_adbms_time_delay(1000U);
+ }
+ if (force_both_cs_inactive()!=0) ok=false;
+ atomic_set(&platform_last_error,ok?0:-EIO);
+ atomic_set(&platform_state,ok?AMS_ADBMS_SPI_PLATFORM_READY:AMS_ADBMS_SPI_PLATFORM_FAULTED);
+ return ok;
+}
+#endif
+
 static ams_adbms_spi_result_t run_transfer(bool read,
                                             ams_adbms_spi_string_t string,
                                             const uint8_t *tx,
@@ -468,6 +504,12 @@ static ams_adbms_spi_result_t run_transfer(bool read,
                                             size_t rx_len)
 {
     ams_adbms_spi_result_t result;
+#ifdef CONFIG_AMS_Z016_LINK_PROBE
+    if (!link_owner_valid() || string != AMS_ADBMS_SPI_STRING_B) {
+        atomic_inc_saturating(&platform_integrity_violation_count);
+        return AMS_ADBMS_SPI_RESULT_INTERNAL_FAULT;
+    }
+#endif
 
     if (!atomic_cas(&platform_state,
                     AMS_ADBMS_SPI_PLATFORM_READY,

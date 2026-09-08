@@ -1,4 +1,5 @@
 add_library(ams_core STATIC
+    adbms/ams_adbms_link.c
     common/ams_core_time.c
     common/ams_core_contract.c
     measurement/ams_measurement.c

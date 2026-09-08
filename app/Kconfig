@@ -95,6 +95,15 @@ config AMS_IWDG_STOP_FEED_TEST_AFTER_MS
       supervisor to stop feeding after the requested runtime age so the real
       IWDG reset path can be measured. This option never grants authority.
 
+config AMS_Z016_LINK_PROBE
+    bool "Finite String B one-SMB read-only isoSPI probe"
+    default n
+    select CORTEX_M_SYSTICK_64BIT_CYCLE_COUNTER
+    help
+      Temporary ADBMS6822 evaluation-jumper path on PE4 only. No onboard
+      String A fallback, configuration writes, conversion, S diagnostics,
+      balancing, APM or vehicle authority. Stops on the first failed step.
+
 endmenu
 menu "DRG27 AMS migration capabilities"
 
@@ -200,5 +209,14 @@ config AMS_CAP_WATCHDOG_PHYSICAL_VALIDATED
 config AMS_CAP_WATCHDOG_FULL_ORACLE_COVERAGE
     bool
     default n
+
+config AMS_Z016_LINK_PROBE
+    bool "Finite String B one-SMB read-only isoSPI probe"
+    default n
+    select CORTEX_M_SYSTICK_64BIT_CYCLE_COUNTER
+    help
+      Temporary ADBMS6822 evaluation-jumper path on PE4 only. No onboard
+      String A fallback, configuration writes, conversion, S diagnostics,
+      balancing, APM or vehicle authority. Stops on the first failed step.
 
 endmenu

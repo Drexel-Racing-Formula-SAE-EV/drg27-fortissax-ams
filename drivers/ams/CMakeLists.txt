@@ -27,3 +27,6 @@ zephyr_library_include_directories(
     ${DRG27_AMS_ROOT}/include
     ${DRG27_AMS_ROOT}/lib/ams_core/include
 )
+
+zephyr_library_sources_ifdef(CONFIG_AMS_Z016_LINK_PROBE
+    adbms_time_zephyr.c adbms_link_probe.c)

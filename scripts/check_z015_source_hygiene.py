@@ -73,6 +73,8 @@ def main() -> int:
     parser.add_argument("repo_root", type=Path)
     args = parser.parse_args()
     repo = args.repo_root.resolve()
+    require((repo / "scripts/check_architecture_contract_host_selftest.py").is_file(),
+            "target architecture checker host regression self-test missing")
 
     required = (
         "drivers/ams/adbms_spi_engine.c",
@@ -202,7 +204,12 @@ def main() -> int:
     require("platform_integrity_violation_count" in target and
             "atomic_inc_saturating(&platform_integrity_violation_count);" in target,
             "illegal/reentrant transfer attempts are not durably counted")
-    cas_start = target.find("if (!atomic_cas(&platform_state")
+    transfer_start = target.find("static ams_adbms_spi_result_t run_transfer")
+    cas_start = target.find("if (!atomic_cas(&platform_state", transfer_start)
+    owner_start = target.find("if (!link_owner_valid() || string", transfer_start)
+    if owner_start >= 0:
+        require("atomic_inc_saturating(&platform_integrity_violation_count);" in target[owner_start:cas_start],
+                "wrong owner/direction rejection loses integrity evidence")
     read_start = target.find("    if (read) {", cas_start)
     require(cas_start >= 0 and read_start > cas_start and
             "atomic_inc_saturating(&platform_integrity_violation_count);" in target[cas_start:read_start],
@@ -314,13 +321,14 @@ def main() -> int:
 
     prod = files_under(repo, ("app", "boards", "drivers", "include", "lib", "zephyr"))
     internal_include_hits = occurrences(repo, prod, re.compile(r"#\s*include\s*[<\"]adbms_spi_internal\.h"))
-    require(all(hit.startswith("drivers/ams/adbms_spi_stm32.c:") for hit in internal_include_hits),
+    require(all(hit.startswith(("drivers/ams/adbms_spi_stm32.c:", "drivers/ams/adbms_link_probe.c:")) for hit in internal_include_hits),
             "private ADBMS SPI header escaped its target adapter: " + str(internal_include_hits))
 
     for symbol in ("ams_adbms_spi_write", "ams_adbms_spi_write_read"):
         hits = occurrences(repo, prod, re.compile(rf"\b{symbol}\s*\("))
         bad = [h for h in hits if not h.startswith("drivers/ams/adbms_spi_stm32.c:")
-               and not h.startswith("drivers/ams/adbms_spi_internal.h:")]
+               and not h.startswith("drivers/ams/adbms_spi_internal.h:")
+               and not (symbol == "ams_adbms_spi_write_read" and h.startswith("drivers/ams/adbms_link_probe.c:"))]
         require(not bad, f"Z-015 has a runtime/private-transfer caller for {symbol}: {bad}")
 
     generic_spi_hits = occurrences(repo, prod, re.compile(r"#\s*include\s*<zephyr/drivers/spi\.h>"))
@@ -346,7 +354,10 @@ def main() -> int:
         repo, files_under(repo, ("drivers/ams", "include/ams_platform", "app")),
         re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*(?:wakeup|wake)[A-Za-z0-9_]*\s*\(", re.IGNORECASE),
     )
-    require(not wake_hits, "Z-015 introduced a wake API/call: " + str(wake_hits))
+    bad_wakes = [h for h in wake_hits if not h.startswith((
+        "drivers/ams/adbms_spi_stm32.c:", "drivers/ams/adbms_spi_internal.h:",
+        "drivers/ams/adbms_link_probe.c:"))]
+    require(not bad_wakes, "Unauthorized wake API/call: " + str(bad_wakes))
 
     # No current-scope source may quietly enable vehicle authority or claim
     # physical ADBMS validation.
@@ -362,7 +373,7 @@ def main() -> int:
     print("  transfer engine: bounded synchronous owner; illegal/reentrant attempts durably counted")
     print("  current ADC: private bounded polling; transient timeout recovery; generic adc_stm32 absent")
     print("  fan: output-only TIM3/4/5 capture IRQs disabled + pending-cleared")
-    print("  runtime: adapter init/status only; zero transfers/wake/ADBMS evidence")
+    print("  runtime: base zero transfers; Z016 optional finite read-only probe; no safety evidence")
     return 0
 
 

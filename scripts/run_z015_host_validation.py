@@ -190,6 +190,8 @@ def main() -> int:
         repo / "app" / "src" / "ams_threads.c",
         repo / "scripts" / "check_z014_contract_mutations.py",
         repo / "scripts" / "check_z015_contract_mutations.py",
+        repo / "scripts" / "check_architecture_contract_host_selftest.py",
+        repo / "scripts" / "check_current_adc_contract_host_selftest.py",
         repo / "drivers" / "ams" / "adbms_spi_engine.c",
         repo / "drivers" / "ams" / "adbms_spi_stm32.c",
         repo / "drivers" / "ams" / "current_adc_stm32.c",
@@ -223,6 +225,18 @@ def main() -> int:
 
         # Source-only architecture/oracle gates. The null-platform gate proves
         # ams_core still builds with no Zephyr/FreeRTOS/HAL available.
+        run_stage(
+            "Target architecture checker host regression",
+            [sys.executable, str(repo / "scripts/check_architecture_contract_host_selftest.py"), str(repo)],
+            repo,
+            records,
+        )
+        run_stage(
+            "Current ADC target-contract comment/config regression",
+            [sys.executable, str(repo / "scripts/check_current_adc_contract_host_selftest.py"), str(repo)],
+            repo,
+            records,
+        )
         run_stage(
             "FreeRTOS v2.6.27 runtime/safety source parity",
             [sys.executable, str(repo / "scripts/check_freertos_runtime_parity.py"), str(repo)],
@@ -326,7 +340,7 @@ def main() -> int:
             "schema": "der27-ams-z015-host-validation-v1",
             "success": success,
             "repo": str(repo),
-            "scope": "Z-015 host/source/SIL + post-review HAL hardening only; no target/hardware/Z-016",
+            "scope": "Inherited Z-015 host/source/SIL + HAL hardening regression; later-stage additions validated separately",
             "target_build_performed": False,
             "hardware_validation_performed": False,
             "later_migration_stage_performed": False,
@@ -380,7 +394,7 @@ def main() -> int:
         print("Skipped evidence: " + "; ".join(skipped))
     else:
         print("Skipped evidence: none")
-    print("No target build, hardware test, authority enablement, or Z-016 work was performed.")
+    print("This inherited regression runner performs no target build, hardware test or authority enablement.")
     return 0
 
 

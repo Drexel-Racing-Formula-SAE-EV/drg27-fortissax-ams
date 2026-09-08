@@ -49,10 +49,16 @@ int main(void)
                    (unsigned int)spi_status.input_clock_hz);
         } else {
             printk("AMS ADBMS SPI6 adapter: READY pclk=%u sck=%u timeout=%u "
-                   "(no runtime transfers)\n",
+                   "(%s)\n",
                    (unsigned int)spi_status.input_clock_hz,
                    (unsigned int)spi_status.achieved_clock_hz,
-                   (unsigned int)spi_status.timeout_ms);
+                   (unsigned int)spi_status.timeout_ms,
+#ifdef CONFIG_AMS_Z016_LINK_PROBE
+                   "finite String B probe enabled; startup performs no transfers"
+#else
+                   "no runtime transfers"
+#endif
+            );
         }
     }
 

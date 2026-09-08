@@ -24,6 +24,82 @@ def source_files(base: Path):
             yield path
 
 
+
+
+def strip_c_comments(text: str) -> str:
+    """Remove C/C++ comments while preserving strings, chars and newlines.
+
+    Contract scans below are intended to inspect executable source, not oracle
+    provenance prose. Preserving newlines keeps diagnostics and preprocessor
+    structure readable while preventing comment-only HAL/RTOS names from being
+    mistaken for dependencies.
+    """
+    out: list[str] = []
+    i = 0
+    state = "code"
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+
+        if state == "code":
+            if ch == '/' and nxt == '*':
+                out.extend((' ', ' '))
+                i += 2
+                state = "block"
+                continue
+            if ch == '/' and nxt == '/':
+                out.extend((' ', ' '))
+                i += 2
+                state = "line"
+                continue
+            if ch == '"':
+                out.append(ch)
+                i += 1
+                state = "string"
+                continue
+            if ch == "'":
+                out.append(ch)
+                i += 1
+                state = "char"
+                continue
+            out.append(ch)
+            i += 1
+            continue
+
+        if state == "block":
+            if ch == '*' and nxt == '/':
+                out.extend((' ', ' '))
+                i += 2
+                state = "code"
+            else:
+                out.append('\n' if ch == '\n' else ' ')
+                i += 1
+            continue
+
+        if state == "line":
+            if ch == '\n':
+                out.append('\n')
+                i += 1
+                state = "code"
+            else:
+                out.append(' ')
+                i += 1
+            continue
+
+        # Preserve literals exactly; escaped quotes do not terminate them.
+        out.append(ch)
+        if ch == '\\' and i + 1 < len(text):
+            out.append(text[i + 1])
+            i += 2
+            continue
+        if state == "string" and ch == '"':
+            state = "code"
+        elif state == "char" and ch == "'":
+            state = "code"
+        i += 1
+
+    return ''.join(out)
+
 def production_sources(root: Path):
     for base in (
         root / "app",
@@ -108,7 +184,8 @@ def main() -> int:
     )
     for path in source_files(core):
         text = path.read_text(encoding="utf-8", errors="replace")
-        match = core_forbidden.search(text)
+        code = strip_c_comments(text)
+        match = core_forbidden.search(code)
         require(
             match is None,
             f"portable ams_core platform dependency in {path.relative_to(repo)}: "
@@ -125,7 +202,8 @@ def main() -> int:
     )
     for path in source_files(platform_include):
         text = path.read_text(encoding="utf-8", errors="replace")
-        match = platform_header_forbidden.search(text)
+        code = strip_c_comments(text)
+        match = platform_header_forbidden.search(code)
         require(
             match is None,
             f"public ams_platform interface leaks Zephyr/MCU types in {path.relative_to(repo)}: "
@@ -145,7 +223,8 @@ def main() -> int:
     )
     for path in production_sources(repo):
         text = path.read_text(encoding="utf-8", errors="replace")
-        match = legacy_include.search(text) or legacy_call_or_type.search(text)
+        code = strip_c_comments(text)
+        match = legacy_include.search(code) or legacy_call_or_type.search(code)
         require(
             match is None,
             f"legacy HAL/RTOS dependency in {path.relative_to(repo)}: "
@@ -163,31 +242,43 @@ def main() -> int:
     )
     for path in source_files(app / "src"):
         text = path.read_text(encoding="utf-8", errors="replace")
-        match = app_hw_forbidden.search(text)
+        code = strip_c_comments(text)
+        match = app_hw_forbidden.search(code)
         require(
             match is None,
             f"app layer owns hardware/DT detail in {path.relative_to(repo)}: "
             f"{match.group(0) if match else ''}",
         )
 
-    # The board emergency primitive is the only production owner of direct MCU
-    # registers/soc.h/LL access. This is the narrowly reviewed safety escape
-    # hatch needed before the kernel or normal device model is usable.
+    # Direct STM32/CMSIS ownership is intentionally narrow and file-scoped.
+    # The board fail-low primitive owns pre-kernel PE0 safety access. Z-015 also
+    # has three audited platform seams: private SPI6 LL, private ADC1/2 LL, and
+    # fan-timer NVIC pending-clear hardening. No application/policy/core file may
+    # acquire direct MCU ownership merely because these exceptions exist.
     direct_mcu = re.compile(
         r'#include\s*[<"]soc\.h[>"]|'
         r'\b(?:RCC|GPIO[A-K]|ADC[0-9]*|TIM[0-9]+|CAN[0-9]*|SPI[0-9]+|IWDG|SCB|EXTI|DMA[0-9]*)->|'
         r'\bLL_[A-Za-z0-9_]+\s*\(|'
         r'\bNVIC_[A-Za-z0-9_]+\s*\('
     )
-    direct_owners = []
+    expected_direct_owners = {
+        fail_low.resolve(),
+        (drivers / "adbms_spi_stm32.c").resolve(),
+        (drivers / "current_adc_stm32.c").resolve(),
+        (drivers / "fan_pwm_zephyr.c").resolve(),
+    }
+    direct_owners = set()
     for path in production_sources(repo):
         text = path.read_text(encoding="utf-8", errors="replace")
-        if direct_mcu.search(text):
-            direct_owners.append(path.resolve())
+        code = strip_c_comments(text)
+        if direct_mcu.search(code):
+            direct_owners.add(path.resolve())
     require(
-        direct_owners == [fail_low.resolve()],
-        "direct STM32 register ownership must be limited to board fail-low primitive; got "
-        + ", ".join(str(p.relative_to(repo)) for p in direct_owners),
+        direct_owners == expected_direct_owners,
+        "direct STM32 ownership set drifted; expected "
+        + ", ".join(sorted(str(p.relative_to(repo)) for p in expected_direct_owners))
+        + "; got "
+        + ", ".join(sorted(str(p.relative_to(repo)) for p in direct_owners)),
     )
     fail_low_text = fail_low.read_text(encoding="utf-8")
     for token in (
@@ -229,8 +320,9 @@ def main() -> int:
     )
     for path in production_sources(repo):
         text = path.read_text(encoding="utf-8", errors="replace")
+        code = strip_c_comments(text)
         require(
-            alloc_pattern.search(text) is None,
+            alloc_pattern.search(code) is None,
             f"dynamic allocation introduced in {path.relative_to(repo)}",
         )
     threads = (app / "src/ams_threads.c").read_text(encoding="utf-8")
@@ -404,7 +496,7 @@ def main() -> int:
         "unified release gate must include null-platform core validation",
     )
 
-    print("PASS: Z-013 application/hardware/Zephyr architecture contract")
+    print("PASS: Z-015 application/hardware/Zephyr architecture contract")
     return 0
 
 

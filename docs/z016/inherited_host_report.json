@@ -1,0 +1,595 @@
+{
+  "schema": "der27-ams-z015-host-validation-v1",
+  "success": true,
+  "repo": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+  "scope": "Inherited Z-015 host/source/SIL + HAL hardening regression; later-stage additions validated separately",
+  "target_build_performed": false,
+  "hardware_validation_performed": false,
+  "later_migration_stage_performed": false,
+  "extended_sop_soh_fuse_campaigns_performed": false,
+  "frozen_power_source_identity_checked": true,
+  "integrated_z014_regression_system_sil_performed": true,
+  "thread_sanitizer_requested": false,
+  "thread_sanitizer_performed": false,
+  "skipped": [
+    "Clang static analyzer (clang unavailable)"
+  ],
+  "seconds": 35.007,
+  "stages": [
+    {
+      "name": "Python contract/checker syntax",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "-m",
+        "py_compile",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/build_manifest.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_adbms_spi_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_all_contracts.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_architecture_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_architecture_contract_host_selftest.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_authority_profile.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_board_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_capability_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_core_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_current_adc_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_current_adc_contract_host_selftest.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_current_sensor_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_current_window_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_estimator_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_fan_pwm_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_freertos_runtime_parity.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_imd_capture_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_measurement_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_null_platform_core.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_power_core_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_runtime_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_safety_integrity_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_watchdog_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z014_contract_mutations.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z014_source_hygiene.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z015_contract_mutations.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z015_elf_caller_gate_selftest.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z015_source_hygiene.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z016_link_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z016_mutations.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/run_z014_host_validation.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/run_z015_host_validation.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/run_z016_host_validation.py"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.091
+    },
+    {
+      "name": "Target architecture checker host regression",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_architecture_contract_host_selftest.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 1.243
+    },
+    {
+      "name": "Current ADC target-contract comment/config regression",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_current_adc_contract_host_selftest.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.662
+    },
+    {
+      "name": "FreeRTOS v2.6.27 runtime/safety source parity",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_freertos_runtime_parity.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.032
+    },
+    {
+      "name": "Z-015 source-only architecture/safety hygiene",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z014_source_hygiene.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.074
+    },
+    {
+      "name": "Z-015 private SPI6 source/architecture contract",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z015_source_hygiene.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.055
+    },
+    {
+      "name": "Z-015 final-ELF zero-transfer-caller gate self-test",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z015_elf_caller_gate_selftest.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.443
+    },
+    {
+      "name": "Frozen SoP/SoH/fuse exact portable-source identity",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_power_core_contract.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.04
+    },
+    {
+      "name": "ams_core true null-platform isolation",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_null_platform_core.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.833
+    },
+    {
+      "name": "watchdog: clean test strict",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/watchdog",
+        "clean",
+        "test",
+        "strict"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 2.44
+    },
+    {
+      "name": "safety_fatal: clean test strict",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/safety_fatal",
+        "clean",
+        "test",
+        "strict"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.124
+    },
+    {
+      "name": "bms_ok: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/bms_ok",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.068
+    },
+    {
+      "name": "current_path: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/current_path",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.614
+    },
+    {
+      "name": "fan: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/fan",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.236
+    },
+    {
+      "name": "imd: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/imd",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.388
+    },
+    {
+      "name": "measurement_store: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/measurement_store",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.208
+    },
+    {
+      "name": "current_window: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/current_window",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.176
+    },
+    {
+      "name": "estimator: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/estimator",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.523
+    },
+    {
+      "name": "adbms_spi: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/adbms_spi",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 1.121
+    },
+    {
+      "name": "system/z014_safety_sil: clean test strict",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/system/z014_safety_sil",
+        "clean",
+        "test",
+        "strict"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.54
+    },
+    {
+      "name": "watchdog: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/watchdog",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 2.678
+    },
+    {
+      "name": "safety_fatal: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/safety_fatal",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.225
+    },
+    {
+      "name": "bms_ok: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/bms_ok",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.193
+    },
+    {
+      "name": "current_path: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/current_path",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 1.959
+    },
+    {
+      "name": "fan: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/fan",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.775
+    },
+    {
+      "name": "imd: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/imd",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 1.168
+    },
+    {
+      "name": "measurement_store: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/measurement_store",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.689
+    },
+    {
+      "name": "current_window: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/current_window",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.542
+    },
+    {
+      "name": "estimator: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/estimator",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 2.005
+    },
+    {
+      "name": "adbms_spi: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/adbms_spi",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 1.978
+    },
+    {
+      "name": "system/z014_safety_sil: asan ubsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/system/z014_safety_sil",
+        "asan",
+        "ubsan"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.984
+    },
+    {
+      "name": "watchdog: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/watchdog",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.104
+    },
+    {
+      "name": "safety_fatal: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/safety_fatal",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.019
+    },
+    {
+      "name": "bms_ok: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/bms_ok",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.019
+    },
+    {
+      "name": "current_path: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/current_path",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 1.007
+    },
+    {
+      "name": "fan: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/fan",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.11
+    },
+    {
+      "name": "imd: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/imd",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.105
+    },
+    {
+      "name": "measurement_store: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/measurement_store",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.045
+    },
+    {
+      "name": "current_window: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/current_window",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.12
+    },
+    {
+      "name": "estimator: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/estimator",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 1.213
+    },
+    {
+      "name": "adbms_spi: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/unit/adbms_spi",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.387
+    },
+    {
+      "name": "system/z014_safety_sil: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/tests/system/z014_safety_sil",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 0.353
+    },
+    {
+      "name": "Z-015 safety-contract mutation/negative controls",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z014_contract_mutations.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 2.683
+    },
+    {
+      "name": "Z-015 SPI transport mutation/negative controls",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08/scripts/check_z015_contract_mutations.py",
+        "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08"
+      ],
+      "cwd": "/workspace/scratch/5b022dc1aaa2/work/DER27-AMS-Z016-StringB-eval-link-2026-09-08",
+      "returncode": 0,
+      "seconds": 5.727
+    }
+  ]
+}

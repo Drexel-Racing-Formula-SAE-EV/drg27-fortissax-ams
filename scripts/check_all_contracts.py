@@ -24,6 +24,7 @@ TARGET_CONTRACTS = (
     "check_safety_integrity_contract.py",
     "check_watchdog_contract.py",
     "check_adbms_spi_contract.py",
+    "check_z016_link_contract.py",
 )
 
 SOURCE_ONLY_CONTRACTS = (

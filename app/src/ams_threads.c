@@ -1,3 +1,6 @@
+#ifdef CONFIG_AMS_Z016_LINK_PROBE
+#include <ams_platform/adbms_link_probe.h>
+#endif
 #include "ams_threads.h"
 
 #include <ams_core/ams_fan_control.h>
@@ -27,16 +30,15 @@
  * --------------------------------------------------------------------------
  *
  * Z-015 keeps the Z-014 watchdog/runtime safety boundary unchanged while the
- * private ADBMS SPI6 adapter is prepared at startup. The ADBMS thread remains
- * a topology-only placeholder: it never calls the transport and never emits
- * ADBMS heartbeat/safety evidence. IMD was promoted in Z-013
+ * private ADBMS SPI6 adapter is prepared at startup. The ADBMS thread is dormant in the base profile.
+ * Z016's explicit profile executes its finite String B link probe in that
+ * same thread; neither profile emits ADBMS heartbeat/safety evidence. IMD was promoted in Z-013
  * to the real 10 Hz PA5/TIM2 PWM-input + PC5 OK_HS workload. Current ADC
  * hardware remains initialized but the current worker still does not acquire
  * samples until Z-022 proves mutex/publication ordering.
  *
  * No thread below currently:
  * - reads current ADCs
- * - accesses ADBMS SPI
  * - transmits or receives CAN
  * - executes estimator algorithms
  * - commands balancing
@@ -723,6 +725,12 @@ static void periodic_placeholder_thread(void *p1,
          * The actual subsystem body will be inserted here during its own
          * migration phase.
          */
+
+#ifdef CONFIG_AMS_Z016_LINK_PROBE
+        if (thread == &threads[AMS_THREAD_ADBMS]) {
+            ams_adbms_link_probe_step();
+        }
+#endif
 
         elapsed_cycles =
             k_cycle_get_32() - start_cycles;

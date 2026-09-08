@@ -17,6 +17,84 @@ def require(condition: bool, message: str) -> None:
         fail(message)
 
 
+def strip_c_comments(text: str) -> str:
+    """Remove C/C++ comments while preserving code/literals and newlines.
+
+    Source contracts must inspect executable ownership paths, not migration
+    rationale or oracle-provenance comments.  Keeping newlines preserves useful
+    diagnostics while preventing words such as ``adc_context`` or ``k_yield``
+    in comments from becoming false dependency findings.
+    """
+    out: list[str] = []
+    i = 0
+    state = "code"
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+
+        if state == "code":
+            if ch == "/" and nxt == "*":
+                out.extend((" ", " "))
+                i += 2
+                state = "block"
+                continue
+            if ch == "/" and nxt == "/":
+                out.extend((" ", " "))
+                i += 2
+                state = "line"
+                continue
+            if ch == '"':
+                out.append(ch)
+                i += 1
+                state = "string"
+                continue
+            if ch == "'":
+                out.append(ch)
+                i += 1
+                state = "char"
+                continue
+            out.append(ch)
+            i += 1
+            continue
+
+        if state == "block":
+            if ch == "*" and nxt == "/":
+                out.extend((" ", " "))
+                i += 2
+                state = "code"
+            else:
+                out.append("\n" if ch == "\n" else " ")
+                i += 1
+            continue
+
+        if state == "line":
+            if ch == "\n":
+                out.append("\n")
+                i += 1
+                state = "code"
+            else:
+                out.append(" ")
+                i += 1
+            continue
+
+        # Preserve string/character literals exactly; escaped quotes do not
+        # terminate them.  Forbidden dependency checks below target function
+        # and type spellings, and retaining literals avoids changing unrelated
+        # preprocessor/source structure.
+        out.append(ch)
+        if ch == "\\" and i + 1 < len(text):
+            out.append(text[i + 1])
+            i += 2
+            continue
+        if state == "string" and ch == '"':
+            state = "code"
+        elif state == "char" and ch == "'":
+            state = "code"
+        i += 1
+
+    return "".join(out)
+
+
 def block(text: str, label: str) -> str:
     start = text.find(label)
     if start < 0:
@@ -35,8 +113,21 @@ def block(text: str, label: str) -> str:
     fail(f"unterminated devicetree block {label}")
 
 
-def config_disabled(cfg: str, symbol: str) -> bool:
-    return (f"# {symbol} is not set" in cfg) or (f"{symbol}=n" in cfg)
+def config_disabled(cfg: str, symbol: str, *, allow_absent: bool = False) -> bool:
+    """Read exact generated Kconfig records, including hidden dependencies.
+
+    With CONFIG_ADC disabled, Kconfig may omit its async/DMA children entirely.
+    Only those dependent symbols may be absent; the parent must be explicitly
+    disabled. Any non-n assignment wins over a contradictory not-set comment.
+    """
+    assignments = re.findall(
+        rf"^\s*{re.escape(symbol)}\s*=\s*([^\r\n]*)$", cfg, re.MULTILINE
+    )
+    if assignments:
+        return all(value.strip() == "n" for value in assignments)
+    if re.search(rf"^\s*# {re.escape(symbol)} is not set\s*$", cfg, re.MULTILINE):
+        return True
+    return allow_absent
 
 
 def main() -> int:
@@ -59,6 +150,7 @@ def main() -> int:
         require(path.is_file(), f"missing {path}")
 
     d = driver.read_text(encoding="utf-8")
+    d_code = strip_c_comments(d)
     h = header.read_text(encoding="utf-8")
     y = binding.read_text(encoding="utf-8")
     b = board.read_text(encoding="utf-8")
@@ -144,10 +236,10 @@ def main() -> int:
         'irq_enable(', 'IRQ_CONNECT(', 'k_yield(', 'k_sleep(', 'k_sched_lock(',
         'irq_lock(', 'malloc(', 'calloc(', 'k_malloc(',
     ):
-        require(forbidden not in d, f"forbidden current ADC ownership/blocking path introduced: {forbidden}")
+        require(forbidden not in d_code, f"forbidden current ADC ownership/blocking path introduced: {forbidden}")
 
-    require('k_irq_clear_pending' not in d and
-            'CONFIG_ARCH_HAS_IRQ_PENDING_OPS' not in d,
+    require('k_irq_clear_pending' not in d_code and
+            'CONFIG_ARCH_HAS_IRQ_PENDING_OPS' not in d_code,
             'current ADC uses pending-IRQ API/capability unavailable in Zephyr v4.4.0')
 
     # Recovery must force the shared IRQ quiescent before reset and again after
@@ -213,8 +305,10 @@ def main() -> int:
     require('status = "disabled"' in adc3, "ADC3 must remain disabled across common ADC reset")
 
     require(config_disabled(cfg, "CONFIG_ADC"), "generic CONFIG_ADC must remain disabled")
-    require(config_disabled(cfg, "CONFIG_ADC_ASYNC"), "CONFIG_ADC_ASYNC must remain disabled")
-    require(config_disabled(cfg, "CONFIG_ADC_STM32_DMA"), "ADC DMA must remain disabled")
+    require(config_disabled(cfg, "CONFIG_ADC_ASYNC", allow_absent=True),
+            "CONFIG_ADC_ASYNC must remain disabled")
+    require(config_disabled(cfg, "CONFIG_ADC_STM32_DMA", allow_absent=True),
+            "ADC DMA must remain disabled")
     require("CONFIG_AMS_CURRENT_ADC_PRIVATE_BACKEND=y" in cfg,
             "private current ADC backend not enabled")
     require("CONFIG_USE_STM32_LL_ADC=y" in cfg,

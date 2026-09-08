@@ -232,13 +232,18 @@ def main() -> int:
     # them.  A future runtime caller makes these symbols live and fails this gate.
     for sym in ("ams_adbms_spi_platform_init", "ams_adbms_spi_platform_status"):
         require(sym in defined_symbols, f"linked Z-015 lifecycle symbol missing from ELF: {sym}")
-    for sym in ("ams_adbms_spi_write", "ams_adbms_spi_write_read"):
+    probe = "CONFIG_AMS_Z016_LINK_PROBE=y" in cfg.splitlines()
+    if probe:
+        for sym in ("ams_adbms_link_probe_step", "ams_adbms_spi_write_read", "ams_adbms_spi_wake_b"):
+            require(sym in defined_symbols, f"Z016 probe symbol absent: {sym}")
+    for sym in (("ams_adbms_spi_write",) if probe else
+                ("ams_adbms_spi_write", "ams_adbms_spi_write_read")):
         require(sym not in defined_symbols,
                 f"Z-015 linked ELF contains a runtime raw-transfer entrypoint/caller path: {sym}")
 
     # The generic STM32 SPI transaction driver must not exist in this image.
     for forbidden in ("spi_stm32.c.obj",):
-        require(forbidden not in link_map,
+        require(re.search(r"(?<![A-Za-z0-9_])" + re.escape(forbidden) + r"(?![A-Za-z0-9_])", link_map) is None,
                 f"stock STM32 SPI object linked into private Z-015 image: {forbidden}")
     for forbidden in ("spi_stm32_isr", "spi_stm32_complete",
                       "spi_transceive_signal", "spi_transceive_cb"):
@@ -262,7 +267,7 @@ def main() -> int:
     print("PASS: Z-015 private bounded SPI6 target/build contract")
     print("  generic spi_stm32: absent; SPI6 DT device disabled")
     print("  clock chain: 216MHz SYSCLK -> APB2/2 -> 108MHz -> /256 -> 421875Hz")
-    print("  IRQ/DMA/async: absent; lifecycle linked; raw transfer entrypoints absent from final ELF")
+    print("  IRQ/DMA/async: absent; lifecycle linked; " + ("restricted Z016 read/wake linked" if probe else "raw transfer entrypoints absent from final ELF"))
     return 0
 
 

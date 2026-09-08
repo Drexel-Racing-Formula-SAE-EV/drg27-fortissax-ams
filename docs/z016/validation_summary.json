@@ -1,0 +1,21 @@
+{
+  "stage": "Z016 restricted String B one-SMB link candidate",
+  "host_validation_passed": true,
+  "inherited_stages_passed": 44,
+  "z014_mutations_rejected": 18,
+  "z015_mutations_rejected": 47,
+  "z016_mutations_rejected": 11,
+  "pec_comparisons_per_execution": 200000,
+  "new_production_adapter_and_probe_asan_ubsan": true,
+  "clang_analysis_performed": false,
+  "thread_sanitizer_performed": false,
+  "leak_sanitizer_disabled_due_to_sandbox": true,
+  "target_build_performed": false,
+  "hardware_validation_performed": false,
+  "external_request_queue_implemented": false,
+  "monitor_acquisition_implemented": false,
+  "base_probe_enabled": false,
+  "optional_probe_string": "B",
+  "physical_devices": 1,
+  "authority_enabled": false
+}
