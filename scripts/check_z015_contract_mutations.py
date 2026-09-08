@@ -94,7 +94,9 @@ def main() -> int:
         mutate("irq_enable", "drivers/ams/adbms_spi_stm32.c",
                "irq_disable(irq);", "irq_enable(irq);")
         mutate("pending_clear_removed", "drivers/ams/adbms_spi_stm32.c",
-               "    k_irq_clear_pending(irq);", "    /* pending clear removed */")
+               "    NVIC_ClearPendingIRQ((IRQn_Type)irq);", "    /* pending clear removed */")
+        mutate("zephyr44_nonexistent_pending_api", "drivers/ams/adbms_spi_stm32.c",
+               "    NVIC_ClearPendingIRQ((IRQn_Type)irq);", "    k_irq_clear_pending(irq);")
         mutate("poll_yield_inserted", "drivers/ams/adbms_spi_stm32.c",
                "    LL_SPI_Enable(spi6);", "    k_yield();\n    LL_SPI_Enable(spi6);")
         mutate("stock_transceive_added", "drivers/ams/adbms_spi_stm32.c",
@@ -143,7 +145,7 @@ def main() -> int:
         mutate("adc_irq_enabled", "drivers/ams/current_adc_stm32.c",
                "    irq_disable(irq);", "    irq_enable(irq);")
         mutate("adc_pending_clear_removed", "drivers/ams/current_adc_stm32.c",
-               "    k_irq_clear_pending(irq);", "    /* ADC pending clear removed */")
+               "    NVIC_ClearPendingIRQ((IRQn_Type)irq);", "    /* ADC pending clear removed */")
         mutate("adc_recovery_reset_removed", "drivers/ams/current_adc_stm32.c",
                "    ret = reset_line_toggle_dt(&adc_common_reset);",
                "    ret = 0; /* ADC recovery reset removed */")
@@ -164,7 +166,7 @@ def main() -> int:
         mutate("fan_output_irq_disable_removed", "drivers/ams/fan_pwm_zephyr.c",
                "        irq_disable(irqs[i]);", "        /* fan irq disable removed */")
         mutate("fan_output_irq_clear_removed", "drivers/ams/fan_pwm_zephyr.c",
-               "        k_irq_clear_pending(irqs[i]);", "        /* fan irq clear removed */")
+               "        NVIC_ClearPendingIRQ((IRQn_Type)irqs[i]);", "        /* fan irq clear removed */")
         mutate("manifest_adc_async_lie", "scripts/build_manifest.py",
                '"completion_mechanism": "private_STM32_LL_bounded_poll"',
                '"completion_mechanism": "adc_read_async_dt+k_poll"')

@@ -41,8 +41,6 @@ BUILD_ASSERT(IS_ENABLED(CONFIG_USE_STM32_LL_ADC),
              "private current ADC backend requires STM32 LL ADC support");
 BUILD_ASSERT(IS_ENABLED(CONFIG_RESET),
              "private current ADC recovery requires reset-controller support");
-BUILD_ASSERT(IS_ENABLED(CONFIG_ARCH_HAS_IRQ_PENDING_OPS),
-             "private current ADC recovery requires NVIC pending-clear support");
 
 BUILD_ASSERT(DT_NODE_HAS_STATUS(CURRENT_ADC_NODE, okay),
              "typed AMS current-sense node must be enabled");
@@ -128,7 +126,7 @@ static void disable_and_clear_adc_irq(void)
     const unsigned int irq = DT_IRQN(CURRENT_ADC_HIGH_NODE);
 
     irq_disable(irq);
-    k_irq_clear_pending(irq);
+    NVIC_ClearPendingIRQ((IRQn_Type)irq);
 }
 
 static int enable_adc_clocks_and_verify(void)

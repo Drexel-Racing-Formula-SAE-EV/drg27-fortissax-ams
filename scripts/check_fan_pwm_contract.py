@@ -169,15 +169,18 @@ def main() -> int:
     require("startup_fail_mask = ams_fan_pwm_force_all_off();" in d,
             "fan startup does not explicitly command all zones off")
     for token in (
-        "BUILD_ASSERT(IS_ENABLED(CONFIG_ARCH_HAS_IRQ_PENDING_OPS)",
         "DT_IRQN(DT_NODELABEL(timers3)) == 29U",
         "DT_IRQN(DT_NODELABEL(timers4)) == 30U",
         "DT_IRQN(DT_NODELABEL(timers5)) == 50U",
         "disable_output_only_timer_irqs();",
         "irq_disable(irqs[i]);",
-        "k_irq_clear_pending(irqs[i]);",
+        "NVIC_ClearPendingIRQ((IRQn_Type)irqs[i]);",
     ):
         require(token in d, f"fan output-only IRQ hardening missing: {token}")
+
+    require("k_irq_clear_pending" not in d and
+            "CONFIG_ARCH_HAS_IRQ_PENDING_OPS" not in d,
+            "fan adapter uses pending-IRQ API/capability unavailable in Zephyr v4.4.0")
 
     # No fan-driver coupling to unrelated policy/transport or dynamic work.
     for forbidden in (

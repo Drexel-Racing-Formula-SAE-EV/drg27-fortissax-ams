@@ -181,13 +181,16 @@ def main() -> int:
         "LL_SPI_POLARITY_HIGH", "LL_SPI_PHASE_2EDGE", "LL_SPI_DATAWIDTH_8BIT",
         "LL_SPI_MSB_FIRST", "LL_SPI_FULL_DUPLEX", "LL_SPI_NSS_SOFT",
         "LL_SPI_DisableIT_TXE", "LL_SPI_DisableIT_RXNE", "LL_SPI_DisableIT_ERR",
-        "irq_disable(", "k_irq_clear_pending(", "reset_line_toggle_dt",
+        "irq_disable(", "NVIC_ClearPendingIRQ(", "reset_line_toggle_dt",
         "force_both_cs_inactive", "spi6_contract_readback_valid",
     ):
         require(token in target, f"private SPI6 safety mechanism missing: {token}")
-    require(target.count("k_irq_clear_pending(") >= 1 and
+    require(target.count("NVIC_ClearPendingIRQ(") >= 1 and
             target.count("disable_and_clear_spi6_irq();") >= 4,
             "SPI6 pending IRQ must be cleared at init/recovery boundaries")
+    require("k_irq_clear_pending" not in target and
+            "CONFIG_ARCH_HAS_IRQ_PENDING_OPS" not in target,
+            "SPI6 backend reintroduced a pending-IRQ API/capability absent from pinned Zephyr v4.4.0")
     require("LL_SPI_SetClockPolarity(spi6, LL_SPI_POLARITY_HIGH);" in target,
             "SPI6 programming no longer explicitly sets CPOL high")
     require("LL_SPI_SetClockPhase(spi6, LL_SPI_PHASE_2EDGE);" in target,
@@ -229,7 +232,7 @@ def main() -> int:
         "BUILD_ASSERT(!IS_ENABLED(CONFIG_ADC)",
         "BUILD_ASSERT(IS_ENABLED(CONFIG_USE_STM32_LL_ADC)",
         "DT_IRQN(CURRENT_ADC_HIGH_NODE) == 18",
-        "irq_disable(irq);", "k_irq_clear_pending(irq);",
+        "irq_disable(irq);", "NVIC_ClearPendingIRQ((IRQn_Type)irq);",
         "reset_line_toggle_dt(&adc_common_reset)",
         "LL_ADC_CLOCK_SYNC_PCLK_DIV6", "LL_ADC_RESOLUTION_12B",
         "LL_ADC_SAMPLINGTIME_480CYCLES", "CURRENT_ADC_TIMEOUT_MS",
@@ -249,6 +252,9 @@ def main() -> int:
         require(token not in current_code, f"current ADC reintroduced unsafe async/blocking ownership: {token}")
     require(current.count("disable_and_clear_adc_irq();") >= 4,
             "current ADC must quiesce/clear shared ADC IRQ across init and recovery")
+    require("k_irq_clear_pending" not in current and
+            "CONFIG_ARCH_HAS_IRQ_PENDING_OPS" not in current,
+            "current ADC reintroduced a pending-IRQ API/capability absent from pinned Zephyr v4.4.0")
     recovery_start = current.find("static int reset_and_reconfigure_adc")
     recovery_end = current.find("static int recover_and_return", recovery_start)
     require(0 <= recovery_start < recovery_end,
@@ -288,10 +294,13 @@ def main() -> int:
         "DT_IRQN(DT_NODELABEL(timers3)) == 29U",
         "DT_IRQN(DT_NODELABEL(timers4)) == 30U",
         "DT_IRQN(DT_NODELABEL(timers5)) == 50U",
-        "irq_disable(irqs[i]);", "k_irq_clear_pending(irqs[i]);",
+        "irq_disable(irqs[i]);", "NVIC_ClearPendingIRQ((IRQn_Type)irqs[i]);",
         "pwm_stm32_get_cycles_per_sec() ignores the",
     ):
         require(token in fan, f"fan timer IRQ/readiness hardening missing: {token}")
+    require("k_irq_clear_pending" not in fan and
+            "CONFIG_ARCH_HAS_IRQ_PENDING_OPS" not in fan,
+            "fan adapter reintroduced a pending-IRQ API/capability absent from pinned Zephyr v4.4.0")
 
     # The lifecycle API is intentionally public only for startup/status. Raw
     # transfer calls remain private to drivers/ams until the single owner lands.

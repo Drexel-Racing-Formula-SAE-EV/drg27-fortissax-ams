@@ -47,7 +47,7 @@ The current path now follows the same ownership simplification used for SPI6:
 - ADC1, ADC2, and ADC3 disabled as generic Zephyr ADC devices
 - private STM32 LL polling in `drivers/ams/current_adc_stm32.c`
 - no ADC ISR, DMA, callback, `adc_context`, `k_poll`, or `k_poll_signal`
-- Zephyr remains responsible for Devicetree, pinctrl, clock control, reset control, timing, build configuration, and NVIC helpers.
+- Zephyr remains responsible for Devicetree, pinctrl, clock control, reset control, timing, and build configuration. IRQ disable uses Zephyr `irq_disable()`; pending-latch clearing is intentionally CMSIS `NVIC_ClearPendingIRQ()` because the pinned Zephyr v4.4.0 public IRQ header does not provide `k_irq_clear_pending()`.
 
 The typed `drexel,ams-current-sense` node freezes:
 
@@ -196,4 +196,8 @@ Skipped evidence: none
 ThreadSanitizer requested and performed
 ```
 
-The expanded Z-015 mutation suite rejected **46 unsafe mutations** and the retained Z-014 mutation suite rejected **18**. Final evidence is stored in `docs/migration/evidence/Z015_POST_REVIEW_HAL_HOST_SIL_CANONICAL_FINAL_2026-09-07.log` and `Z015_POST_REVIEW_HAL_HOST_SIL_REPORT_FINAL_2026-09-07.json`. Target build and physical validation remain deliberately unperformed.
+The expanded Z-015 mutation suite rejected **47 unsafe mutations** and the retained Z-014 mutation suite rejected **18**. Final evidence is stored in `docs/migration/evidence/Z015_POST_REVIEW_HAL_HOST_SIL_CANONICAL_FINAL_2026-09-07.log` and `Z015_POST_REVIEW_HAL_HOST_SIL_REPORT_FINAL_2026-09-07.json`. Target build and physical validation remain deliberately unperformed.
+
+## 2026-09-08 target-build compatibility follow-up
+
+The first real target compile corrected one audit assumption: pinned Zephyr v4.4.0 does not provide the `k_irq_clear_pending()` helper/capability used by the initial host fakes. All three hardening paths now pair Zephyr `irq_disable()` with CMSIS `NVIC_ClearPendingIRQ()`. This is valid for the deliberately STM32F767/Cortex-M7-specific seams and matches the actual pinned platform surface. The full compatibility-corrected canonical host/SIL rerun passed 54/54 stages in 89.231 s with no skipped evidence; see `Z015_TARGET_BUILD_NVIC_COMPAT_FIX_2026-09-08.md`.

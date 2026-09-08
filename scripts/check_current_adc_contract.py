@@ -114,11 +114,10 @@ def main() -> int:
         '#define CURRENT_ADC_NODE DT_NODELABEL(ams_current_sense)',
         'BUILD_ASSERT(!IS_ENABLED(CONFIG_ADC)',
         'BUILD_ASSERT(IS_ENABLED(CONFIG_USE_STM32_LL_ADC)',
-        'BUILD_ASSERT(IS_ENABLED(CONFIG_ARCH_HAS_IRQ_PENDING_OPS)',
         'DT_IRQN(CURRENT_ADC_HIGH_NODE) == DT_IRQN(CURRENT_ADC_LOW_NODE)',
         'DT_IRQN(CURRENT_ADC_HIGH_NODE) == 18',
         'irq_disable(irq);',
-        'k_irq_clear_pending(irq);',
+        'NVIC_ClearPendingIRQ((IRQn_Type)irq);',
         'reset_line_toggle_dt(&adc_common_reset)',
         'LL_ADC_SetCommonClock(adc_common, LL_ADC_CLOCK_SYNC_PCLK_DIV6)',
         'LL_ADC_SetResolution(adc, LL_ADC_RESOLUTION_12B)',
@@ -146,6 +145,10 @@ def main() -> int:
         'irq_lock(', 'malloc(', 'calloc(', 'k_malloc(',
     ):
         require(forbidden not in d, f"forbidden current ADC ownership/blocking path introduced: {forbidden}")
+
+    require('k_irq_clear_pending' not in d and
+            'CONFIG_ARCH_HAS_IRQ_PENDING_OPS' not in d,
+            'current ADC uses pending-IRQ API/capability unavailable in Zephyr v4.4.0')
 
     # Recovery must force the shared IRQ quiescent before reset and again after
     # reset, because RCC ADCRST does not own the NVIC pending latch.

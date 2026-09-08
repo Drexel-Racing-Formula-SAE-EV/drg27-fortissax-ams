@@ -77,7 +77,7 @@ Use instead a small private STM32F767 polling backend under `drivers/ams/` while
 - `&spi6` remains `status = "disabled"` so the stock Zephyr SPI device is not instantiated.
 - `CONFIG_SPI=n` in the current firmware because there is no other SPI consumer.
 - STM32 LL SPI support is selected privately by the AMS backend.
-- SPI6 NVIC IRQ is never enabled.  Initialization and recovery explicitly disable the line and clear its pending latch.
+- SPI6 NVIC IRQ is never enabled. Initialization and recovery explicitly disable the line and clear its pending latch. On the pinned Zephyr v4.4.0 tree, `include/zephyr/irq.h` exposes `irq_disable()` but no public `k_irq_clear_pending()` API; the STM32F767/Cortex-M7-specific backend therefore clears the latch with CMSIS `NVIC_ClearPendingIRQ()` after `irq_disable()`.
 - No SPI6 DMA, RTIO, async callback, `k_poll_signal`, or stock `spi_transceive()` path exists.
 - Polling uses one transaction-level, wrap-safe 500-ms absolute deadline.
 - The polling region does not take `irq_lock()`, does not scheduler-lock, and does not insert unproven inter-byte sleeps/yields while CS is asserted.

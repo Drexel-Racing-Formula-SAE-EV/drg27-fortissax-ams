@@ -25,7 +25,7 @@ Implemented SPI invariants:
 - SPI6 input clock contract is 108 MHz, prescaler /256, achieved SCK exactly 421,875 Hz;
 - Mode 3, 8-bit, MSB-first, full duplex, software NSS;
 - one wrap-safe absolute 500-ms transaction deadline, retained from v2.6.27 for parity;
-- SPI6 IRQ is disabled and pending-cleared at initialization/recovery boundaries; no SPI6 interrupt transfer path exists;
+- SPI6 IRQ is disabled and pending-cleared at initialization/recovery boundaries; `irq_disable()` is paired with CMSIS `NVIC_ClearPendingIRQ()` because Zephyr v4.4.0 has no public `k_irq_clear_pending()` API; no SPI6 interrupt transfer path exists;
 - no DMA, RTIO, async callback, `k_poll_signal`, stock `spi_transceive()`, heap allocation, scheduler lock, IRQ lock, or inter-byte sleep/yield is used;
 - logical writes still drain RX because SPI6 remains full duplex;
 - failure restores both CS lines inactive before recovery;
@@ -49,7 +49,7 @@ Current-ADC invariants:
 - PCLK2 = 108 MHz, common ADC prescaler /6, achieved ADC clock 18 MHz;
 - 12-bit conversion, 480-cycle sample time, software-triggered single conversion;
 - exact v2.6.27 5-ms poll semantics are preserved, including strict `elapsed > timeout`, EOC recheck at the timeout boundary, and STRT+EOC clear on success;
-- ADC shared IRQ is disabled and pending-cleared before and after recovery reset;
+- ADC shared IRQ is disabled and pending-cleared before and after recovery reset using Zephyr `irq_disable()` plus CMSIS `NVIC_ClearPendingIRQ()`;
 - the STM32F767 common ADCRST is used for recovery, therefore ADC3 is contractually frozen disabled;
 - timeout/conversion-path failure resets and fully reconfigures ADC1/ADC2, then returns the original sample error with the adapter READY if recovery succeeds;
 - only recovery/reconfiguration failure becomes terminal FAULTED;
@@ -59,7 +59,7 @@ Current-ADC invariants:
 
 The six fan outputs remain mapped through TIM3/TIM4/TIM5. One readiness/clock check per controller is intentional because Zephyr `pwm_is_ready_dt()` is device/controller readiness and `pwm_get_cycles_per_sec()` is timer-controller clock state, not per-channel state.
 
-The review did find that global `CONFIG_PWM_CAPTURE=y`, required by IMD TIM2 capture, causes the STM32 PWM driver to install capture IRQ infrastructure for output-only TIM3/TIM4/TIM5 as well. The fan adapter now explicitly disables and pending-clears those three NVIC lines after initialization. TIM2 remains untouched for IMD capture.
+The review did find that global `CONFIG_PWM_CAPTURE=y`, required by IMD TIM2 capture, causes the STM32 PWM driver to install capture IRQ infrastructure for output-only TIM3/TIM4/TIM5 as well. The fan adapter now explicitly disables those three IRQs and clears their pending NVIC latches with CMSIS `NVIC_ClearPendingIRQ()` after initialization. TIM2 remains untouched for IMD capture.
 
 Existing timer/period oracle parity remains unchanged: period request 3361 reproduces ARR=3360 and 100% duty preserves CCR=3360.
 
@@ -86,7 +86,7 @@ Focused evidence includes:
 
 The retained Z-014 mutation suite rejects **18** unsafe runtime/watchdog/authority changes.
 
-The expanded Z-015 suite rejects **46** unsafe changes. In addition to the original SPI ownership/mode/clock/recovery/caller/capability controls, it now rejects generic ADC enablement, ADC async/DMA ownership, ADC3 activation despite common reset ownership, ADC reset/IRQ/pending-clear/recovery drift, terminal-on-first-timeout regression, HAL timeout-boundary drift, missing timeout EOC recheck, missing STRT clear, polling-yield insertion, fan output-IRQ hardening removal, and stale build-manifest claims about async ADC ownership.
+The expanded Z-015 suite rejects **47** unsafe changes. In addition to the original SPI ownership/mode/clock/recovery/caller/capability controls, it now rejects generic ADC enablement, ADC async/DMA ownership, ADC3 activation despite common reset ownership, ADC reset/IRQ/pending-clear/recovery drift, terminal-on-first-timeout regression, HAL timeout-boundary drift, missing timeout EOC recheck, missing STRT clear, polling-yield insertion, fan output-IRQ hardening removal, and stale build-manifest claims about async ADC ownership.
 
 ## Linked-image caller proof
 
@@ -141,3 +141,25 @@ The earlier pre-HAL-review Z-015 evidence remains in the repository as historica
 This exact source snapshot must now re-earn STM32F767 target status with fresh base and IWDG-enabled builds plus `scripts/check_all_contracts.py` against each build. Previous target-green evidence cannot be inherited because the private ADC backend, fan IRQ hardening, and build-contract metadata changed after the earlier target runs.
 
 Physical SPI waveform, ADC/current-sense, fan PWM, and IWDG validation remain open and are not claimed here. No Z-016 migration work should be inferred from this closeout.
+
+## 2026-09-08 pinned-Zephyr target-build compatibility correction
+
+The first real Zephyr 4.4.0 STM32F767 rebuild exposed a host-test-double fidelity defect: the three IRQ-hardening paths used `k_irq_clear_pending()` and asserted `CONFIG_ARCH_HAS_IRQ_PENDING_OPS`, but neither is part of the pinned v4.4.0 public IRQ surface for this target. The intended safety policy was retained and the implementation changed to Zephyr `irq_disable()` plus CMSIS `NVIC_ClearPendingIRQ((IRQn_Type)irq)`. Host fakes no longer invent the missing Zephyr API/capability, source contracts reject their reintroduction, and mutation `zephyr44_nonexistent_pending_api` proves the guard.
+
+The corrected snapshot was then rerun through the complete canonical host/source/SIL gate:
+
+```text
+PASS: complete Z-015 deep host/source/SIL validation
+54/54 recorded stages passed
+89.231 s
+Skipped evidence: none
+ThreadSanitizer requested/performed: true / true
+```
+
+Superseding compatibility-corrected evidence:
+
+- `docs/migration/evidence/Z015_TARGET_NVIC_COMPAT_HOST_SIL_CANONICAL_2026-09-08.log`
+- `docs/migration/evidence/Z015_TARGET_NVIC_COMPAT_HOST_SIL_REPORT_2026-09-08.json`
+- `docs/migration/Z015_TARGET_BUILD_NVIC_COMPAT_FIX_2026-09-08.md`
+
+The prior 2026-09-07 canonical evidence remains historical. A fresh real target build is still required; this host rerun does not itself make the snapshot target-green.

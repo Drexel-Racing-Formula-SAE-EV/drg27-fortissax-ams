@@ -6,5 +6,4 @@ extern unsigned fake_fan_irq_clear_count;
 extern uint32_t fake_fan_last_disabled_irq;
 extern uint32_t fake_fan_last_cleared_irq;
 static inline void irq_disable(unsigned int irq) { fake_fan_irq_disable_count++; fake_fan_last_disabled_irq = irq; }
-static inline void k_irq_clear_pending(unsigned int irq) { fake_fan_irq_clear_count++; fake_fan_last_cleared_irq = irq; }
 #endif

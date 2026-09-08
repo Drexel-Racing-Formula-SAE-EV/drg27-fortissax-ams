@@ -66,8 +66,6 @@ BUILD_ASSERT(IS_ENABLED(CONFIG_USE_STM32_LL_SPI),
              "private SPI6 backend requires STM32 LL SPI support");
 BUILD_ASSERT(IS_ENABLED(CONFIG_RESET),
              "private SPI6 recovery requires Zephyr reset-controller support");
-BUILD_ASSERT(IS_ENABLED(CONFIG_ARCH_HAS_IRQ_PENDING_OPS),
-             "private SPI6 recovery requires NVIC pending-clear support");
 
 PINCTRL_DT_DEFINE(AMS_ADBMS_NODE);
 
@@ -142,7 +140,7 @@ static void disable_and_clear_spi6_irq(void)
     const unsigned int irq = DT_IRQN(AMS_SPI6_NODE);
 
     irq_disable(irq);
-    k_irq_clear_pending(irq);
+    NVIC_ClearPendingIRQ((IRQn_Type)irq);
     atomic_set(&platform_irq_path_disabled, 1);
 }
 

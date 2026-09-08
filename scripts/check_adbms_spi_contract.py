@@ -184,9 +184,6 @@ def main() -> int:
     ):
         require(symbol_disabled(cfg, sym), f"Z-015 target symbol must remain disabled: {sym}")
 
-    require(symbol_enabled(cfg, "CONFIG_ARCH_HAS_IRQ_PENDING_OPS"),
-            "private SPI6 recovery requires IRQ pending-clear support")
-
     adbms = dts_block(dts, "ams_adbms_interface:")
     spi6 = dts_block(dts, "spi6:")
     rcc = dts_block(dts, "rcc:")
@@ -252,12 +249,15 @@ def main() -> int:
         "LL_SPI_POLARITY_HIGH", "LL_SPI_PHASE_2EDGE", "LL_SPI_DATAWIDTH_8BIT",
         "LL_SPI_MSB_FIRST", "LL_SPI_FULL_DUPLEX", "LL_SPI_NSS_SOFT",
         "LL_SPI_BAUDRATEPRESCALER_DIV256", "clock_control_get_rate",
-        "reset_line_toggle_dt", "irq_disable(", "k_irq_clear_pending(",
+        "reset_line_toggle_dt", "irq_disable(", "NVIC_ClearPendingIRQ(",
     ):
         require(token in target, f"production private SPI6 contract missing: {token}")
     for forbidden in ("spi_transceive", "k_poll_signal", "IRQ_CONNECT", "irq_enable(",
                       "k_sleep(", "k_yield(", "irq_lock(", "k_sched_lock("):
         require(forbidden not in target, f"forbidden Z-015 transport mechanism present: {forbidden}")
+    require("k_irq_clear_pending" not in target and
+            "CONFIG_ARCH_HAS_IRQ_PENDING_OPS" not in target,
+            "target source uses pending-IRQ API/capability unavailable in Zephyr v4.4.0")
 
     print("PASS: Z-015 private bounded SPI6 target/build contract")
     print("  generic spi_stm32: absent; SPI6 DT device disabled")

@@ -7,5 +7,4 @@
 #define CONFIG_ADC 0
 #define CONFIG_USE_STM32_LL_ADC 1
 #define CONFIG_RESET 1
-#define CONFIG_ARCH_HAS_IRQ_PENDING_OPS 1
 #endif

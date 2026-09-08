@@ -4,7 +4,6 @@
 #define BIT(n) (1UL << (n))
 #define BUILD_ASSERT(cond, msg) _Static_assert((cond), msg)
 #define IS_ENABLED(x) (x)
-#define CONFIG_ARCH_HAS_IRQ_PENDING_OPS 1
 
 #ifndef CONFIG_AMS_CAP_FAN_ACTOR_LIVE
 #define CONFIG_AMS_CAP_FAN_ACTOR_LIVE 1

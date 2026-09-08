@@ -11,6 +11,8 @@
 #include <zephyr/irq.h>
 #include <zephyr/sys/util.h>
 
+#include <soc.h>
+
 #define AMS_FAN_NODE DT_NODELABEL(ams_fans)
 
 BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_FAN_PWM_ADAPTER_PRESENT),
@@ -19,8 +21,6 @@ BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_FAN_ACTOR_LIVE),
              "fan platform adapter requires live fan capability at Z-013");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_FAN_PHYSICAL_VALIDATED),
              "Z-013 must not claim physical fan PWM validation");
-BUILD_ASSERT(IS_ENABLED(CONFIG_ARCH_HAS_IRQ_PENDING_OPS),
-             "fan output-only timer hardening requires NVIC pending-clear support");
 BUILD_ASSERT(DT_IRQN(DT_NODELABEL(timers3)) == 29U &&
              DT_IRQN(DT_NODELABEL(timers4)) == 30U &&
              DT_IRQN(DT_NODELABEL(timers5)) == 50U,
@@ -112,7 +112,7 @@ static void disable_output_only_timer_irqs(void)
 
     for (size_t i = 0U; i < (sizeof(irqs) / sizeof(irqs[0])); ++i) {
         irq_disable(irqs[i]);
-        k_irq_clear_pending(irqs[i]);
+        NVIC_ClearPendingIRQ((IRQn_Type)irqs[i]);
     }
 }
 

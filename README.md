@@ -1,7 +1,7 @@
 author: @Mahad-Faisal
 WORK IN PROGRESS R&D MAIN REPO IS DER26AMS
 
-Current migration stage: **Z-015 audited private SPI6 transport plus post-review current-ADC/fan HAL hardening — host/source/SIL GREEN, target rebuild pending**.
+Current migration stage: **Z-015 audited private SPI6 transport plus post-review current-ADC/fan HAL hardening — host/source/SIL GREEN, target rebuild pending after Zephyr-v4.4 NVIC compatibility correction**.
 This image remains compile-time no-authority: BMS_OK assertion and balancing are
 absent/disabled. ADBMS actor/safety evidence and physical SPI validation remain
 false. No ADBMS6822 wake/isoSPI protocol, ADBMS6830/APM protocol, acquisition,
@@ -25,6 +25,8 @@ so the final-ELF SPI caller proof cannot be defeated by cross-TU inlining.
 The application runtime remains static/no-heap and does not use the Zephyr
 system workqueue for current safety work.
 
+Pinned-Zephyr compatibility note: Zephyr v4.4.0 `include/zephyr/irq.h` has no public `k_irq_clear_pending()` API and the STM32F767 configuration does not provide `CONFIG_ARCH_HAS_IRQ_PENDING_OPS`. Board-specific SPI6/current-ADC/fan IRQ hardening therefore uses Zephyr `irq_disable()` plus CMSIS `NVIC_ClearPendingIRQ()`. Host fakes intentionally mirror that real v4.4 surface so this mismatch cannot be hidden again.
+
 ## Canonical Z-015 host/SIL gate
 
 On a host with GNU make, GCC and Clang:
@@ -39,7 +41,7 @@ sanitizers, static analyzers, and mutation controls. It intentionally does not
 target-build/flash, perform physical SPI/ADC/PWM/IWDG validation, or advance to
 Z-016.
 
-The final post-review canonical host/SIL run passed **54/54 stages** in **85.990 s** with no skipped evidence; ThreadSanitizer was requested and performed. Target and physical validation were not performed.
+After the Zephyr-v4.4 NVIC compatibility correction, the final canonical host/SIL run passed **54/54 stages** in **89.231 s** with no skipped evidence; ThreadSanitizer was requested and performed. The Z-015 mutation suite now rejects **47** unsafe changes. Target and physical validation were not performed.
 
 Z-015 design/evidence:
 
@@ -48,8 +50,9 @@ Z-015 design/evidence:
 - `docs/migration/Z015_ADBMS_CALLER_INVENTORY.md`
 - `docs/migration/Z015_IMPLEMENTATION_CLOSEOUT_2026-09-07.md`
 - `docs/migration/Z015_POST_REVIEW_HAL_DRIVER_AUDIT_2026-09-07.md`
-- `docs/migration/evidence/Z015_POST_REVIEW_HAL_HOST_SIL_CANONICAL_FINAL_2026-09-07.log`
-- `docs/migration/evidence/Z015_POST_REVIEW_HAL_HOST_SIL_REPORT_FINAL_2026-09-07.json`
+- `docs/migration/evidence/Z015_TARGET_NVIC_COMPAT_HOST_SIL_CANONICAL_2026-09-08.log`
+- `docs/migration/evidence/Z015_TARGET_NVIC_COMPAT_HOST_SIL_REPORT_2026-09-08.json`
+- historical pre-target-build evidence remains under the 2026-09-07 filenames
 
 ## Target contracts
 
