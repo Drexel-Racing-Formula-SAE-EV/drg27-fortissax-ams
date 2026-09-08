@@ -1,5 +1,5 @@
 author: @Mahad-Faisal
-WORK IN PROGRESS R&D MAIN REPO IS DER26AMS
+WORK IN PROGRESS MIGRATION MAIN REPO IS DER26AMS
 
 Current migration stage: **Z-015 audited private SPI6 transport — host/source/SIL GREEN, target rebuild pending**.
 This image remains compile-time no-authority: BMS_OK assertion and balancing are
