@@ -41,6 +41,17 @@ config AMS_FAN_TARGET_VALIDATED
       disabled until reset/pinctrl behavior, frequency, polarity and all six
       physical outputs have been verified on the installed target.
 
+
+config AMS_ADBMS_SPI_PRIVATE_BACKEND
+    bool
+    default y
+    select USE_STM32_LL_SPI
+    select RESET
+    help
+      Z-015 private STM32F767 SPI6 transport backend. The generic Zephyr SPI
+      subsystem intentionally does not own SPI6. This hidden migration fact
+      enables only the STM32 LL SPI module plus Zephyr reset-controller API.
+
 config AMS_IWDG_VALIDATION_MODE
     bool "Arm STM32 IWDG for explicit Z-014 hardware validation"
     default n
@@ -96,6 +107,10 @@ config AMS_CAP_CURRENT_SAFETY_EVIDENCE
     default n
 
 config AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT
+    bool
+    default y
+
+config AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED
     bool
     default n
 

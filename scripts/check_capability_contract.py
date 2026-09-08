@@ -88,11 +88,12 @@ def main() -> int:
         "CONFIG_AMS_CAP_IMD_ACTOR_LIVE",
         "CONFIG_AMS_CAP_IMD_SAFETY_EVIDENCE",
         "CONFIG_AMS_CAP_WATCHDOG_ADAPTER_PRESENT",
+        "CONFIG_AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT",
     )
     disabled = (
         "CONFIG_AMS_CAP_CURRENT_ACTOR_LIVE",
         "CONFIG_AMS_CAP_CURRENT_SAFETY_EVIDENCE",
-        "CONFIG_AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT",
+        "CONFIG_AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED",
         "CONFIG_AMS_CAP_ADBMS_ACTOR_LIVE",
         "CONFIG_AMS_CAP_ADBMS_SAFETY_EVIDENCE",
         "CONFIG_AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE",
@@ -107,10 +108,10 @@ def main() -> int:
 
     for symbol in enabled:
         require(symbol_enabled(config, symbol),
-                f"Z-014 capability must be enabled: {symbol}")
+                f"Z-015 capability must be enabled: {symbol}")
     for symbol in disabled:
         require(symbol_disabled(config, symbol),
-                f"Z-014 capability must remain disabled: {symbol}")
+                f"Z-015 capability must remain disabled: {symbol}")
 
     # Capability symbols are hidden migration facts, not user-selectable knobs.
     hidden_capabilities = enabled + disabled + ("CONFIG_AMS_CAP_WATCHDOG_ACTIVE",)
@@ -134,6 +135,10 @@ def main() -> int:
 
     require('status = "okay"' in dts_block(dts, "iwdg:"),
             "Z-014 watchdog adapter requires an enabled IWDG device node")
+    require('status = "okay"' in dts_block(dts, "ams_adbms_interface:"),
+            "Z-015 adapter-present capability requires enabled typed ADBMS interface")
+    require('status = "disabled"' in dts_block(dts, "spi6:"),
+            "Z-015 private ADBMS transport requires stock SPI6 device disabled")
     validation_mode = symbol_enabled(config, "CONFIG_AMS_IWDG_VALIDATION_MODE")
     require(symbol_enabled(config, "CONFIG_AMS_CAP_WATCHDOG_ACTIVE") == validation_mode,
             "watchdog-active capability must exactly match explicit validation mode")
@@ -148,7 +153,7 @@ def main() -> int:
     require(symbol_disabled(config, "CONFIG_AMS_BALANCE_AUTHORITY"),
             "capability migration must not grant balancing authority")
 
-    print("PASS: Z-014 explicit migration-capability contract")
+    print("PASS: Z-015 explicit migration-capability contract")
     return 0
 
 

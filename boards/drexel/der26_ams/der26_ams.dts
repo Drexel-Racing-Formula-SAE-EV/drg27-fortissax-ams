@@ -5,6 +5,7 @@
 #include <zephyr/dt-bindings/gpio/gpio.h>
 #include <zephyr/dt-bindings/adc/adc.h>
 #include <zephyr/dt-bindings/pwm/pwm.h>
+#include <zephyr/dt-bindings/reset/stm32f2_4_7_reset.h>
 
 / {
     model = "Drexel Racing DER26 AMS";
@@ -37,11 +38,31 @@
         status = "okay";
     };
 
+    /*
+     * Z-015 private ADBMS transport ownership.
+     *
+     * The SoC SPI6 device itself remains disabled so spi_stm32 never owns the
+     * peripheral. This typed AMS node carries the wiring, pinctrl and reset
+     * metadata consumed by the private bounded-polling backend.
+     */
     ams_adbms_interface: ams-adbms-interface {
         compatible = "drexel,ams-adbms-interface";
+        spi-controller = <&spi6>;
+        pinctrl-0 = <&spi6_sck_pg13
+                     &spi6_miso_pg12
+                     &spi6_mosi_pg14>;
+        pinctrl-names = "default";
         cs-a-gpios = <&gpioe 2 GPIO_ACTIVE_LOW>;
         cs-b-gpios = <&gpioe 4 GPIO_ACTIVE_LOW>;
-        status = "disabled";
+        resets = <&rctl STM32_RESET(APB2, 21)>;
+        reset-names = "spi6";
+        spi-input-clock-hz = <108000000>;
+        spi-prescaler = <256>;
+        spi-frequency-hz = <421875>;
+        spi-timeout-ms = <500>;
+        max-transfer-bytes = <512>;
+        read-dummy-byte = <255>;
+        status = "okay";
     };
 
     /* Z-011 acquisition order is intentionally HIGH then LOW. */
@@ -153,10 +174,11 @@
  * String-B CS is PE4. Do not remap it.
  */
 &spi6 {
-    pinctrl-0 = <&spi6_sck_pg13
-                 &spi6_miso_pg12
-                 &spi6_mosi_pg14>;
-    pinctrl-names = "default";
+    /*
+     * Intentionally disabled at Z-015. No Zephyr spi_stm32 device instance,
+     * IRQ handler, async context, DMA path or automatic NSS owns SPI6.
+     * Register/clock/IRQ metadata is referenced by ams_adbms_interface.
+     */
     status = "disabled";
 };
 

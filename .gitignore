@@ -45,3 +45,10 @@ __pycache__/
 /tests/unit/estimator/estimator_core_test_*
 /tests/system/z014_safety_sil/z014_safety_sil
 /tests/system/z014_safety_sil/z014_safety_sil_*
+# Z-015 private ADBMS SPI host/SIL generated products
+/tests/unit/adbms_spi/adbms_spi_engine_test
+/tests/unit/adbms_spi/adbms_spi_engine_test_*
+/tests/unit/adbms_spi/adbms_spi_random_*
+/tests/unit/adbms_spi/adbms_spi_adapter_test
+/tests/unit/adbms_spi/adbms_spi_adapter_test_*
+/tests/unit/adbms_spi/*_an.o

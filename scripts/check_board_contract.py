@@ -160,13 +160,15 @@ def main() -> int:
     )
     require_contains(can, 'status = "disabled"', "CAN1 Z-011 state")
 
-    spi = get_block(text, "spi6:")
+    # Z-015 private ownership: the stock SPI6 node stays disabled while the
+    # typed AMS interface owns the exact pinctrl contract.
     require_contains(
-        spi,
+        adbms_if,
         "pinctrl-0 = < &spi6_sck_pg13 &spi6_miso_pg12 &spi6_mosi_pg14 >",
-        "SPI6 PG13/PG12/PG14"
+        "private ADBMS SPI6 PG13/PG12/PG14"
     )
-    require_contains(spi, 'status = "disabled"', "SPI6 Z-011 state")
+    spi = get_block(text, "spi6:")
+    require_contains(spi, 'status = "disabled"', "stock SPI6 remains disabled")
 
     # Z-011 is the first phase that intentionally enables physical current ADCs.
     # CAN/SPI remain disabled and authority remains impossible. Exact channel

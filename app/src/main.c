@@ -5,6 +5,7 @@
 
 #include "ams_safety.h"
 #include "ams_threads.h"
+#include <ams_platform/adbms_spi_lifecycle.h>
 #include <ams_platform/current_adc.h>
 #include <ams_platform/fan_pwm.h>
 #include <ams_platform/imd_capture.h>
@@ -29,6 +30,31 @@ int main(void)
     }
 
     printk("AMS portable core: contract PASS\n");
+
+    /* Z-015 startup-only private SPI6 preparation. This validates the frozen
+     * 108 MHz -> /256 -> 421875 Hz contract, configures PG13/PG12/PG14,
+     * disables/clears the SPI6 NVIC path, and leaves PE2/PE4 inactive. It
+     * performs no SPI transfer, CS-low pulse, wake operation or ADBMS command.
+     * A preparation failure remains a fail-closed ADBMS transport/process
+     * fault at this migration stage rather than manufacturing watchdog death. */
+    ret = ams_adbms_spi_platform_init();
+    {
+        ams_adbms_spi_platform_status_t spi_status =
+            ams_adbms_spi_platform_status();
+
+        if (ret != 0) {
+            printk("AMS ADBMS SPI6 adapter: FAULTED init=%d state=%u pclk=%u\n",
+                   ret,
+                   (unsigned int)spi_status.state,
+                   (unsigned int)spi_status.input_clock_hz);
+        } else {
+            printk("AMS ADBMS SPI6 adapter: READY pclk=%u sck=%u timeout=%u "
+                   "(no runtime transfers)\n",
+                   (unsigned int)spi_status.input_clock_hz,
+                   (unsigned int)spi_status.achieved_clock_hz,
+                   (unsigned int)spi_status.timeout_ms);
+        }
+    }
 
     /* Keep the complete Z-011 adapter API in the target link without starting
      * a conversion. Live acquisition remains deferred to Z-022. */
@@ -68,7 +94,7 @@ int main(void)
     } else {
         printk("AMS fan PWM adapter: READY (all zones initialized off)\n");
     }
-    printk("DRG27 Fortissax AMS - Zephyr Z-014 watchdog candidate\n");
+    printk("DRG27 Fortissax AMS - Zephyr Z-015 private SPI6 transport candidate\n");
     printk("BMS_OK: forced LOW\n");
     printk("BMS authority: DISABLED\n");
     printk("Balance authority: DISABLED\n");

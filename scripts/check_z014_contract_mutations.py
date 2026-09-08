@@ -76,12 +76,16 @@ def write_synthetic_build(build: Path) -> None:
                 "CONFIG_AMS_CAP_IMD_ACTOR_LIVE=y",
                 "CONFIG_AMS_CAP_IMD_SAFETY_EVIDENCE=y",
                 "CONFIG_AMS_CAP_WATCHDOG_ADAPTER_PRESENT=y",
+                "CONFIG_AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT=y",
             )
         ) + "\n",
         encoding="utf-8",
     )
     (zephyr / "zephyr.dts").write_text(
-        '/dts-v1/;\n/ { };\niwdg: watchdog@40003000 { status = "okay"; };\n',
+        '/dts-v1/;\n/ { };\n'
+        'iwdg: watchdog@40003000 { status = "okay"; };\n'
+        'ams_adbms_interface: ams-adbms-interface { status = "okay"; };\n'
+        'spi6: spi@40015400 { status = "disabled"; };\n',
         encoding="utf-8",
     )
     symbols = (

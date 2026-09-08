@@ -1,15 +1,27 @@
-title: Drexel AMS ADBMS board interface
+title: Drexel AMS private ADBMS SPI6 interface
 
 description: |
-  Board wiring for the two ADBMS daisy-chain chip-select lines. SPI6 remains
-  independently enabled only when the ADBMS transport migration reaches its
-  hardware stage.
+  Board wiring and frozen transport contract for the DER26 ADBMS interface.
+  The generic Zephyr SPI6 device remains disabled at Z-015: a private bounded
+  polling backend owns SPI6 through STM32 LL while continuing to use Zephyr
+  Devicetree, pinctrl, GPIO, clock-control, reset-controller and IRQ APIs.
+
+  CS_A/CS_B are electrically meaningful to the ADBMS6822/isoSPI chain. Z-015
+  initializes both inactive and performs no runtime transfer or wake pulse.
 
 compatible: "drexel,ams-adbms-interface"
 
-include: base.yaml
+include:
+  - base.yaml
+  - pinctrl-device.yaml
+  - reset-device.yaml
 
 properties:
+  spi-controller:
+    type: phandle
+    required: true
+    description: Disabled SoC SPI6 node whose register/clock/IRQ metadata is privately owned.
+
   cs-a-gpios:
     type: phandle-array
     required: true
@@ -19,3 +31,39 @@ properties:
     type: phandle-array
     required: true
     description: Active-low chip select for ADBMS string B.
+
+  spi-input-clock-hz:
+    type: int
+    required: true
+    const: 108000000
+    description: Frozen expected APB2/SPI6 peripheral input clock.
+
+  spi-prescaler:
+    type: int
+    required: true
+    const: 256
+    description: Frozen v2.6.27 SPI6 prescaler divisor.
+
+  spi-frequency-hz:
+    type: int
+    required: true
+    const: 421875
+    description: Frozen achieved SPI6 serial clock, not merely a requested maximum.
+
+  spi-timeout-ms:
+    type: int
+    required: true
+    const: 500
+    description: Frozen v2.6.27 SPI_TIMEOUT transport deadline.
+
+  max-transfer-bytes:
+    type: int
+    required: true
+    const: 512
+    description: Frozen v2.6.27 BUFSZ bound for one logical transaction.
+
+  read-dummy-byte:
+    type: int
+    required: true
+    const: 255
+    description: 0xFF clocking byte used after a read command prefix.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Source-only architectural/safety boundary gate for the current Z-014 tree.
+"""Source-only architectural/safety boundary gate for the current Z-014/Z-015 safety baseline.
 
 This checker intentionally needs no Zephyr build directory.  It complements the
 build-aware contracts by catching source-boundary regressions in the same host
@@ -115,7 +115,7 @@ def main() -> int:
     require(not occurrences(repo, app_files, app_dt_pattern),
             "app orchestration acquired direct Devicetree hardware ownership")
 
-    # BMS_OK public authority remains structurally impossible in Z-014: the
+    # BMS_OK public authority remains structurally impossible in the no-authority migration baseline: the
     # platform surface provides only normal init-low and unconditional fail-low.
     bms_header = (repo / "include/ams_platform/bms_ok.h").read_text(encoding="utf-8")
     fail_low_header = (repo / "include/ams_platform/fail_low.h").read_text(encoding="utf-8")
@@ -215,7 +215,7 @@ def main() -> int:
     deferred = (
         "AMS_CAP_CURRENT_ACTOR_LIVE",
         "AMS_CAP_CURRENT_SAFETY_EVIDENCE",
-        "AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT",
+        "AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED",
         "AMS_CAP_ADBMS_ACTOR_LIVE",
         "AMS_CAP_ADBMS_SAFETY_EVIDENCE",
         "AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE",
@@ -232,13 +232,20 @@ def main() -> int:
         require(not any(line.strip().startswith(('bool "', 'tristate "')) for line in lines[1:]),
                 f"migration capability became user-selectable: {symbol}")
 
+    promoted = kconfig_block(kconfig, "AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT")
+    require("default y" in promoted,
+            "Z-015 ADBMS SPI adapter presence capability is not promoted")
+    require(not any(line.strip().startswith(('bool "', 'tristate "'))
+                    for line in promoted.splitlines()[1:]),
+            "ADBMS SPI adapter presence capability became user-selectable")
+
     # No balancing platform surface exists yet; later migration must add it as
     # an explicit stage instead of smuggling authority through a generic API.
     platform_names = [p.name.lower() for p in (repo / "include/ams_platform").glob("*.h")]
     require(not any("balanc" in name for name in platform_names),
-            "balancing platform authority surface introduced during Z-014")
+            "balancing platform authority surface introduced during no-authority migration")
 
-    print("PASS: Z-014 source-only architecture/safety hygiene contract")
+    print("PASS: Z-014/Z-015 source-only architecture/safety hygiene contract")
     print(f"  scanned production C/H files: {len(prod_files)}")
     print("  portable core: no RTOS/HAL/platform imports")
     print("  runtime: static/no-workqueue; app hardware ownership remains abstracted")

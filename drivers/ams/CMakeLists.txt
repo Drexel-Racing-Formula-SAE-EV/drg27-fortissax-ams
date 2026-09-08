@@ -19,6 +19,8 @@ zephyr_library_sources(
     fan_pwm_zephyr.c
     imd_capture_zephyr.c
     watchdog_zephyr.c
+    adbms_spi_engine.c
+    adbms_spi_stm32.c
 )
 
 zephyr_library_include_directories(

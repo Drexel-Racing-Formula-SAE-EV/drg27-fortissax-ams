@@ -26,8 +26,10 @@
  * Z-014 AMS runtime/watchdog contract
  * --------------------------------------------------------------------------
  *
- * Z-014 keeps the real 5 Hz fan and 10 Hz IMD workloads while adding the
- * isolated watchdog policy/platform composition. IMD was promoted in Z-013
+ * Z-015 keeps the Z-014 watchdog/runtime safety boundary unchanged while the
+ * private ADBMS SPI6 adapter is prepared at startup. The ADBMS thread remains
+ * a topology-only placeholder: it never calls the transport and never emits
+ * ADBMS heartbeat/safety evidence. IMD was promoted in Z-013
  * to the real 10 Hz PA5/TIM2 PWM-input + PC5 OK_HS workload. Current ADC
  * hardware remains initialized but the current worker still does not acquire
  * samples until Z-022 proves mutex/publication ordering.
@@ -220,10 +222,13 @@ BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CURRENT_ACTOR_LIVE),
              "current actor remains deferred at Z-014");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CURRENT_SAFETY_EVIDENCE),
              "placeholder current must not be safety evidence");
-BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT) &&
-             !IS_ENABLED(CONFIG_AMS_CAP_ADBMS_ACTOR_LIVE) &&
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT),
+             "Z-015 requires the private ADBMS SPI6 adapter");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED),
+             "Z-015 must not claim physical SPI6 validation");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_ADBMS_ACTOR_LIVE) &&
              !IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SAFETY_EVIDENCE),
-             "ADBMS transport/actor/evidence remain deferred at Z-014");
+             "ADBMS actor/evidence remain deferred at Z-015");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE),
              "temperature safety evidence remains deferred at Z-014");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CAN_ADAPTER_PRESENT) &&

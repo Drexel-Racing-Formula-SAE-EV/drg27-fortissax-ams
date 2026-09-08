@@ -58,22 +58,32 @@ This code must remain directly host-testable without Zephyr.
 
 Contains the narrow interfaces that application code may call to perform
 platform actions.  Interface names describe the AMS operation, not the Zephyr
-or STM32 implementation.  Current Z-014 interfaces are:
+or STM32 implementation.  Current public platform interfaces through Z-015 are:
 
 - `bms_ok.h`;
 - `fail_low.h`;
 - `current_adc.h`;
 - `fan_pwm.h`;
 - `imd_capture.h`;
-- `watchdog.h`.
+- `watchdog.h`;
+- `adbms_spi_lifecycle.h` (startup/status only; no raw transfer surface).
 
-Future SPI/CAN interfaces should follow the same pattern.
+The Z-015 raw ADBMS transfer API is deliberately *not* public: it remains in
+`drivers/ams/adbms_spi_internal.h` until the single ADBMS owner/protocol layer
+lands. Future CAN interfaces should follow the same narrow-surface principle.
 
 ### `drivers/ams`
 
 Owns ordinary Zephyr platform adaptation.  It may use Zephyr device APIs,
 Devicetree helpers, synchronization primitives needed by the driver boundary,
 and platform error codes.  It must not own product-level safety policy.
+
+Z-015 adds one audited exception inside this layer: `adbms_spi_stm32.c` owns
+SPI6 directly through STM32 LL because Zephyr v4.4.0's stock F767 full-duplex
+interrupt completion path contains an unbounded BSY wait in ISR context. The
+private backend still uses Zephyr for Devicetree, pinctrl, GPIO, RCC clock
+control, reset control, timing and IRQ disable/pending-clear. Stock `spi_stm32`
+does not own SPI6.
 
 Current implementation sources are compiled as the dedicated Zephyr library
 `ams_platform` rather than being listed directly as application sources.  The
@@ -112,7 +122,7 @@ explicit threads rather than generic system-workqueue items.
 ## Devicetree policy
 
 Application-facing hardware contracts use typed custom bindings rather than
-`/zephyr,user`.  Z-014 retains:
+`/zephyr,user`.  Z-015 retains:
 
 - `drexel,ams-safety-io`;
 - `drexel,ams-adbms-interface`;
@@ -123,6 +133,9 @@ Application-facing hardware contracts use typed custom bindings rather than
 Bindings inherit `base.yaml`, so standard properties such as `status` remain
 schema-validated.  Adapter code consumes named `adc_dt_spec`, `pwm_dt_spec`, or
 `gpio_dt_spec` objects and adds compile-time assertions for frozen DER26 wiring.
+The Z-015 typed ADBMS node additionally owns SPI6 pinctrl, manual CS GPIOs,
+reset metadata and frozen transport constants while the stock `&spi6` device
+node remains disabled.
 
 The Devicetree metadata does not replace behavior that must remain cycle-exact.
 For example, fan consumer period metadata is descriptive while the adapter uses
@@ -211,13 +224,19 @@ differential and safety contracts. Pure code can still be behaviorally wrong.
 
 ### ADBMS / isoSPI
 
-The intended portable boundary is command construction, PEC, packet parsing,
+Z-015 freezes a private synchronous SPI6 transport substrate only. It uses one
+wrap-safe absolute 500 ms deadline, Mode 3 at exactly 421,875 Hz, manual PE2/PE4
+CS, no SPI IRQ/DMA/async path, and CS-high + RCC reset/reconfigure/readback on
+transport failure. Recovery success leaves later operations possible; recovery
+failure latches the adapter faulted. Initialization issues no transfer.
+
+The future portable boundary remains command construction, PEC, packet parsing,
 chain ordering, cell mapping, diagnostic state machines, and other behavior
-that does not require a physical transaction. Zephyr SPI/GPIO, CS timing,
-isoSPI wake/session timing, bounded bus ownership, interrupt/preemption effects,
-and transport error identity remain platform/runtime concerns. Do not push
-session timing down into the algorithm core merely to make the transport
-wrapper smaller.
+that does not require a physical transaction. CS-low is itself electrically
+meaningful to the ADBMS6822 chain, so wake/session timing remains a later
+protocol/runtime concern. CLI/service access must go through the future single
+ADBMS owner request/response path; direct diagnostic transport calls are
+forbidden.
 
 ### CAN
 
