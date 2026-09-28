@@ -1,3 +1,35 @@
+# Z019 lifecycle extension
+
+The same Z018 ADBMS owner audits SID/configuration/PWM before normal acquisition.
+Interruption withdraws old images, retains remote cleanup obligations and defers
+one bounded repair to the next release. Repair qualifies a separate candidate
+through full startup, fresh C acquisition and final exact readback. Commit is
+atomic from the owner publication perspective. Failed repair is terminal.
+No new thread, ISR path, raw SPI API, watchdog evidence or vehicle authority exists.
+See `migration/Z019_PLAN_AND_CLOSEOUT_2026-09-15.md`.
+
+## Historical Z018 architecture
+
+# Z018 architecture update — 2026-09-15
+
+The existing priority-3 ADBMS owner now has an explicit Z018 profile. It retains
+Z017 initialization/POST/cell acquisition, then scans one position on each of the
+three temperature muxes. A copied temperature image is exposed for diagnostics.
+Primary acquisition, optional AUX2 comparison and optional thermistor open-wire
+stimulus share the private String-B SPI6 seam and command-counter tracker.
+Diagnostics never publish into primary history. Temporary CFGA writes create a
+restoration obligation before wire activity; failure to prove restoration faults
+the monitor and prevents subsequent cell/temperature acquisition.
+
+Profile exclusions form an acyclic dependency order: Z017 depends on not Z016;
+Z018 depends on neither Z016 nor Z017. The supplied configurations explicitly
+turn the other profiles off. Target contracts also reject simultaneous profiles.
+
+Hardware was previously validated; migrated Zephyr parity is outstanding.
+No safety evidence, BMS_OK, balance, APM or estimator authority is added.
+
+## Historical architecture baseline
+
 # DRG27 AMS Zephyr architecture
 
 This document freezes the architectural rules for the DER26 -> DRG27 AMS

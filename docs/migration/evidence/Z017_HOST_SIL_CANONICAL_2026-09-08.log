@@ -1,0 +1,137 @@
+Z-017 canonical host/source/SIL closeout
+repo: /mnt/data/z017_work/DER27-AMS-zephyr
+scope: inherited Z001..Z015 + Z016 String-B link + Z017 init/POST/cell acquisition
+excluded: target build/flash, physical SPI/isoSPI/cell validation, authority promotion, Z018+
+
+=== Z017 checker syntax ===
+>>> /opt/pyvenv/bin/python -m py_compile /mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z017_contract.py /mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z017_mutations.py /mnt/data/z017_work/DER27-AMS-zephyr/scripts/build_manifest.py
+
+=== Z017 source/profile/ownership contract ===
+>>> /opt/pyvenv/bin/python /mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z017_contract.py /mnt/data/z017_work/DER27-AMS-zephyr
+PASS: Z017 source contract (String-B one-SMB init/POST/safe-inhibit/coherent C acquisition)
+
+=== Z017 mutation/negative controls ===
+>>> /opt/pyvenv/bin/python /mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z017_mutations.py /mnt/data/z017_work/DER27-AMS-zephyr
+PASS: Z017 source contract (String-B one-SMB init/POST/safe-inhibit/coherent C acquisition)
+PASS: 26 Z017 unsafe profile/protocol/ownership/coherence/authority changes rejected
+
+=== Z016 inherited link contract ===
+>>> /opt/pyvenv/bin/python /mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z016_link_contract.py /mnt/data/z017_work/DER27-AMS-zephyr
+PASS: Z016 String B/one-SMB read-only profile, typed ownership/integrity/timing contract
+
+=== Z016 inherited mutations ===
+>>> /opt/pyvenv/bin/python /mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z016_mutations.py /mnt/data/z017_work/DER27-AMS-zephyr
+PASS: Z016 String B/one-SMB read-only profile, typed ownership/integrity/timing contract
+PASS: 12 Z016 unsafe profile/protocol/ownership/timing changes rejected
+
+=== Z017 monitor directed/randomized + adapter ===
+>>> make -C /mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor clean test adapter
+make: Entering directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+rm -f monitor_test monitor_test_asan monitor_test_ubsan adapter_test /tmp/z017_monitor_analyze.o /tmp/z017_monitor.plist
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -O2 monitor_test.c ../../../lib/ams_core/adbms/ams_adbms_protocol.c ../../../lib/ams_core/adbms/ams_cell_image.c ../../../lib/ams_core/adbms/ams_adbms_monitor.c -o monitor_test
+./monitor_test
+PASS Z017 monitor: startup/POST/config/balance-inhibit/counter/snapshot ownership/exhaustive transfer-fault/epoch expiry/products/history boundaries; 50000 randomized cell-history steps
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -DCONFIG_AMS_Z017_CELL_VALIDATION=1 -DCONFIG_AMS_Z016_LINK_PROBE=0 -I../adbms_spi/fake_zephyr -I../../../drivers/ams -I../../../include -O2 adapter_test.c ../adbms_spi/fake_zephyr/fake_zephyr_spi.c ../../../drivers/ams/adbms_time_zephyr.c ../../../drivers/ams/adbms_monitor_zephyr.c -o adapter_test
+./adapter_test
+PASS Z017 Zephyr monitor adapter: owner-only String-B seam, cooperative timing, copied snapshot
+make: Leaving directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+
+=== Z017 monitor ASan/UBSan ===
+>>> make -C /mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor asan ubsan
+make: Entering directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -O1 -g -fsanitize=address -fno-omit-frame-pointer monitor_test.c ../../../lib/ams_core/adbms/ams_adbms_protocol.c ../../../lib/ams_core/adbms/ams_cell_image.c ../../../lib/ams_core/adbms/ams_adbms_monitor.c -o monitor_test_asan
+ASAN_OPTIONS=detect_leaks=0 ./monitor_test_asan
+PASS Z017 monitor: startup/POST/config/balance-inhibit/counter/snapshot ownership/exhaustive transfer-fault/epoch expiry/products/history boundaries; 50000 randomized cell-history steps
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -O1 -g -fsanitize=undefined -fno-omit-frame-pointer monitor_test.c ../../../lib/ams_core/adbms/ams_adbms_protocol.c ../../../lib/ams_core/adbms/ams_cell_image.c ../../../lib/ams_core/adbms/ams_adbms_monitor.c -o monitor_test_ubsan
+./monitor_test_ubsan
+PASS Z017 monitor: startup/POST/config/balance-inhibit/counter/snapshot ownership/exhaustive transfer-fault/epoch expiry/products/history boundaries; 50000 randomized cell-history steps
+make: Leaving directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+
+=== Z017 monitor GCC analyzer ===
+>>> make -C /mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor analyze
+make: Entering directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -O2 -fanalyzer -c ../../../lib/ams_core/adbms/ams_adbms_monitor.c -o /tmp/z017_monitor_analyze.o
+make: Leaving directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+
+=== Z017 monitor Clang analyzer ===
+>>> make -C /mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor clang-analyze
+make: Entering directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+clang --analyze -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -O1 ../../../lib/ams_core/adbms/ams_adbms_monitor.c -o /tmp/z017_monitor.plist
+make: Leaving directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+
+=== Z016 protocol differential + adapter/probe ===
+>>> make -C /mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link clean test adapter probe
+make: Entering directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link'
+rm -f link_test link_test_asan adapter_test probe_test
+cc -std=c11 -Wall -Wextra -Werror -pedantic -Wno-error=pedantic -I../../../lib/ams_core/include -Ioracle  -O2 link_test.c oracle/adbms_shared.c ../../../lib/ams_core/adbms/ams_adbms_protocol.c ../../../lib/ams_core/adbms/ams_adbms_link.c -o link_test
+In file included from oracle/adbms_shared.c:9:
+oracle/ext_drivers/adbms_shared.h:470:23: warning: ISO C restricts enumerator values to range of ‘int’ before C23 [-Wpedantic]
+  470 |   I1D               = 0x80000000U,
+      |                       ^~~~~~~~~~~
+./link_test
+PASS Z016 link: 200000 differential PEC checks; counter/session/error boundaries
+cc -std=c11 -Wall -Wextra -Werror -pedantic -Wno-error=pedantic -I../../../lib/ams_core/include -Ioracle  -DCONFIG_AMS_Z016_LINK_PROBE=1 -I../adbms_spi/fake_zephyr -I../../../drivers/ams -I../../../include -O2 adapter_test.c ../adbms_spi/fake_zephyr/fake_zephyr_spi.c ../../../drivers/ams/adbms_spi_engine.c ../../../drivers/ams/adbms_spi_stm32.c ../../../drivers/ams/adbms_time_zephyr.c -o adapter_test
+./adapter_test
+PASS Z016 production wake/time: owner, String B, CS cleanup, finite timing failure
+./adapter_test stalled
+PASS Z016 production wake/time: owner, String B, CS cleanup, finite timing failure
+./adapter_test cs-fault
+PASS Z016 production wake/time: owner, String B, CS cleanup, finite timing failure
+cc -std=c11 -Wall -Wextra -Werror -pedantic -Wno-error=pedantic -I../../../lib/ams_core/include -Ioracle  -DCONFIG_AMS_Z016_LINK_PROBE=1 -I../adbms_spi/fake_zephyr -I../../../drivers/ams -I../../../include -O2 probe_test.c ../../../drivers/ams/adbms_link_probe.c ../../../lib/ams_core/adbms/ams_adbms_protocol.c ../../../lib/ams_core/adbms/ams_adbms_link.c -o probe_test
+./probe_test
+Z016 String B / 1 SMB probe step 0 result 0
+Z016 String B / 1 SMB probe step 1 result 0
+Z016 String B / 1 SMB probe step 2 result 0
+Z016 String B / 1 SMB probe step 3 result 0
+PASS Z016 production finite probe: allowed frames, stop-on-error, no repeat after completion
+./probe_test bad-pec
+Z016 String B / 1 SMB probe step 0 result 0
+Z016 String B / 1 SMB probe step 1 result 7
+PASS Z016 production finite probe: allowed frames, stop-on-error, no repeat after completion
+make: Leaving directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link'
+
+=== Z016 protocol ASan/UBSan ===
+>>> make -C /mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link asan
+make: Entering directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -Wno-error=pedantic -I../../../lib/ams_core/include -Ioracle  -O1 -g -fsanitize=address,undefined link_test.c oracle/adbms_shared.c ../../../lib/ams_core/adbms/ams_adbms_protocol.c ../../../lib/ams_core/adbms/ams_adbms_link.c -o link_test_asan
+In file included from oracle/adbms_shared.c:9:
+oracle/ext_drivers/adbms_shared.h:470:23: warning: ISO C restricts enumerator values to range of ‘int’ before C23 [-Wpedantic]
+  470 |   I1D               = 0x80000000U,
+      |                       ^~~~~~~~~~~
+ASAN_OPTIONS=detect_leaks=0 ./link_test_asan
+PASS Z016 link: 200000 differential PEC checks; counter/session/error boundaries
+make: Leaving directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link'
+
+=== Z016 adapter/probe sanitizer build ===
+>>> make -C /mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link adapter probe EXTRA=-fsanitize=address,undefined -fno-omit-frame-pointer
+make: Entering directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -Wno-error=pedantic -I../../../lib/ams_core/include -Ioracle -fsanitize=address,undefined -fno-omit-frame-pointer -DCONFIG_AMS_Z016_LINK_PROBE=1 -I../adbms_spi/fake_zephyr -I../../../drivers/ams -I../../../include -O2 adapter_test.c ../adbms_spi/fake_zephyr/fake_zephyr_spi.c ../../../drivers/ams/adbms_spi_engine.c ../../../drivers/ams/adbms_spi_stm32.c ../../../drivers/ams/adbms_time_zephyr.c -o adapter_test
+./adapter_test
+PASS Z016 production wake/time: owner, String B, CS cleanup, finite timing failure
+./adapter_test stalled
+PASS Z016 production wake/time: owner, String B, CS cleanup, finite timing failure
+./adapter_test cs-fault
+PASS Z016 production wake/time: owner, String B, CS cleanup, finite timing failure
+cc -std=c11 -Wall -Wextra -Werror -pedantic -Wno-error=pedantic -I../../../lib/ams_core/include -Ioracle -fsanitize=address,undefined -fno-omit-frame-pointer -DCONFIG_AMS_Z016_LINK_PROBE=1 -I../adbms_spi/fake_zephyr -I../../../drivers/ams -I../../../include -O2 probe_test.c ../../../drivers/ams/adbms_link_probe.c ../../../lib/ams_core/adbms/ams_adbms_protocol.c ../../../lib/ams_core/adbms/ams_adbms_link.c -o probe_test
+./probe_test
+Z016 String B / 1 SMB probe step 0 result 0
+Z016 String B / 1 SMB probe step 1 result 0
+Z016 String B / 1 SMB probe step 2 result 0
+Z016 String B / 1 SMB probe step 3 result 0
+PASS Z016 production finite probe: allowed frames, stop-on-error, no repeat after completion
+./probe_test bad-pec
+Z016 String B / 1 SMB probe step 0 result 0
+Z016 String B / 1 SMB probe step 1 result 7
+PASS Z016 production finite probe: allowed frames, stop-on-error, no repeat after completion
+make: Leaving directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link'
+make: Entering directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+rm -f monitor_test monitor_test_asan monitor_test_ubsan adapter_test /tmp/z017_monitor_analyze.o /tmp/z017_monitor.plist
+make: Leaving directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+make: Entering directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link'
+rm -f link_test link_test_asan adapter_test probe_test
+make: Leaving directory '/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link'
+PASS: inherited Z015 report /mnt/data/z017_work/DER27-AMS-zephyr/docs/migration/evidence/Z017_INHERITED_Z015_HOST_SIL_REPORT_2026-09-08.json
+Report: /mnt/data/z017_work/DER27-AMS-zephyr/docs/migration/evidence/Z017_HOST_SIL_CANONICAL_REPORT_2026-09-08.json
+
+PASS: complete Z017 host/source/SIL closeout
+Target build and physical validation remain separate gates.

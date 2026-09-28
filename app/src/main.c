@@ -7,6 +7,9 @@
 #include "ams_threads.h"
 #include <ams_platform/adbms_spi_lifecycle.h>
 #include <ams_platform/current_adc.h>
+#ifdef CONFIG_AMS_Z022_MEASUREMENT_VALIDATION
+#include <ams_platform/measurement_pipeline.h>
+#endif
 #include <ams_platform/fan_pwm.h>
 #include <ams_platform/imd_capture.h>
 
@@ -83,7 +86,11 @@ int main(void)
         k_panic();
     }
 
+#ifdef CONFIG_AMS_Z022_MEASUREMENT_VALIDATION
+    printk("AMS current ADC adapter: READY (Z022 acquisition scheduled)\n");
+#else
     printk("AMS current ADC adapter: READY (acquisition not scheduled)\n");
+#endif
 
     /* Z-012: timer/PWM infrastructure failure is equivalent to the legacy
      * MX_TIMx_Init()/Error_Handler() fatal path. Per-channel startup command
@@ -110,6 +117,9 @@ int main(void)
      */
     ams_threads_print_manifest();
 
+#ifdef CONFIG_AMS_Z022_MEASUREMENT_VALIDATION
+    if (!ams_z022_init()) { k_panic(); }
+#endif
     ret = ams_threads_start();
 
     if (ret != 0) {

@@ -120,8 +120,8 @@ def main() -> int:
         cases.append("application_direct_transport")
 
         mutate("adbms_actor_promoted", "app/Kconfig",
-               "config AMS_CAP_ADBMS_ACTOR_LIVE\n    bool\n    default n",
-               "config AMS_CAP_ADBMS_ACTOR_LIVE\n    bool\n    default y")
+               "config AMS_CAP_ADBMS_ACTOR_LIVE\n    bool\n    default y if AMS_Z017_CELL_VALIDATION || AMS_Z018_TEMP_VALIDATION\n    default n",
+               "config AMS_CAP_ADBMS_ACTOR_LIVE\n    bool\n    default y if AMS_Z017_CELL_VALIDATION || AMS_Z018_TEMP_VALIDATION\n    default y")
         mutate("adbms_evidence_promoted", "app/Kconfig",
                "config AMS_CAP_ADBMS_SAFETY_EVIDENCE\n    bool\n    default n",
                "config AMS_CAP_ADBMS_SAFETY_EVIDENCE\n    bool\n    default y")

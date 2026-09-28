@@ -1,0 +1,160 @@
+{
+  "results": [
+    {
+      "file": "lib/ams_core/adbms/ams_adbms_link.c",
+      "returncode": 0,
+      "sha256": "3ac355597769766b4cadf6f598e6bba9271974a3e9a0adbe24658da54e4af313"
+    },
+    {
+      "file": "lib/ams_core/adbms/ams_adbms_monitor.c",
+      "returncode": 0,
+      "sha256": "4c908d1e9cec6bd916092b66958afeee5f60a21704b0aa907243ecbf8b0a3b9c"
+    },
+    {
+      "file": "lib/ams_core/adbms/ams_adbms_protocol.c",
+      "returncode": 0,
+      "sha256": "1127665ea2b88ace6a34ceb036957ea7d10369b7ebc576c7c3955fde614d8c60"
+    },
+    {
+      "file": "lib/ams_core/adbms/ams_balance_shadow.c",
+      "returncode": 0,
+      "sha256": "69c581471c2082d98577e627f6fb3c32ca8d25ba6d1615e99c05bd0895b6f75c"
+    },
+    {
+      "file": "lib/ams_core/adbms/ams_cell_image.c",
+      "returncode": 0,
+      "sha256": "fb52386955a620b902c2edccf8b983ad5c5f135b1760ca2b7848ee603af556a7"
+    },
+    {
+      "file": "lib/ams_core/adbms/ams_temp_image.c",
+      "returncode": 0,
+      "sha256": "66a69e9a72d80920edb894ecc426e1e1512929aa7748df047b2e75d17c82bd9a"
+    },
+    {
+      "file": "lib/ams_core/adbms/ams_thermistor.c",
+      "returncode": 0,
+      "sha256": "6d6b013f87cb55d461643676c9e32daeaa15dcb2f6187d5bf4932be0b6adf178"
+    },
+    {
+      "file": "lib/ams_core/adbms/ams_z021_support.c",
+      "returncode": 0,
+      "sha256": "abd4c8908d6d6756a7ae84289776920802f47fa2e699ad69ae91ea518ffb362c"
+    },
+    {
+      "file": "lib/ams_core/can/ams_can_codec.c",
+      "returncode": 0,
+      "sha256": "1ab2ba93bb84ededa982eabbdd5e9bea30ad4545f4e738e5c791437130d67dcf"
+    },
+    {
+      "file": "lib/ams_core/can/ams_can_transport.c",
+      "returncode": 0,
+      "sha256": "6da9d76d822e26cf61b9d23bc6510d3ebd095b9a89e721f6c3360cfbfe6e5a8c"
+    },
+    {
+      "file": "lib/ams_core/can/ams_can_tx_scheduler.c",
+      "returncode": 0,
+      "sha256": "f428e586245ec2a6eee9e6a75daa7421cb0856e0081d3a83635c135897c51ebc"
+    },
+    {
+      "file": "lib/ams_core/common/ams_core_contract.c",
+      "returncode": 0,
+      "sha256": "156a4e9595a81ce36fd0b379fc0bc0fc213e428675aeeb9ce7a4ec3efe028a64"
+    },
+    {
+      "file": "lib/ams_core/common/ams_core_time.c",
+      "returncode": 0,
+      "sha256": "4c35e6a7a812041c9adee768a4e16034be5ca5f0805c5fe97b76b3f64eba865f"
+    },
+    {
+      "file": "lib/ams_core/current/ams_current_sensor.c",
+      "returncode": 0,
+      "sha256": "7c1694738faec4bc3c4775b7b798a39890ce04aeb1e811b55fe04c89919db0ba"
+    },
+    {
+      "file": "lib/ams_core/estimator/ams_estimator_lut.c",
+      "returncode": 0,
+      "sha256": "45f1a5227b3b7ac396ba0506a60b12355cfcb7b71f9ea3f99b165f2d2e7d4061"
+    },
+    {
+      "file": "lib/ams_core/estimator/ams_segment_consumer.c",
+      "returncode": 0,
+      "sha256": "c8350c4caec6a751335f3046b597c2bfc71e0ece1bf74270d5f091462b720fe9"
+    },
+    {
+      "file": "lib/ams_core/estimator/ams_soc_ekf.c",
+      "returncode": 0,
+      "sha256": "536ca9b5d25a7cc728c54609409222fb1787b65e491b3eea134dc47e0d1c6ae9"
+    },
+    {
+      "file": "lib/ams_core/fan/ams_fan_control.c",
+      "returncode": 0,
+      "sha256": "18b389a98d02b843b31d10d7717ad7114d5556c808d19c50b1af7f09fa73fe6d"
+    },
+    {
+      "file": "lib/ams_core/faults/ams_current_fault.c",
+      "returncode": 0,
+      "sha256": "45ebf864dba3975e5b85c42db490515801383a5c85f982a15627e24b709cc018"
+    },
+    {
+      "file": "lib/ams_core/faults/ams_segment_fault.c",
+      "returncode": 0,
+      "sha256": "a635b8ce9b27b5388c3325845e01330d05a7e1c24b82fe4db760ffc5d91f13d7"
+    },
+    {
+      "file": "lib/ams_core/faults/ams_supervision.c",
+      "returncode": 0,
+      "sha256": "7180d79c291679cf5e610f0f7c5d118f38f4a6a96f9135143ba2ca4d48ea56c7"
+    },
+    {
+      "file": "lib/ams_core/imd/ams_imd.c",
+      "returncode": 0,
+      "sha256": "bd6113dcba0ee416c41047e36df1b2d3386326ceb27d86a43e97144a44a2b44a"
+    },
+    {
+      "file": "lib/ams_core/integrity/ams_stack_health.c",
+      "returncode": 0,
+      "sha256": "b6d01fd72114ed5d13da6937826d1c823b15e2dca85b0ce1302348e449fd2eca"
+    },
+    {
+      "file": "lib/ams_core/measurement/ams_current_window.c",
+      "returncode": 0,
+      "sha256": "fe3adfba4554e08b18769f8b383a2c1d4e3ac83c816834410fbbd134b1b46e39"
+    },
+    {
+      "file": "lib/ams_core/measurement/ams_measurement.c",
+      "returncode": 0,
+      "sha256": "4d582879ec53bb2b1f07cd5fcbf1e342cf15f7a3f0e02a201dfb174bbb08c0a0"
+    },
+    {
+      "file": "lib/ams_core/measurement/ams_measurement_pipeline.c",
+      "returncode": 0,
+      "sha256": "a5edcfe53753047ac6997a9e3a15f592a4147758c84ffbbf02bce9924cbea416"
+    },
+    {
+      "file": "lib/ams_core/soh/ams_soh.c",
+      "returncode": 0,
+      "sha256": "cca0e884493683b8198123cccd6e41c47c8d6cdce26eea2c913b8d0fd2cfc601"
+    },
+    {
+      "file": "lib/ams_core/sop/ams_fuse_observer.c",
+      "returncode": 0,
+      "sha256": "3b255e60ae7fa795be073af798876a03c35a6b632796db80df671ed291101568"
+    },
+    {
+      "file": "lib/ams_core/sop/ams_sop.c",
+      "returncode": 0,
+      "sha256": "40a97484147bd3ba65958f5b15b5ee0d9ae8274f7ad7c9cb558a88024ebac82e"
+    },
+    {
+      "file": "lib/ams_core/watchdog/ams_watchdog_heartbeat.c",
+      "returncode": 0,
+      "sha256": "9a2eb9fb2a9569ee1d08b26fff1605ab5858180b0fcd0d2d503284d70b14aa44"
+    },
+    {
+      "file": "lib/ams_core/watchdog/ams_watchdog_policy.c",
+      "returncode": 0,
+      "sha256": "0d2850da7bada6c2923364def8fd04fe8626187939f596bf71689bf9d68363cb"
+    }
+  ],
+  "pass": true
+}

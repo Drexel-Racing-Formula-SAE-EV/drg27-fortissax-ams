@@ -1,7 +1,7 @@
 CC ?= cc
 ROOT := ../../..
 FLAGS := -std=c11 -Wall -Wextra -Werror -pedantic -Wno-error=pedantic -I$(ROOT)/lib/ams_core/include -Ioracle $(EXTRA)
-SOURCES := link_test.c oracle/adbms_shared.c $(ROOT)/lib/ams_core/adbms/ams_adbms_link.c
+SOURCES := link_test.c oracle/adbms_shared.c $(ROOT)/lib/ams_core/adbms/ams_adbms_protocol.c $(ROOT)/lib/ams_core/adbms/ams_adbms_link.c
 .PHONY: test asan clean
 test:
 	$(CC) $(FLAGS) -O2 $(SOURCES) -o link_test
@@ -25,6 +25,6 @@ adapter:
 
 .PHONY: probe
 probe:
-	$(CC) $(ADAPTER_FLAGS) -O2 probe_test.c $(DRIVERS)/adbms_link_probe.c $(ROOT)/lib/ams_core/adbms/ams_adbms_link.c -o probe_test
+	$(CC) $(ADAPTER_FLAGS) -O2 probe_test.c $(DRIVERS)/adbms_link_probe.c $(ROOT)/lib/ams_core/adbms/ams_adbms_protocol.c $(ROOT)/lib/ams_core/adbms/ams_adbms_link.c -o probe_test
 	./probe_test
 	./probe_test bad-pec

@@ -12,7 +12,7 @@ static unsigned wakes,reads,binds;
 static bool corrupt;
 bool ams_adbms_time_now(uint64_t *us){*us=fake_cycles/216U;return true;}
 bool ams_adbms_spi_bind_owner(void){++binds;return true;}
-bool ams_adbms_spi_wake_b(bool cold){wakes++;fake_cycles+=(cold?4000U:2000U)*216U;return true;}
+ams_adbms_spi_result_t ams_adbms_spi_wake_b(bool cold){wakes++;fake_cycles+=(cold?4000U:2000U)*216U;return AMS_ADBMS_SPI_RESULT_OK;}
 ams_adbms_spi_platform_status_t ams_adbms_spi_platform_status(void){
  ams_adbms_spi_platform_status_t s={.state=AMS_ADBMS_SPI_PLATFORM_READY};return s;
 }

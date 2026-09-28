@@ -16,9 +16,10 @@ ORACLE_HASHES = {
     "stm32f7xx_hal_msp.c": "60147313c3df238de122e7089331f852960392e67f7f2c9600ab1f810ae37302",
 }
 
+# Reviewed 2026-09-22: C11 atomic IMD handoff; original oracle hashes unchanged.
 PORTABLE_HASHES = {
-    "ams_imd.h": "c9fcadb1b75cfb303c4e8431deae1344d1c8b2e4f6df26909835652b072bdeea",
-    "ams_imd.c": "7ddab208b068b49e27a1d1e252761868874caef960a1eaef4f5809ffdba8c2d7",
+    "ams_imd.h": "51d4f900d6c62d5c16402d8df6b602c42a2396a13bc51c2d2b051ad497a9ee80",
+    "ams_imd.c": "bd6113dcba0ee416c41047e36df1b2d3386326ceb27d86a43e97144a44a2b44a",
     "imd_capture.h": "6774284eeb6a14262f12bea562f9cb02fa483df45f364c16bc59efadc1226cc3",
     "imd_capture_zephyr.c": "8a6f31bdd5aef5261a3fcbcb07b3272b638a4a12a9c657e5f5f075402f2a2353",
 }

@@ -3,7 +3,8 @@
 #include <stdint.h>
 #include "fake_zephyr_spi.h"
 static inline uint32_t k_uptime_get_32(void) { return fake_spi.now_ms++; }
-#ifdef CONFIG_AMS_Z016_LINK_PROBE
+#if (defined(CONFIG_AMS_Z016_LINK_PROBE) && CONFIG_AMS_Z016_LINK_PROBE) || \
+    (defined(CONFIG_AMS_Z017_CELL_VALIDATION) && CONFIG_AMS_Z017_CELL_VALIDATION) || (defined(CONFIG_AMS_Z018_TEMP_VALIDATION) && CONFIG_AMS_Z018_TEMP_VALIDATION)
 #include <stdbool.h>
 #include <stddef.h>
 typedef void *k_tid_t;
@@ -18,7 +19,12 @@ static inline uint64_t k_cycle_get_64(void) {
 }
 static inline uint64_t k_cyc_to_us_floor64(uint64_t c) { return c/216U; }
 static inline uint64_t k_us_to_cyc_ceil64(uint64_t u) { return u*216U; }
-#define K_MSEC(x) (x)
-static inline int32_t k_sleep(int32_t ms) { fake_cycles+=(uint64_t)ms*216000U;return 0; }
+#define K_MSEC(x) ((int32_t)(x))
+#define K_USEC(x) (-(int32_t)(x))
+static inline int32_t k_sleep(int32_t timeout) {
+ if (timeout < 0) fake_cycles+=(uint64_t)(-timeout)*216U;
+ else fake_cycles+=(uint64_t)timeout*216000U;
+ return 0;
+}
 #endif
 #endif

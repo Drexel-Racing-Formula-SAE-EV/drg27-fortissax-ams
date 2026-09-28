@@ -1,0 +1,29 @@
+
+Z020 source
+PASS Z020 disabled-balancing contract
+
+Z020 mutations
+PASS Z020 disabled-balancing contract
+PASS Z020 mutations: 24/24 rejected
+
+Z020 planner and owner
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -O2 balance_shadow_test.c ../../../lib/ams_core/adbms/ams_balance_shadow.c -o balance_shadow_test
+./balance_shadow_test
+PASS Z020 shadow: boundary/age/wrap/invalidation and 100000 exact FreeRTOS planner comparisons
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -DCONFIG_AMS_Z018_TEMP_VALIDATION=1 -I../adbms_spi/fake_zephyr -I../../../drivers/ams -I../../../include -DCONFIG_AMS_Z019_RECOVERY_VALIDATION=1 -DCONFIG_AMS_Z020_BALANCE_DISABLED_VALIDATION=1 -DCONFIG_AMS_Z018_AUX2_DIAGNOSTIC=0 -DCONFIG_AMS_Z018_THERM_OW_DIAGNOSTIC=0 -O2 adapter_test.c ../../../lib/ams_core/adbms/ams_balance_shadow.c ../adbms_spi/fake_zephyr/fake_zephyr_spi.c ../../../drivers/ams/adbms_time_zephyr.c ../../../drivers/ams/adbms_monitor_zephyr.c -o adapter_z020_test
+./adapter_z020_test
+PASS Z017/Z018/Z019 Zephyr monitor adapter: owner-only String-B seam, cooperative timing, copied snapshot
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -O1 -g -fsanitize=address,undefined balance_shadow_test.c ../../../lib/ams_core/adbms/ams_balance_shadow.c -o balance_shadow_sanitize
+ASAN_OPTIONS=detect_leaks=0 ./balance_shadow_sanitize
+PASS Z020 shadow: boundary/age/wrap/invalidation and 100000 exact FreeRTOS planner comparisons
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -O2 -fanalyzer -c ../../../lib/ams_core/adbms/ams_balance_shadow.c -o /tmp/z020_balance_shadow.o
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+
+Inherited Z019 campaign
+Z019 source
+Z019 negative controls
+Z019 owner adapter
+Z019 diagnostic owner adapter
+Inherited Z018 production campaign with Z019 core tests
+PASS executed Z019 campaign

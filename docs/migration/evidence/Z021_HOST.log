@@ -1,0 +1,25 @@
+
+Z021 containment
+PASS Z021 foundation containment
+
+Z021 portable production tests
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z021'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 support_test.c ../../../lib/ams_core/adbms/ams_z021_support.c ../../../lib/ams_core/adbms/ams_adbms_protocol.c -lm -o support_test
+./support_test
+PASS Z021 portable support: six-device A/B ordering, one-use awake tickets, shared counters, cleanup debt, APM PEC/coherence/scaling/sentinels
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=address,undefined support_test.c ../../../lib/ams_core/adbms/ams_z021_support.c ../../../lib/ams_core/adbms/ams_adbms_protocol.c -lm -o support_sanitize
+ASAN_OPTIONS=detect_leaks=0 ./support_sanitize
+PASS Z021 portable support: six-device A/B ordering, one-use awake tickets, shared counters, cleanup debt, APM PEC/coherence/scaling/sentinels
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 -fanalyzer -c ../../../lib/ams_core/adbms/ams_z021_support.c -o /tmp/z021_support.o
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z021'
+
+Z021 behavioral mutations
+PASS Z021 portable support: six-device A/B ordering, one-use awake tickets, shared counters, cleanup debt, APM PEC/coherence/scaling/sentinels
+PASS Z021 behavioral mutations: 19/19 rejected
+
+Inherited Z020 campaign
+Z020 source
+Z020 mutations
+Z020 planner and owner
+Inherited Z019 campaign
+PASS executed Z020 campaign

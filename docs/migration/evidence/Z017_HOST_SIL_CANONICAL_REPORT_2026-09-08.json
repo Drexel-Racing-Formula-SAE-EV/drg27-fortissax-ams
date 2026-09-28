@@ -1,0 +1,164 @@
+{
+  "schema": "der27-ams-z017-host-validation-v1",
+  "success": true,
+  "repo": "/mnt/data/z017_work/DER27-AMS-zephyr",
+  "scope": "Z017 source/host/SIL only; no target/hardware/authority/Z018+",
+  "target_build_performed": false,
+  "hardware_validation_performed": false,
+  "authority_promoted": false,
+  "later_migration_stage_performed": false,
+  "inherited_z015_success": true,
+  "inherited_z015_stage_count": 56,
+  "inherited_z015_tsan_performed": true,
+  "seconds": 59.403,
+  "stages": [
+    {
+      "name": "Z017 checker syntax",
+      "command": [
+        "/opt/pyvenv/bin/python",
+        "-m",
+        "py_compile",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z017_contract.py",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z017_mutations.py",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/scripts/build_manifest.py"
+      ],
+      "returncode": 0,
+      "seconds": 2.012
+    },
+    {
+      "name": "Z017 source/profile/ownership contract",
+      "command": [
+        "/opt/pyvenv/bin/python",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z017_contract.py",
+        "/mnt/data/z017_work/DER27-AMS-zephyr"
+      ],
+      "returncode": 0,
+      "seconds": 1.995
+    },
+    {
+      "name": "Z017 mutation/negative controls",
+      "command": [
+        "/opt/pyvenv/bin/python",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z017_mutations.py",
+        "/mnt/data/z017_work/DER27-AMS-zephyr"
+      ],
+      "returncode": 0,
+      "seconds": 2.045
+    },
+    {
+      "name": "Z016 inherited link contract",
+      "command": [
+        "/opt/pyvenv/bin/python",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z016_link_contract.py",
+        "/mnt/data/z017_work/DER27-AMS-zephyr"
+      ],
+      "returncode": 0,
+      "seconds": 1.925
+    },
+    {
+      "name": "Z016 inherited mutations",
+      "command": [
+        "/opt/pyvenv/bin/python",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/scripts/check_z016_mutations.py",
+        "/mnt/data/z017_work/DER27-AMS-zephyr"
+      ],
+      "returncode": 0,
+      "seconds": 23.984
+    },
+    {
+      "name": "Z017 monitor directed/randomized + adapter",
+      "command": [
+        "make",
+        "-C",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor",
+        "clean",
+        "test",
+        "adapter"
+      ],
+      "returncode": 0,
+      "seconds": 2.481
+    },
+    {
+      "name": "Z017 monitor ASan/UBSan",
+      "command": [
+        "make",
+        "-C",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor",
+        "asan",
+        "ubsan"
+      ],
+      "returncode": 0,
+      "seconds": 5.711
+    },
+    {
+      "name": "Z017 monitor GCC analyzer",
+      "command": [
+        "make",
+        "-C",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor",
+        "analyze"
+      ],
+      "returncode": 0,
+      "seconds": 2.088
+    },
+    {
+      "name": "Z017 monitor Clang analyzer",
+      "command": [
+        "make",
+        "-C",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_monitor",
+        "clang-analyze"
+      ],
+      "returncode": 0,
+      "seconds": 9.873
+    },
+    {
+      "name": "Z016 protocol differential + adapter/probe",
+      "command": [
+        "make",
+        "-C",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link",
+        "clean",
+        "test",
+        "adapter",
+        "probe"
+      ],
+      "returncode": 0,
+      "seconds": 2.728
+    },
+    {
+      "name": "Z016 protocol ASan/UBSan",
+      "command": [
+        "make",
+        "-C",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link",
+        "asan"
+      ],
+      "returncode": 0,
+      "seconds": 1.327
+    },
+    {
+      "name": "Z016 adapter/probe sanitizer build",
+      "command": [
+        "make",
+        "-C",
+        "/mnt/data/z017_work/DER27-AMS-zephyr/tests/unit/adbms_link",
+        "adapter",
+        "probe",
+        "EXTRA=-fsanitize=address,undefined -fno-omit-frame-pointer"
+      ],
+      "returncode": 0,
+      "seconds": 3.227
+    },
+    {
+      "name": "Inherited Z015 canonical report consumed",
+      "command": [
+        "/mnt/data/z017_work/DER27-AMS-zephyr/docs/migration/evidence/Z017_INHERITED_Z015_HOST_SIL_REPORT_2026-09-08.json"
+      ],
+      "returncode": 0,
+      "seconds": 0.0,
+      "inherited_stage_count": 56,
+      "inherited_seconds": 323.54
+    }
+  ]
+}

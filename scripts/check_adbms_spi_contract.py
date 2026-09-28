@@ -156,6 +156,12 @@ def main() -> int:
         require(p.is_file(), f"missing Z-015 target-contract artifact: {p}")
 
     cfg = config_p.read_text(encoding="utf-8", errors="replace")
+    z016 = symbol_enabled(cfg, "CONFIG_AMS_Z016_LINK_PROBE")
+    z017 = symbol_enabled(cfg, "CONFIG_AMS_Z017_CELL_VALIDATION")
+    z018 = symbol_enabled(cfg, "CONFIG_AMS_Z018_TEMP_VALIDATION")
+    require(not (z017 and z018), "Z017/Z018 profiles cannot coexist")
+    z017 = z017 or z018
+    require(not (z016 and z017), "Z016 and Z017 ADBMS profiles are mutually exclusive")
     dts = dts_p.read_text(encoding="utf-8", errors="replace")
     link_map = map_p.read_text(encoding="utf-8", errors="replace")
     defined_symbols = elf_defined_symbols(elf_p)
@@ -176,13 +182,16 @@ def main() -> int:
         "CONFIG_SPI_STM32_DMA",
         "CONFIG_LTO",
         "CONFIG_AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED",
-        "CONFIG_AMS_CAP_ADBMS_ACTOR_LIVE",
         "CONFIG_AMS_CAP_ADBMS_SAFETY_EVIDENCE",
         "CONFIG_AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE",
         "CONFIG_AMS_BMS_AUTHORITY",
         "CONFIG_AMS_BALANCE_AUTHORITY",
     ):
-        require(symbol_disabled(cfg, sym), f"Z-015 target symbol must remain disabled: {sym}")
+        require(symbol_disabled(cfg, sym), f"private ADBMS target symbol must remain disabled: {sym}")
+    require(symbol_enabled(cfg, "CONFIG_AMS_CAP_ADBMS_ACTOR_LIVE") == z017,
+            "ADBMS actor capability must exactly match Z017 profile")
+    require(symbol_enabled(cfg, "CONFIG_AMS_CAP_ADBMS_MONITOR_ACQUISITION_LIVE") == z017,
+            "ADBMS acquisition capability must exactly match Z017 profile")
 
     adbms = dts_block(dts, "ams_adbms_interface:")
     spi6 = dts_block(dts, "spi6:")
@@ -226,20 +235,29 @@ def main() -> int:
     require(achieved == expected["spi-frequency-hz"] == 421_875,
             "generated clock/prescaler does not achieve exactly 421875 Hz")
 
-    # Prove lifecycle presence and zero runtime raw-transfer entrypoints from the
-    # final linked ELF.  With Zephyr's function-section GC, the private transfer
-    # wrappers are discarded at Z-015 because no production caller references
-    # them.  A future runtime caller makes these symbols live and fails this gate.
+    # Prove lifecycle and exact profile-specific linked ownership. Function
+    # sections make unused private wrappers disappear, so symbol presence is a
+    # useful final-ELF caller/ownership fact while CONFIG_LTO remains disabled.
     for sym in ("ams_adbms_spi_platform_init", "ams_adbms_spi_platform_status"):
-        require(sym in defined_symbols, f"linked Z-015 lifecycle symbol missing from ELF: {sym}")
-    probe = "CONFIG_AMS_Z016_LINK_PROBE=y" in cfg.splitlines()
-    if probe:
+        require(sym in defined_symbols, f"linked ADBMS lifecycle symbol missing from ELF: {sym}")
+    if z017:
+        for sym in ("ams_adbms_monitor_platform_init_owner", "ams_adbms_monitor_platform_step",
+                    "ams_adbms_spi_write", "ams_adbms_spi_write_read", "ams_adbms_spi_wake_b"):
+            require(sym in defined_symbols, f"Z017 owner/transport symbol absent: {sym}")
+        require("ams_adbms_link_probe_step" not in defined_symbols,
+                "Z016 finite probe leaked into mutually exclusive Z017 image")
+    elif z016:
         for sym in ("ams_adbms_link_probe_step", "ams_adbms_spi_write_read", "ams_adbms_spi_wake_b"):
             require(sym in defined_symbols, f"Z016 probe symbol absent: {sym}")
-    for sym in (("ams_adbms_spi_write",) if probe else
-                ("ams_adbms_spi_write", "ams_adbms_spi_write_read")):
-        require(sym not in defined_symbols,
-                f"Z-015 linked ELF contains a runtime raw-transfer entrypoint/caller path: {sym}")
+        require("ams_adbms_spi_write" not in defined_symbols,
+                "Z016 read-only image linked write-only ADBMS entrypoint")
+        require("ams_adbms_monitor_platform_step" not in defined_symbols,
+                "Z017 monitor leaked into Z016 image")
+    else:
+        for sym in ("ams_adbms_spi_write", "ams_adbms_spi_write_read", "ams_adbms_spi_wake_b",
+                    "ams_adbms_link_probe_step", "ams_adbms_monitor_platform_step"):
+            require(sym not in defined_symbols,
+                    f"base image contains deferred ADBMS runtime entrypoint: {sym}")
 
     # The generic STM32 SPI transaction driver must not exist in this image.
     for forbidden in ("spi_stm32.c.obj",):
@@ -264,10 +282,11 @@ def main() -> int:
             "CONFIG_ARCH_HAS_IRQ_PENDING_OPS" not in target,
             "target source uses pending-IRQ API/capability unavailable in Zephyr v4.4.0")
 
-    print("PASS: Z-015 private bounded SPI6 target/build contract")
+    stage = "Z017 single-owner monitor" if z017 else ("Z016 finite read-only probe" if z016 else "base deferred")
+    print(f"PASS: private bounded SPI6 target/build contract ({stage})")
     print("  generic spi_stm32: absent; SPI6 DT device disabled")
     print("  clock chain: 216MHz SYSCLK -> APB2/2 -> 108MHz -> /256 -> 421875Hz")
-    print("  IRQ/DMA/async: absent; lifecycle linked; " + ("restricted Z016 read/wake linked" if probe else "raw transfer entrypoints absent from final ELF"))
+    print("  IRQ/DMA/async: absent; profile-specific linked ownership verified")
     return 0
 
 

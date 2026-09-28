@@ -1,0 +1,19 @@
+PASS source check_z014_source_hygiene
+PASS source check_z015_source_hygiene
+PASS source check_z016_link_contract
+PASS source check_z017_contract
+PASS source check_z018_contract
+PASS inherited mutations z014
+PASS inherited mutations z015
+PASS mutations z016
+PASS mutations z017
+PASS mutations z018
+PASS monitor test
+PASS monitor adapter
+PASS monitor adapter-z018
+PASS monitor adapter-z018-diag
+PASS monitor thermistor
+PASS monitor asan
+PASS monitor ubsan
+PASS monitor analyze
+PASS Z016 link/probe

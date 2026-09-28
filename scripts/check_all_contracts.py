@@ -25,6 +25,13 @@ TARGET_CONTRACTS = (
     "check_watchdog_contract.py",
     "check_adbms_spi_contract.py",
     "check_z016_link_contract.py",
+    "check_z017_contract.py",
+    "check_z018_contract.py",
+    "check_z019_contract.py",
+    "check_z020_contract.py",
+    "check_z021_contract.py",
+    "check_z022_contract.py",
+    "check_z023_contract.py",
 )
 
 SOURCE_ONLY_CONTRACTS = (
@@ -44,7 +51,7 @@ def run(cmd, cwd: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run the complete Z-015 target/source contract gate in one command."
+        description="Run the complete migration target/source contract gate in one command."
     )
     parser.add_argument("repo_root", type=Path)
     parser.add_argument("build_dir", type=Path)
@@ -86,7 +93,7 @@ def main() -> int:
     if probe.returncode == 0:
         run(("git", "diff", "--check"), repo)
 
-    print("\nPASS: complete Z-015 target/source contract suite")
+    print("\nPASS: complete Z-020-aware target/source contract suite")
     print(f"Manifest: {manifest}")
     return 0
 

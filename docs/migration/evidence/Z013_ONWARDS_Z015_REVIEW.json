@@ -1,0 +1,495 @@
+{
+  "schema": "der27-ams-z015-host-validation-v1",
+  "success": true,
+  "repo": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+  "scope": "Inherited Z-015 host/source/SIL + HAL hardening regression; later-stage additions validated separately",
+  "target_build_performed": false,
+  "hardware_validation_performed": false,
+  "later_migration_stage_performed": false,
+  "extended_sop_soh_fuse_campaigns_performed": false,
+  "frozen_power_source_identity_checked": true,
+  "integrated_z014_regression_system_sil_performed": true,
+  "thread_sanitizer_requested": true,
+  "thread_sanitizer_performed": true,
+  "skipped": [
+    "ASan/UBSan",
+    "Clang static analyzer (clang unavailable)"
+  ],
+  "seconds": 21.884,
+  "stages": [
+    {
+      "name": "Python contract/checker syntax",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-m",
+        "py_compile",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/build_manifest.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_adbms_spi_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_all_contracts.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_architecture_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_architecture_contract_host_selftest.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_authority_profile.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_board_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_capability_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_core_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_current_adc_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_current_adc_contract_host_selftest.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_current_sensor_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_current_window_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_estimator_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_fan_pwm_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_freertos_runtime_parity.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_imd_capture_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_measurement_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_null_platform_core.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_power_core_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_runtime_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_safety_integrity_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_watchdog_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z014_contract_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z014_source_hygiene.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z015_contract_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z015_elf_caller_gate_selftest.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z015_source_hygiene.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z016_link_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z016_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z017_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z017_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z018_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z018_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z019_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z019_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z020_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z020_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z021_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z021_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z022_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z022_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z023_behavioral_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z023_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z023_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z024_behavioral_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z024_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/package_z023_checkpoint.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/package_z024_checkpoint.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/probe_z024_upstream_recovery.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/review_portable_analyzer.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z014_host_validation.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z015_host_validation.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z016_host_validation.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z017_host_validation.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z018_host_validation.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z019_host_validation.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z020_host_validation.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z021_host_validation.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z022_host_validation.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z023_host_validation.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z024_differential.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/run_z024_host_validation.py"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.096
+    },
+    {
+      "name": "Target architecture checker host regression",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_architecture_contract_host_selftest.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 1.467
+    },
+    {
+      "name": "Current ADC target-contract comment/config regression",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_current_adc_contract_host_selftest.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.647
+    },
+    {
+      "name": "FreeRTOS v2.6.27 runtime/safety source parity",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_freertos_runtime_parity.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.038
+    },
+    {
+      "name": "Z-015 source-only architecture/safety hygiene",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z014_source_hygiene.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.102
+    },
+    {
+      "name": "Z-015 private SPI6 source/architecture contract",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z015_source_hygiene.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.072
+    },
+    {
+      "name": "Z-015 final-ELF zero-transfer-caller gate self-test",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z015_elf_caller_gate_selftest.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.401
+    },
+    {
+      "name": "Frozen SoP/SoH/fuse exact portable-source identity",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_power_core_contract.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.036
+    },
+    {
+      "name": "ams_core true null-platform isolation",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_null_platform_core.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.994
+    },
+    {
+      "name": "watchdog: clean test strict",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/watchdog",
+        "clean",
+        "test",
+        "strict"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 2.287
+    },
+    {
+      "name": "safety_fatal: clean test strict",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/safety_fatal",
+        "clean",
+        "test",
+        "strict"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.122
+    },
+    {
+      "name": "bms_ok: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/bms_ok",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.069
+    },
+    {
+      "name": "current_path: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/current_path",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.622
+    },
+    {
+      "name": "fan: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/fan",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.259
+    },
+    {
+      "name": "imd: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/imd",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.477
+    },
+    {
+      "name": "measurement_store: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/measurement_store",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.207
+    },
+    {
+      "name": "current_window: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/current_window",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.167
+    },
+    {
+      "name": "estimator: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/estimator",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.52
+    },
+    {
+      "name": "adbms_spi: clean test",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_spi",
+        "clean",
+        "test"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 1.2
+    },
+    {
+      "name": "system/z014_safety_sil: clean test strict",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/system/z014_safety_sil",
+        "clean",
+        "test",
+        "strict"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.548
+    },
+    {
+      "name": "watchdog: tsan",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/watchdog",
+        "tsan"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.427
+    },
+    {
+      "name": "watchdog: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/watchdog",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.1
+    },
+    {
+      "name": "safety_fatal: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/safety_fatal",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.023
+    },
+    {
+      "name": "bms_ok: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/bms_ok",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.021
+    },
+    {
+      "name": "current_path: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/current_path",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.954
+    },
+    {
+      "name": "fan: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/fan",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.112
+    },
+    {
+      "name": "imd: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/imd",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.099
+    },
+    {
+      "name": "measurement_store: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/measurement_store",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.04
+    },
+    {
+      "name": "current_window: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/current_window",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.111
+    },
+    {
+      "name": "estimator: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/estimator",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 1.305
+    },
+    {
+      "name": "adbms_spi: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_spi",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.595
+    },
+    {
+      "name": "system/z014_safety_sil: analyze",
+      "command": [
+        "/usr/bin/make",
+        "-C",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/system/z014_safety_sil",
+        "analyze"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 0.473
+    },
+    {
+      "name": "Z-015 safety-contract mutation/negative controls",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z014_contract_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 2.152
+    },
+    {
+      "name": "Z-015 SPI transport mutation/negative controls",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/scripts/check_z015_contract_mutations.py",
+        "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr"
+      ],
+      "cwd": "/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr",
+      "returncode": 0,
+      "seconds": 5.135
+    }
+  ]
+}

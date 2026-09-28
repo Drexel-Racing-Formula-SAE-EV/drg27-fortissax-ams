@@ -217,6 +217,7 @@ def main() -> int:
         "AMS_CAP_CURRENT_SAFETY_EVIDENCE",
         "AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED",
         "AMS_CAP_ADBMS_ACTOR_LIVE",
+        "AMS_CAP_ADBMS_MONITOR_ACQUISITION_LIVE",
         "AMS_CAP_ADBMS_SAFETY_EVIDENCE",
         "AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE",
         "AMS_CAP_CAN_ADAPTER_PRESENT",
@@ -226,8 +227,18 @@ def main() -> int:
     )
     for symbol in deferred:
         block = kconfig_block(kconfig, symbol)
-        require("default y" not in block,
-                f"deferred migration capability defaults true: {symbol}")
+        require(re.search(r"(?m)^\s*default\s+y\s*$", block) is None,
+                f"deferred migration capability defaults unconditionally true: {symbol}")
+
+    # Z017 intentionally promotes only acquisition liveness, and only inside
+    # its explicit no-authority validation profile. Older source gates must not
+    # mistake that profile-qualified migration fact for a blanket default.
+    for symbol in ("AMS_CAP_ADBMS_ACTOR_LIVE",
+                   "AMS_CAP_ADBMS_MONITOR_ACQUISITION_LIVE"):
+        block = kconfig_block(kconfig, symbol)
+        require("default y if AMS_Z017_CELL_VALIDATION || AMS_Z018_TEMP_VALIDATION" in block and
+                re.search(r"(?m)^\s*default\s+n\s*$", block) is not None,
+                f"Z017 conditional acquisition capability drift: {symbol}")
         lines = block.splitlines()
         require(not any(line.strip().startswith(('bool "', 'tristate "')) for line in lines[1:]),
                 f"migration capability became user-selectable: {symbol}")

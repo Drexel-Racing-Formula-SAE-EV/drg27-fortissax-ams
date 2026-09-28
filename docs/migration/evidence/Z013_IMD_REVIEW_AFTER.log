@@ -1,0 +1,33 @@
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/imd'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -I../../../lib/ams_core/include imd_core_test.c \
+	../../../lib/ams_core/imd/ams_imd.c -lm -o imd_core_test
+./imd_core_test
+PASS IMD core: 57 checks
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -Ifake_zephyr -I../../../drivers/ams -I../../../include -I../../../lib/ams_core/include \
+	imd_capture_adapter_test.c ../../../drivers/ams/imd_capture_zephyr.c \
+	../../../lib/ams_core/imd/ams_imd.c -lm -o imd_capture_adapter_test
+./imd_capture_adapter_test
+IMD capture adapter: PASS (776535 checks)
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -I../../../lib/ams_core/include imd_concurrency_test.c ../../../lib/ams_core/imd/ams_imd.c -pthread -lm -o imd_concurrency_test
+./imd_concurrency_test
+PASS IMD concurrent tuple publication: 100000 writes/reads
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	-I../../../lib/ams_core/include imd_core_test.c ../../../lib/ams_core/imd/ams_imd.c \
+	-lm -o imd_core_test_ubsan
+./imd_core_test_ubsan
+PASS IMD core: 57 checks
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	-Ifake_zephyr -I../../../drivers/ams -I../../../include -I../../../lib/ams_core/include \
+	imd_capture_adapter_test.c ../../../drivers/ams/imd_capture_zephyr.c \
+	../../../lib/ams_core/imd/ams_imd.c -lm -o imd_capture_adapter_test_ubsan
+./imd_capture_adapter_test_ubsan
+IMD capture adapter: PASS (776535 checks)
+cc -std=c11 -Wall -Wextra -Werror -fanalyzer -Ifake_zephyr \
+	-I../../../drivers/ams -I../../../include -I../../../lib/ams_core/include -c ../../../drivers/ams/imd_capture_zephyr.c \
+	-o imd_adapter_an.o
+cc -std=c11 -Wall -Wextra -Werror -fanalyzer -I../../../lib/ams_core/include \
+	-c ../../../lib/ams_core/imd/ams_imd.c -o imd_core_an.o
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=thread -fno-pie -no-pie -I../../../lib/ams_core/include imd_concurrency_test.c ../../../lib/ams_core/imd/ams_imd.c -pthread -lm -o imd_concurrency_tsan
+./imd_concurrency_tsan
+PASS IMD concurrent tuple publication: 100000 writes/reads
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/imd'

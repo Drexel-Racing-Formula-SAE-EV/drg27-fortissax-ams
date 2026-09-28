@@ -3,19 +3,11 @@
 #include <math.h>
 #include <stddef.h>
 
-/* The original Cortex-M implementation uses __DMB() around its ISR/thread
- * capture seqlock. GCC/Clang's full atomic fence gives the same required
- * compiler + CPU ordering without importing Zephyr or STM32 HAL into the
- * portable core. */
-static void ams_imd_memory_barrier(void)
-{
-#if defined(__GNUC__) || defined(__clang__)
-    __atomic_thread_fence(__ATOMIC_SEQ_CST);
-#else
-    volatile uint32_t barrier = 0U;
-    (void)barrier;
-#endif
-}
+/* Fail compilation rather than permit hidden locks in interrupt context.
+ * Supported host/STM32 targets represent uint32_t as unsigned int. */
+_Static_assert(_Generic((uint32_t)0, unsigned int: 1, default: 0) &&
+               ATOMIC_INT_LOCK_FREE == 2 && ATOMIC_BOOL_LOCK_FREE == 2,
+               "IMD capture requires lock-free 32-bit and bool atomics");
 
 void ams_imd_force_fail_closed(ams_imd_t *dev)
 {
@@ -56,13 +48,13 @@ void ams_imd_init(ams_imd_t *dev,
     dev->ok_hs = false;
     dev->status = AMS_IMD_UNKNOWN;
 
-    dev->capture_started = capture_started;
-    dev->capture_seen = false;
-    dev->capture_sequence = 0U;
-    dev->captured_high_count = 0U;
-    dev->captured_total_count = 0U;
-    dev->capture_count = 0U;
-    dev->last_capture_tick_ms = 0U;
+    atomic_init(&dev->capture_started, capture_started);
+    atomic_init(&dev->capture_seen, false);
+    atomic_init(&dev->capture_sequence, 0U);
+    atomic_init(&dev->captured_high_count, 0U);
+    atomic_init(&dev->captured_total_count, 0U);
+    atomic_init(&dev->capture_count, 0U);
+    atomic_init(&dev->last_capture_tick_ms, 0U);
 }
 
 void ams_imd_set_capture_started(ams_imd_t *dev, bool capture_started)
@@ -97,7 +89,6 @@ void ams_imd_capture_publish(ams_imd_t *dev,
     }
 
     dev->capture_sequence = sequence + 1U;
-    ams_imd_memory_barrier();
 
     dev->captured_total_count = total_count;
     dev->captured_high_count = high_count;
@@ -109,7 +100,6 @@ void ams_imd_capture_publish(ams_imd_t *dev,
 
     dev->capture_seen = true;
 
-    ams_imd_memory_barrier();
     dev->capture_sequence = sequence + 2U;
 }
 
@@ -133,12 +123,10 @@ static bool imd_capture_snapshot(const ams_imd_t *dev,
             continue;
         }
 
-        ams_imd_memory_barrier();
         *total_count = dev->captured_total_count;
         *high_count = dev->captured_high_count;
         *capture_tick_ms = dev->last_capture_tick_ms;
         seen = dev->capture_seen;
-        ams_imd_memory_barrier();
 
         if (seen &&
             (before == dev->capture_sequence) &&

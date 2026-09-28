@@ -7,7 +7,7 @@ CFLAGS := -std=c11 -Wall -Wextra -Werror -pedantic -O2
 .PHONY: all test core adapter asan ubsan analyze clang-analyze clean
 all: test
 
-test: core adapter
+test: core adapter concurrency
 
 core:
 	$(CC) $(CFLAGS) -I$(AMS_CORE)/include imd_core_test.c \
@@ -54,8 +54,16 @@ clang-analyze:
 	$(CLANG) -std=c11 -Wall -Wextra -Werror --analyze -I$(AMS_CORE)/include $(AMS_CORE)/imd/ams_imd.c
 
 clean:
-	rm -f imd_core_test imd_capture_adapter_test \
+	rm -f imd_concurrency_test imd_concurrency_tsan imd_core_test imd_capture_adapter_test \
 		imd_core_test_asan imd_capture_adapter_test_asan \
 		imd_core_test_ubsan imd_capture_adapter_test_ubsan \
 		imd_adapter_an.o imd_core_an.o
 	@rm -f *.plist
+
+.PHONY: concurrency tsan
+concurrency:
+	$(CC) $(CFLAGS) -I$(AMS_CORE)/include imd_concurrency_test.c $(AMS_CORE)/imd/ams_imd.c -pthread -lm -o imd_concurrency_test
+	./imd_concurrency_test
+tsan:
+	$(CC) $(CFLAGS) -O1 -g -fsanitize=thread -fno-pie -no-pie -I$(AMS_CORE)/include imd_concurrency_test.c $(AMS_CORE)/imd/ams_imd.c -pthread -lm -o imd_concurrency_tsan
+	./imd_concurrency_tsan

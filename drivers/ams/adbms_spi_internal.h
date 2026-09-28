@@ -15,8 +15,9 @@ extern "C" {
  *
  * The base image has zero runtime transfer callers. This header is kept
  * under drivers/ams instead of include/ams_platform so CLI/application code
- * cannot acquire a convenient raw-SPI escape hatch.  The Z016 owner-thread probe
- * is the sole approved production transfer caller.
+ * cannot acquire a convenient raw-SPI escape hatch. Z016 and Z017 are
+ * mutually-exclusive profiles; their dedicated ADBMS thread is the only
+ * approved production owner.
  */
 ams_adbms_spi_result_t ams_adbms_spi_write(
     ams_adbms_spi_string_t string,
@@ -30,9 +31,11 @@ ams_adbms_spi_result_t ams_adbms_spi_write_read(
     uint8_t *rx,
     size_t rx_len);
 
-#ifdef CONFIG_AMS_Z016_LINK_PROBE
+#if (defined(CONFIG_AMS_Z016_LINK_PROBE) && CONFIG_AMS_Z016_LINK_PROBE) || \
+    (defined(CONFIG_AMS_Z017_CELL_VALIDATION) && CONFIG_AMS_Z017_CELL_VALIDATION) || \
+    (defined(CONFIG_AMS_Z018_TEMP_VALIDATION) && CONFIG_AMS_Z018_TEMP_VALIDATION)
 bool ams_adbms_spi_bind_owner(void);
-bool ams_adbms_spi_wake_b(bool cold);
+ams_adbms_spi_result_t ams_adbms_spi_wake_b(bool cold);
 #endif
 #ifdef __cplusplus
 }

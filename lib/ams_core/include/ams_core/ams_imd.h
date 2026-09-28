@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdatomic.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,17 +34,20 @@ typedef struct {
     float duty_percent;
     float frequency_hz;
 
-    bool capture_started;
-    volatile bool capture_seen;
+    atomic_bool capture_started;
+    atomic_bool capture_seen;
 
-    /* ISR/thread seqlock copied from the v2.6.27 IMD publication contract.
+    /* Single ISR writer / single thread reader. Initialize before capture starts.
+     * Every shared access is sequentially consistent and lock-free; volatile
+     * plus fences alone would leave C data races. The tuple seqlock preserves
+     * the v2.6.27 publication contract.
      * Even values are stable. Odd values mean a capture tuple is being
      * published. */
-    volatile uint32_t capture_sequence;
-    volatile uint32_t captured_high_count;
-    volatile uint32_t captured_total_count;
-    volatile uint32_t capture_count;
-    volatile uint32_t last_capture_tick_ms;
+    _Atomic(uint32_t) capture_sequence;
+    _Atomic(uint32_t) captured_high_count;
+    _Atomic(uint32_t) captured_total_count;
+    _Atomic(uint32_t) capture_count;
+    _Atomic(uint32_t) last_capture_tick_ms;
 
     int ret;
 } ams_imd_t;

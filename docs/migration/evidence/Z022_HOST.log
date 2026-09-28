@@ -1,0 +1,73 @@
+
+Z022 source
+PASS Z022 source contract
+
+Z022 mutations
+PASS Z022 source contract
+PASS Z022 mutations: 19/19 rejected
+
+Z022 production pipeline/adapter
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z022'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 pipeline_test.c ../../../lib/ams_core/measurement/ams_measurement_pipeline.c ../../../lib/ams_core/measurement/ams_current_window.c ../../../lib/ams_core/measurement/ams_measurement.c -lm -o pipeline_test
+./pipeline_test
+PASS Z022 pipeline: crossing-current race, lock failure taint, immutable/drop publication, raw authority, absent segments, age/wrap and estimator admission
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -Ifake -I../../../include -O2 adapter_test.c ../../../lib/ams_core/measurement/ams_measurement_pipeline.c ../../../lib/ams_core/measurement/ams_current_window.c ../../../lib/ams_core/measurement/ams_measurement.c ../../../lib/ams_core/current/ams_current_sensor.c ../../../lib/ams_core/faults/ams_current_fault.c ../../../lib/ams_core/estimator/ams_segment_consumer.c ../../../lib/ams_core/estimator/ams_soc_ekf.c ../../../lib/ams_core/estimator/ams_estimator_lut.c ../../../drivers/ams/measurement_pipeline_zephyr.c -lm -o adapter_test
+./adapter_test
+PASS Z022 production adapter: current/voltage ownership, boundary before temperature publication, failure withdrawal, no duplicate publish
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=address,undefined pipeline_test.c ../../../lib/ams_core/measurement/ams_measurement_pipeline.c ../../../lib/ams_core/measurement/ams_current_window.c ../../../lib/ams_core/measurement/ams_measurement.c -lm -o pipeline_sanitize
+ASAN_OPTIONS=detect_leaks=0 ./pipeline_sanitize
+PASS Z022 pipeline: crossing-current race, lock failure taint, immutable/drop publication, raw authority, absent segments, age/wrap and estimator admission
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 -fanalyzer -c ../../../lib/ams_core/measurement/ams_measurement_pipeline.c -o /tmp/z022_pipeline.o
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 consumer_test.c ../../../lib/ams_core/estimator/ams_segment_consumer.c ../../../lib/ams_core/estimator/ams_soc_ekf.c ../../../lib/ams_core/estimator/ams_estimator_lut.c -lm -o consumer_test
+./consumer_test
+PASS Z022 segment consumer: real EKF, absent SMB isolation, duplicate/stale/age/wrap, invalid-current continuity, balance and temperature gating, extreme-input arithmetic
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=address,undefined consumer_test.c ../../../lib/ams_core/estimator/ams_segment_consumer.c ../../../lib/ams_core/estimator/ams_soc_ekf.c ../../../lib/ams_core/estimator/ams_estimator_lut.c -lm -o consumer_sanitize
+ASAN_OPTIONS=detect_leaks=0 ./consumer_sanitize
+PASS Z022 segment consumer: real EKF, absent SMB isolation, duplicate/stale/age/wrap, invalid-current continuity, balance and temperature gating, extreme-input arithmetic
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 -fanalyzer -c ../../../lib/ams_core/estimator/ams_segment_consumer.c -o /tmp/z022_consumer.o
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z022'
+
+Z022 monitor boundary hook
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -DCONFIG_AMS_Z018_TEMP_VALIDATION=1 -I../adbms_spi/fake_zephyr -I../../../drivers/ams -I../../../include -DCONFIG_AMS_Z022_MEASUREMENT_VALIDATION=1 -DCONFIG_AMS_Z019_RECOVERY_VALIDATION=1 -DCONFIG_AMS_Z020_BALANCE_DISABLED_VALIDATION=1 -DCONFIG_AMS_Z018_AUX2_DIAGNOSTIC=0 -DCONFIG_AMS_Z018_THERM_OW_DIAGNOSTIC=0 -O2 adapter_test.c ../../../lib/ams_core/adbms/ams_balance_shadow.c ../adbms_spi/fake_zephyr/fake_zephyr_spi.c ../../../drivers/ams/adbms_time_zephyr.c ../../../drivers/ams/adbms_monitor_zephyr.c -o adapter_z022_test
+./adapter_z022_test
+PASS Z017/Z018/Z019 Zephyr monitor adapter: owner-only String-B seam, cooperative timing, copied snapshot
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+
+Current window regression
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/current_window'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 current_window_test.c ../../../lib/ams_core/measurement/ams_current_window.c -lm -o current_window_test
+./current_window_test
+PASS: late boundary rejection and clean recovery
+PASS: carried uncertainty/extrema/sticky mixed range
+PASS: unknown uncertainty and late sample rejection
+PASS: tick wrap and excessive gap rejection
+PASS: rotation cannot hide a real-sample gap
+PASS: stale tail cannot charge next window
+PASS: calibration provenance carry/recovery
+PASS: nonfinite/range validation and filtered fallback
+PASS: sequence wrap skips zero
+PASS: 9 current-window regressions
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/current_window'
+
+Pinned store concurrency regression
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/measurement_store'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -pthread -O2 measurement_store_test.c ../../../lib/ams_core/measurement/ams_measurement.c -o measurement_store_test
+./measurement_store_test
+PASS: init_contract
+PASS: publish_and_copy
+PASS: drop_abort_and_sequence_gaps
+PASS: reader_pin_blocks_reuse
+PASS: sequence_wrap_and_saturation
+PASS: abort_preserves_last_publication
+PASS: rejects_wrong_publish_pointer
+PASS: concurrent_copy_stress
+PASS: 8 measurement-store tests
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/measurement_store'
+
+Inherited Z021 through Z018 campaign
+Z021 containment
+Z021 portable production tests
+Z021 behavioral mutations
+Inherited Z020 campaign
+PASS executed Z021 foundation campaign

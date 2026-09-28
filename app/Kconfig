@@ -104,6 +104,73 @@ config AMS_Z016_LINK_PROBE
       String A fallback, configuration writes, conversion, S diagnostics,
       balancing, APM or vehicle authority. Stops on the first failed step.
 
+config AMS_Z017_CELL_VALIDATION
+    bool "String B one-SMB ADBMS6830 cell-acquisition validation"
+    depends on !AMS_Z016_LINK_PROBE
+    default n
+    select CORTEX_M_SYSTICK_64BIT_CYCLE_COUNTER
+    help
+      No-authority Z017 acquisition profile. The priority-3 ADBMS owner uses
+      String B / PE4 only, initializes one ADBMS6830B, runs startup POST, and
+      acquires 15 C-authoritative cells plus advisory AVG8/IIR products. This
+      does not grant BMS_OK, balancing, temperature, APM, estimator, or ADBMS
+      watchdog safety authority.
+
+config AMS_Z018_TEMP_VALIDATION
+    bool "String B cell and 24-temperature validation"
+    depends on !AMS_Z016_LINK_PROBE
+    depends on !AMS_Z017_CELL_VALIDATION
+    default n
+    select CORTEX_M_SYSTICK_64BIT_CYCLE_COUNTER
+    help
+      Enables the three-mux temperature scan in the existing ADBMS owner.
+      Temperature hardware is previously validated; Zephyr parity is pending.
+      Acquisition grants no safety evidence or vehicle authority.
+
+config AMS_Z019_RECOVERY_VALIDATION
+    bool "Z019 protocol recovery over the Z018 acquisition profile"
+    depends on AMS_Z018_TEMP_VALIDATION
+    default n
+    help
+      Audit SID and safe configuration before acquisition. An interruption
+      withdraws old epochs; one bounded remote reinitialization attempt may
+      run on the next owner release. Failure latches until reboot.
+      This grants no watchdog safety evidence or vehicle authority.
+
+config AMS_Z018_AUX2_DIAGNOSTIC
+    bool "Advisory AUX2 comparison"
+    depends on AMS_Z018_TEMP_VALIDATION
+    default n
+
+config AMS_Z018_THERM_OW_DIAGNOSTIC
+    bool "Advisory thermistor open-wire diagnostic"
+    depends on AMS_Z018_TEMP_VALIDATION
+    default n
+
+config AMS_Z023_SUPERVISION_VALIDATION
+    bool "Z023 shadow supervision and owner progress validation"
+    depends on AMS_Z022_MEASUREMENT_VALIDATION
+    default n
+    help
+      Copied fault supervision and owner progress; safety evidence remains off.
+
+config AMS_Z022_MEASUREMENT_VALIDATION
+    bool "Z022 single-SMB measurement publication validation"
+    depends on AMS_Z020_BALANCE_DISABLED_VALIDATION
+    default n
+    help
+      Enable current sampling and copied single-SMB measurement epochs.
+      No full-pack estimator or safety evidence is claimed.
+
+config AMS_Z020_BALANCE_DISABLED_VALIDATION
+    bool "Z020 disabled balancing and diagnostic shadow validation"
+    depends on AMS_Z019_RECOVERY_VALIDATION
+    depends on !AMS_BALANCE_AUTHORITY && !AMS_BMS_AUTHORITY
+    default n
+    help
+      Keep MUTE, zero DCC/timers/PWM and per-release Z019 audits.
+      Publish an advisory shadow mask; no active balancing transport.
+
 endmenu
 menu "DRG27 AMS migration capabilities"
 
@@ -120,6 +187,7 @@ config AMS_CAP_CURRENT_ADC_ADAPTER_PRESENT
 
 config AMS_CAP_CURRENT_ACTOR_LIVE
     bool
+    default y if AMS_Z022_MEASUREMENT_VALIDATION
     default n
 
 config AMS_CAP_CURRENT_SAFETY_EVIDENCE
@@ -136,10 +204,21 @@ config AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED
 
 config AMS_CAP_ADBMS_ACTOR_LIVE
     bool
+    default y if AMS_Z017_CELL_VALIDATION || AMS_Z018_TEMP_VALIDATION
+    default n
+
+config AMS_CAP_ADBMS_MONITOR_ACQUISITION_LIVE
+    bool
+    default y if AMS_Z017_CELL_VALIDATION || AMS_Z018_TEMP_VALIDATION
     default n
 
 config AMS_CAP_ADBMS_SAFETY_EVIDENCE
     bool
+    default n
+
+config AMS_CAP_TEMPERATURE_ACQUISITION_LIVE
+    bool
+    default y if AMS_Z018_TEMP_VALIDATION
     default n
 
 config AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE
@@ -209,14 +288,5 @@ config AMS_CAP_WATCHDOG_PHYSICAL_VALIDATED
 config AMS_CAP_WATCHDOG_FULL_ORACLE_COVERAGE
     bool
     default n
-
-config AMS_Z016_LINK_PROBE
-    bool "Finite String B one-SMB read-only isoSPI probe"
-    default n
-    select CORTEX_M_SYSTICK_64BIT_CYCLE_COUNTER
-    help
-      Temporary ADBMS6822 evaluation-jumper path on PE4 only. No onboard
-      String A fallback, configuration writes, conversion, S diagnostics,
-      balancing, APM or vehicle authority. Stops on the first failed step.
 
 endmenu

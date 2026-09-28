@@ -58,3 +58,6 @@ endif()
 # core itself never receives a dependency back on the platform or Zephyr.
 target_link_libraries(ams_platform PRIVATE ams_core)
 target_link_libraries(app PRIVATE ams_core)
+if(CONFIG_AMS_Z023_SUPERVISION_VALIDATION)
+    target_sources(app PRIVATE src/ams_z023_safety.c)
+endif()

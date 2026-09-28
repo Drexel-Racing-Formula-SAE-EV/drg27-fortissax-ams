@@ -1,0 +1,42 @@
+
+Z019 source
+PASS Z019 source contract
+
+Z019 negative controls
+PASS Z019 source contract
+PASS Z019 mutations: 25/25 rejected
+
+Z019 owner adapter
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -DCONFIG_AMS_Z018_TEMP_VALIDATION=1 -I../adbms_spi/fake_zephyr -I../../../drivers/ams -I../../../include -DCONFIG_AMS_Z019_RECOVERY_VALIDATION=1 -DCONFIG_AMS_Z018_AUX2_DIAGNOSTIC=0 -DCONFIG_AMS_Z018_THERM_OW_DIAGNOSTIC=0 -O2 adapter_test.c ../adbms_spi/fake_zephyr/fake_zephyr_spi.c ../../../drivers/ams/adbms_time_zephyr.c ../../../drivers/ams/adbms_monitor_zephyr.c -o adapter_z019_test
+./adapter_z019_test
+PASS Z017/Z018/Z019 Zephyr monitor adapter: owner-only String-B seam, cooperative timing, copied snapshot
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+
+Z019 diagnostic owner adapter
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include  -DCONFIG_AMS_Z018_TEMP_VALIDATION=1 -I../adbms_spi/fake_zephyr -I../../../drivers/ams -I../../../include -DCONFIG_AMS_Z019_RECOVERY_VALIDATION=1 -DCONFIG_AMS_Z018_AUX2_DIAGNOSTIC=1 -DCONFIG_AMS_Z018_THERM_OW_DIAGNOSTIC=1 -O2 adapter_test.c ../adbms_spi/fake_zephyr/fake_zephyr_spi.c ../../../drivers/ams/adbms_time_zephyr.c ../../../drivers/ams/adbms_monitor_zephyr.c -o adapter_z019_diag_test
+./adapter_z019_diag_test
+PASS Z017/Z018/Z019 Zephyr monitor adapter: owner-only String-B seam, cooperative timing, copied snapshot
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_monitor'
+
+Inherited Z018 production campaign with Z019 core tests
+PASS source check_z014_source_hygiene
+PASS source check_z015_source_hygiene
+PASS source check_z016_link_contract
+PASS source check_z017_contract
+PASS source check_z018_contract
+PASS inherited mutations z014
+PASS inherited mutations z015
+PASS mutations z016
+PASS mutations z017
+PASS mutations z018
+PASS monitor test
+PASS monitor adapter
+PASS monitor adapter-z018
+PASS monitor adapter-z018-diag
+PASS monitor thermistor
+PASS monitor asan
+PASS monitor ubsan
+PASS monitor analyze
+PASS Z016 link/probe

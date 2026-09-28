@@ -145,10 +145,16 @@ def main() -> int:
             "private current ADC backend must structurally select LL ADC + reset support")
     present = kconfig_block(kconfig, "AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT")
     require("default y" in present, "Z-015 adapter-presence capability not promoted")
-    for symbol in ("AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED", "AMS_CAP_ADBMS_ACTOR_LIVE",
+    for symbol in ("AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED",
                    "AMS_CAP_ADBMS_SAFETY_EVIDENCE", "AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE"):
         kb = kconfig_block(kconfig, symbol)
-        require("default y" not in kb, f"Z-015 deferred capability defaults true: {symbol}")
+        require("default y" not in kb, f"deferred ADBMS capability defaults true: {symbol}")
+    actor_kb = kconfig_block(kconfig, "AMS_CAP_ADBMS_ACTOR_LIVE")
+    acq_kb = kconfig_block(kconfig, "AMS_CAP_ADBMS_MONITOR_ACQUISITION_LIVE")
+    require("default y if AMS_Z017_CELL_VALIDATION || AMS_Z018_TEMP_VALIDATION" in actor_kb and "default y\n" not in actor_kb,
+            "ADBMS actor may only become live in explicit Z017 profile")
+    require("default y if AMS_Z017_CELL_VALIDATION || AMS_Z018_TEMP_VALIDATION" in acq_kb and "default y\n" not in acq_kb,
+            "ADBMS acquisition may only become live in explicit Z017 profile")
 
     cmake = (repo / "drivers/ams/CMakeLists.txt").read_text(encoding="utf-8")
     require("adbms_spi_engine.c" in cmake and "adbms_spi_stm32.c" in cmake,
@@ -321,14 +327,16 @@ def main() -> int:
 
     prod = files_under(repo, ("app", "boards", "drivers", "include", "lib", "zephyr"))
     internal_include_hits = occurrences(repo, prod, re.compile(r"#\s*include\s*[<\"]adbms_spi_internal\.h"))
-    require(all(hit.startswith(("drivers/ams/adbms_spi_stm32.c:", "drivers/ams/adbms_link_probe.c:")) for hit in internal_include_hits),
-            "private ADBMS SPI header escaped its target adapter: " + str(internal_include_hits))
+    require(all(hit.startswith(("drivers/ams/adbms_spi_stm32.c:", "drivers/ams/adbms_link_probe.c:",
+                                    "drivers/ams/adbms_monitor_zephyr.c:")) for hit in internal_include_hits),
+            "private ADBMS SPI header escaped audited owner adapters: " + str(internal_include_hits))
 
     for symbol in ("ams_adbms_spi_write", "ams_adbms_spi_write_read"):
         hits = occurrences(repo, prod, re.compile(rf"\b{symbol}\s*\("))
         bad = [h for h in hits if not h.startswith("drivers/ams/adbms_spi_stm32.c:")
                and not h.startswith("drivers/ams/adbms_spi_internal.h:")
-               and not (symbol == "ams_adbms_spi_write_read" and h.startswith("drivers/ams/adbms_link_probe.c:"))]
+               and not (symbol == "ams_adbms_spi_write_read" and h.startswith("drivers/ams/adbms_link_probe.c:"))
+               and not h.startswith("drivers/ams/adbms_monitor_zephyr.c:")]
         require(not bad, f"Z-015 has a runtime/private-transfer caller for {symbol}: {bad}")
 
     generic_spi_hits = occurrences(repo, prod, re.compile(r"#\s*include\s*<zephyr/drivers/spi\.h>"))
@@ -356,7 +364,7 @@ def main() -> int:
     )
     bad_wakes = [h for h in wake_hits if not h.startswith((
         "drivers/ams/adbms_spi_stm32.c:", "drivers/ams/adbms_spi_internal.h:",
-        "drivers/ams/adbms_link_probe.c:"))]
+        "drivers/ams/adbms_link_probe.c:", "drivers/ams/adbms_monitor_zephyr.c:"))]
     require(not bad_wakes, "Unauthorized wake API/call: " + str(bad_wakes))
 
     # No current-scope source may quietly enable vehicle authority or claim
@@ -373,7 +381,7 @@ def main() -> int:
     print("  transfer engine: bounded synchronous owner; illegal/reentrant attempts durably counted")
     print("  current ADC: private bounded polling; transient timeout recovery; generic adc_stm32 absent")
     print("  fan: output-only TIM3/4/5 capture IRQs disabled + pending-cleared")
-    print("  runtime: base zero transfers; Z016 optional finite read-only probe; no safety evidence")
+    print("  runtime: base zero transfers; Z016 finite read-only probe; Z017 single-owner monitor acquisition; no ADBMS safety evidence")
     return 0
 
 

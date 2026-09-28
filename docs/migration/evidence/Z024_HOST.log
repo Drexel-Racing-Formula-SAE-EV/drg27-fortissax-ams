@@ -1,0 +1,65 @@
+
+Z024 portable contract
+PASS Z024 portable contract; runtime CAN remains disabled; target mode not implemented
+
+Z024 scheduler/transport/codec
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z024'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 scheduler_test.c ../../../lib/ams_core/can/ams_can_tx_scheduler.c -o scheduler_test
+./scheduler_test
+PASS DER26 CAN V4 TX scheduler unit/stress tests
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 transport_test.c ../../../lib/ams_core/can/ams_can_tx_scheduler.c ../../../lib/ams_core/can/ams_can_transport.c ../../../lib/ams_core/can/ams_can_codec.c -o transport_test
+./transport_test
+PASS Z024 codec/transport: bounded callbacks, identity, overflow, recovery, expiry; storage=16168
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=address,undefined -fno-pie -no-pie transport_test.c ../../../lib/ams_core/can/ams_can_tx_scheduler.c ../../../lib/ams_core/can/ams_can_transport.c ../../../lib/ams_core/can/ams_can_codec.c -o transport_sanitize
+ASAN_OPTIONS=detect_leaks=0 ./transport_sanitize
+PASS Z024 codec/transport: bounded callbacks, identity, overflow, recovery, expiry; storage=16168
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=address,undefined -fno-pie -no-pie scheduler_test.c ../../../lib/ams_core/can/ams_can_tx_scheduler.c -o scheduler_sanitize
+ASAN_OPTIONS=detect_leaks=0 ./scheduler_sanitize
+PASS DER26 CAN V4 TX scheduler unit/stress tests
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -fanalyzer -c ../../../lib/ams_core/can/ams_can_transport.c -o transport.o
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -fanalyzer -c ../../../lib/ams_core/can/ams_can_codec.c -o codec.o
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -fanalyzer -c ../../../lib/ams_core/can/ams_can_tx_scheduler.c -o scheduler.o
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 concurrency_test.c ../../../lib/ams_core/can/ams_can_tx_scheduler.c ../../../lib/ams_core/can/ams_can_transport.c ../../../lib/ams_core/can/ams_can_codec.c -pthread -o concurrency_test
+./concurrency_test
+PASS Z024 concurrent callback capture: 20000 events, owner drain/recovery
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=thread -fno-pie -no-pie concurrency_test.c ../../../lib/ams_core/can/ams_can_tx_scheduler.c ../../../lib/ams_core/can/ams_can_transport.c ../../../lib/ams_core/can/ams_can_codec.c -pthread -o concurrency_tsan
+./concurrency_tsan
+PASS Z024 concurrent callback capture: 20000 events, owner drain/recovery
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z024'
+
+Frozen scheduler differential
+PASS Z024 frozen scheduler differential: 100000 transitions including generation/time wrap
+
+Z024 behavioral controls
+REJECT prepublication age forgotten
+REJECT recovery proof bypass
+REJECT new recovery fault erased
+REJECT cached RX expiry bypass
+REJECT late completion credited
+REJECT submission credited
+REJECT cookie reuse
+REJECT overflow ignored
+REJECT lock loss ignored
+REJECT RX budget unbounded
+REJECT remote accepted
+REJECT FD accepted
+REJECT stale RX accepted
+REJECT cached fault progress
+REJECT ready proof bypass
+REJECT TX stale accepted
+REJECT timestamp bypass
+REJECT timeout omitted
+REJECT failed completion accepted
+REJECT power ID exposed
+REJECT APM exposed
+PASS Z024 behavioral controls: 21
+
+Inherited Z023 campaign
+Z023 contract
+Z023 source negative controls
+Z023 production core/adapters/hooks
+Z023 optional diagnostics hooks
+Z023 ThreadSanitizer
+Z023 behavioral negative controls
+Inherited Z022 campaign
+PASS executed Z023 checkpoint tests

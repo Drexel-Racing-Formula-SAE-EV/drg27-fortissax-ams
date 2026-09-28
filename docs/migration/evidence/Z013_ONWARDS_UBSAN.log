@@ -1,0 +1,165 @@
+
+make -C tests/unit/watchdog ubsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/watchdog'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	watchdog_policy_test.c ../../../lib/ams_core/watchdog/ams_watchdog_policy.c ../../../lib/ams_core/integrity/ams_stack_health.c -o watchdog_policy_test_ubsan
+./watchdog_policy_test_ubsan
+PASS watchdog/stack directed: 179 checks, 0 failures
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	watchdog_heartbeat_test.c ../../../lib/ams_core/watchdog/ams_watchdog_heartbeat.c -o watchdog_heartbeat_test_ubsan
+./watchdog_heartbeat_test_ubsan
+PASS watchdog heartbeat oracle: 128 checks, 0 failures
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	watchdog_heartbeat_differential.c watchdog_heartbeat_reference_oracle.c \
+	../../../lib/ams_core/watchdog/ams_watchdog_heartbeat.c -o watchdog_heartbeat_diff_ubsan
+./watchdog_heartbeat_diff_ubsan 0x00C0FFEE 100000
+PASS heartbeat differential seed=0x00c0ffee operations=100000
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	-DAMS_WATCHDOG_ADAPTER_TEST -Ifake_zephyr -I../../../include \
+	watchdog_adapter_test.c ../../../drivers/ams/watchdog_zephyr.c -o watchdog_adapter_test_ubsan
+./watchdog_adapter_test_ubsan
+PASS watchdog production adapter SIL: 397681 checks, 0 failures
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	-pthread watchdog_concurrency_test.c \
+	../../../lib/ams_core/watchdog/ams_watchdog_policy.c ../../../lib/ams_core/watchdog/ams_watchdog_heartbeat.c -o watchdog_concurrency_test_ubsan
+./watchdog_concurrency_test_ubsan
+PASS watchdog concurrency SIL: fan=100000 imd=100000 supervisor=150000, 0 failures
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/watchdog'
+
+make -C tests/unit/safety_fatal ubsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/safety_fatal'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -Ifake_zephyr -I../../../app/src -I../../../include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all safety_fatal_test.c ../../../app/src/ams_safety.c -o safety_fatal_test_ubsan
+./safety_fatal_test_ubsan
+PASS Zephyr fatal/fail-low composition: 20 checks
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/safety_fatal'
+
+make -C tests/unit/bms_ok ubsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/bms_ok'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	-Ifake_zephyr -I../../../include bms_ok_adapter_test.c ../../../drivers/ams/bms_ok_zephyr.c \
+	-o bms_ok_adapter_test_ubsan
+./bms_ok_adapter_test_ubsan
+BMS_OK adapter: PASS (19 checks)
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/bms_ok'
+
+make -C tests/unit/current_path ubsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/current_path'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	-I../../../lib/ams_core/include ../../../lib/ams_core/current/ams_current_sensor.c \
+	../current_sensor/current_sensor_test.c -lm -o current_sensor_ubsan
+./current_sensor_ubsan
+current sensor: 76 checks, 0 failures
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	-I../../../lib/ams_core/include ../../../lib/ams_core/faults/ams_current_fault.c \
+	../current_fault/current_fault_test.c -lm -o current_fault_ubsan
+./current_fault_ubsan
+current fault: 22 checks, 0 failures
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	-DAMS_CURRENT_ADC_ADAPTER_TEST=1 -I../current_adc/fake_zephyr -I../current_adc -I../../../drivers/ams -I../../../include ../../../drivers/ams/current_adc_stm32.c ../current_adc/fake_zephyr/fake_zephyr_adc.c ../current_adc/current_adc_adapter_test.c -o current_adc_ubsan
+./current_adc_ubsan
+PASS current ADC private-backend SIL: 285756 checks, 0 failures
+./current_adc_ubsan high-timeout
+PASS current ADC private-backend SIL: 23 checks, 0 failures
+./current_adc_ubsan low-timeout
+PASS current ADC private-backend SIL: 20 checks, 0 failures
+./current_adc_ubsan timeout-boundary
+PASS current ADC private-backend SIL: 27 checks, 0 failures
+./current_adc_ubsan recovery-fail
+PASS current ADC private-backend SIL: 30 checks, 0 failures
+./current_adc_ubsan reentry
+PASS current ADC private-backend SIL: 19 checks, 0 failures
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/current_path'
+
+make -C tests/unit/fan ubsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/fan'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all -I../../../lib/ams_core/include fan_control_test.c ../../../lib/ams_core/fan/ams_fan_control.c -lm -o fan_control_test_ubsan
+./fan_control_test_ubsan
+fan control: PASS (688 checks)
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all -Ifake_zephyr -I../../../drivers/ams -I../../../include fan_pwm_adapter_test.c ../../../drivers/ams/fan_pwm_zephyr.c -lm -o fan_pwm_adapter_test_ubsan
+./fan_pwm_adapter_test_ubsan
+fan PWM adapter: PASS (150683 checks)
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/fan'
+
+make -C tests/unit/imd ubsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/imd'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	-I../../../lib/ams_core/include imd_core_test.c ../../../lib/ams_core/imd/ams_imd.c \
+	-lm -o imd_core_test_ubsan
+./imd_core_test_ubsan
+PASS IMD core: 57 checks
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	-Ifake_zephyr -I../../../drivers/ams -I../../../include -I../../../lib/ams_core/include \
+	imd_capture_adapter_test.c ../../../drivers/ams/imd_capture_zephyr.c \
+	../../../lib/ams_core/imd/ams_imd.c -lm -o imd_capture_adapter_test_ubsan
+./imd_capture_adapter_test_ubsan
+IMD capture adapter: PASS (776535 checks)
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/imd'
+
+make -C tests/unit/measurement_store ubsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/measurement_store'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -pthread -O1 -g -fsanitize=undefined -fno-sanitize-recover=all measurement_store_test.c ../../../lib/ams_core/measurement/ams_measurement.c -o measurement_store_test_ubsan
+./measurement_store_test_ubsan
+PASS: init_contract
+PASS: publish_and_copy
+PASS: drop_abort_and_sequence_gaps
+PASS: reader_pin_blocks_reuse
+PASS: sequence_wrap_and_saturation
+PASS: abort_preserves_last_publication
+PASS: rejects_wrong_publish_pointer
+PASS: concurrent_copy_stress
+PASS: 8 measurement-store tests
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/measurement_store'
+
+make -C tests/unit/current_window ubsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/current_window'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all current_window_test.c ../../../lib/ams_core/measurement/ams_current_window.c -lm -o current_window_test_ubsan
+./current_window_test_ubsan
+PASS: late boundary rejection and clean recovery
+PASS: carried uncertainty/extrema/sticky mixed range
+PASS: unknown uncertainty and late sample rejection
+PASS: tick wrap and excessive gap rejection
+PASS: rotation cannot hide a real-sample gap
+PASS: stale tail cannot charge next window
+PASS: calibration provenance carry/recovery
+PASS: nonfinite/range validation and filtered fallback
+PASS: sequence wrap skips zero
+PASS: 9 current-window regressions
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/current_window'
+
+make -C tests/unit/estimator ubsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/estimator'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all estimator_core_test.c ../../../lib/ams_core/estimator/ams_estimator_lut.c ../../../lib/ams_core/estimator/ams_soc_ekf.c -lm -o estimator_core_test_ubsan
+./estimator_core_test_ubsan
+PASS: 89 v2.6.27 estimator-core checks
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/estimator'
+
+make -C tests/unit/adbms_spi ubsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_spi'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../drivers/ams -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	adbms_spi_engine_test.c ../../../drivers/ams/adbms_spi_engine.c -o adbms_spi_engine_test_ubsan
+./adbms_spi_engine_test_ubsan
+PASS Z-015 ADBMS SPI engine directed checks
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../drivers/ams -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	adbms_spi_engine_randomized.c ../../../drivers/ams/adbms_spi_engine.c -o adbms_spi_random_ubsan
+./adbms_spi_random_ubsan 0x5A5A5A5A 100000
+PASS Z-015 ADBMS SPI randomized model: 100000 operations seed=0xe93c6b6d
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../drivers/ams -Ifake_zephyr -I../../../include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all adbms_spi_adapter_test.c fake_zephyr/fake_zephyr_spi.c ../../../drivers/ams/adbms_spi_engine.c ../../../drivers/ams/adbms_spi_stm32.c -o adbms_spi_adapter_test_ubsan
+./adbms_spi_adapter_test_ubsan random 10000
+PASS Z-015 production SPI6 adapter SIL scenario=random checks=100013 failures=0
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/adbms_spi'
+
+make -C tests/system/z014_safety_sil ubsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/system/z014_safety_sil'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=undefined -fno-sanitize-recover=all \
+	z014_safety_sil.c ../../../lib/ams_core/watchdog/ams_watchdog_policy.c ../../../lib/ams_core/watchdog/ams_watchdog_heartbeat.c ../../../lib/ams_core/integrity/ams_stack_health.c -o z014_safety_sil_ubsan
+./z014_safety_sil_ubsan
+PASS Z-014 integrated seeded scheduler SIL: seeds=5 steps=250000 supervisor=162990 actors=488707
+PASS Z-014 integrated safety SIL: 7 scenario classes, BMS/balance authority absent
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/system/z014_safety_sil'
+
+make -C tests/unit/imd tsan
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/imd'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -O2 -O1 -g -fsanitize=thread -fno-pie -no-pie -I../../../lib/ams_core/include imd_concurrency_test.c ../../../lib/ams_core/imd/ams_imd.c -pthread -lm -o imd_concurrency_tsan
+./imd_concurrency_tsan
+PASS IMD concurrent tuple publication: 100000 writes/reads
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/imd'

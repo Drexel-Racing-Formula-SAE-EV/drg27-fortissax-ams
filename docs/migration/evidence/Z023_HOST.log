@@ -1,0 +1,100 @@
+
+Z023 contract
+PASS Z023 shadow source contract
+
+Z023 source negative controls
+PASS Z023 shadow source contract
+PASS Z023 source negative controls: 54/54 rejected
+
+Z023 production core/adapters/hooks
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z023'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 segment_fault_test.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c -o segment_fault_test
+./segment_fault_test
+PASS Z023 segment policy: OV/UV priority/latch/read grace/comparators, hot debounce/reset/latch, thermal warnings
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O2 supervision_test.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c -o supervision_test
+./supervision_test
+PASS Z023 core: replay, deadlines, wrap, exhaustion, sticky faults, scan coverage/generation/outcomes
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -I../z022/fake -I../../../include -O2 adapter_test.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c ../../../drivers/ams/supervision_zephyr.c -o adapter_test
+./adapter_test
+PASS Z023 production supervisor adapter: explicit owners, ISR, publication handoff, scan and shadow progress
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -I../z022/fake -I../../../include -DCONFIG_AMS_Z023_SUPERVISION_VALIDATION=1 -O2 current_hook_test.c ../../../lib/ams_core/measurement/ams_measurement_pipeline.c ../../../lib/ams_core/measurement/ams_current_window.c ../../../lib/ams_core/measurement/ams_measurement.c ../../../lib/ams_core/current/ams_current_sensor.c ../../../lib/ams_core/faults/ams_current_fault.c ../../../lib/ams_core/estimator/ams_segment_consumer.c ../../../lib/ams_core/estimator/ams_soc_ekf.c ../../../lib/ams_core/estimator/ams_estimator_lut.c ../../../drivers/ams/measurement_pipeline_zephyr.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c ../../../drivers/ams/supervision_zephyr.c -lm -o current_hook_test
+./current_hook_test
+PASS Z022 production adapter: current/voltage ownership, boundary before temperature publication, failure withdrawal, no duplicate publish
+PASS Z023 actual current-worker hooks
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -I../adbms_spi/fake_zephyr -I../../../include -I../../../drivers/ams -DCONFIG_AMS_Z022_MEASUREMENT_VALIDATION=1 -DCONFIG_AMS_Z019_RECOVERY_VALIDATION=1 -DCONFIG_AMS_Z020_BALANCE_DISABLED_VALIDATION=1 -DCONFIG_AMS_Z018_TEMP_VALIDATION=1 -DCONFIG_AMS_Z018_AUX2_DIAGNOSTIC=0 -DCONFIG_AMS_Z018_THERM_OW_DIAGNOSTIC=0 -DCONFIG_AMS_Z023_SUPERVISION_VALIDATION=1 -O2 monitor_hook_test.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c ../../../drivers/ams/supervision_zephyr.c ../../../lib/ams_core/adbms/ams_balance_shadow.c ../adbms_spi/fake_zephyr/fake_zephyr_spi.c ../../../drivers/ams/adbms_time_zephyr.c ../../../drivers/ams/adbms_monitor_zephyr.c -o monitor_hook_test
+./monitor_hook_test
+PASS Z017/Z018/Z019 Zephyr monitor adapter: owner-only String-B seam, cooperative timing, copied snapshot
+PASS Z023 actual monitor hook waits for publication disposition
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -I../z022/fake -I../../../include -I../../../app/src -DCONFIG_AMS_Z023_SUPERVISION_VALIDATION=1 -DAMS_TEST_MUTEX_FAILURE=1 -O2 integration_test.c ../../../lib/ams_core/measurement/ams_measurement_pipeline.c ../../../lib/ams_core/measurement/ams_current_window.c ../../../lib/ams_core/measurement/ams_measurement.c ../../../lib/ams_core/current/ams_current_sensor.c ../../../lib/ams_core/faults/ams_current_fault.c ../../../lib/ams_core/estimator/ams_segment_consumer.c ../../../lib/ams_core/estimator/ams_soc_ekf.c ../../../lib/ams_core/estimator/ams_estimator_lut.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c ../../../drivers/ams/supervision_zephyr.c ../../../app/src/ams_z023_safety.c -lm -o integration_test
+./integration_test
+PASS Z023 production safety cycle + current/pipeline/supervision: healthy/invalid/lock/pins/replay/stall/recovery/owner
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -I../z022/fake -I../../../include -I../../../app/src -DCONFIG_AMS_Z023_SUPERVISION_VALIDATION=1 -DAMS_TEST_MUTEX_FAILURE=1 -O1 -g -fsanitize=address,undefined integration_test.c ../../../lib/ams_core/measurement/ams_measurement_pipeline.c ../../../lib/ams_core/measurement/ams_current_window.c ../../../lib/ams_core/measurement/ams_measurement.c ../../../lib/ams_core/current/ams_current_sensor.c ../../../lib/ams_core/faults/ams_current_fault.c ../../../lib/ams_core/estimator/ams_segment_consumer.c ../../../lib/ams_core/estimator/ams_soc_ekf.c ../../../lib/ams_core/estimator/ams_estimator_lut.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c ../../../drivers/ams/supervision_zephyr.c ../../../app/src/ams_z023_safety.c -lm -o integration_sanitize
+ASAN_OPTIONS=detect_leaks=0 ./integration_sanitize
+PASS Z023 production safety cycle + current/pipeline/supervision: healthy/invalid/lock/pins/replay/stall/recovery/owner
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -Ioracle -O2 differential_test.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c oracle/voltage_fault.c oracle/temperature_fault.c -o differential_test
+./differential_test
+PASS Z023 100000 differential voltage/temperature policy steps against frozen v2.6.27
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -Iconcurrent_fake -I../../../include -O2 concurrency_test.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c ../../../drivers/ams/supervision_zephyr.c -pthread -o concurrency_test
+./concurrency_test
+PASS Z023 concurrent production adapter: 50000 current and 10000 monitor handoffs
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=address,undefined segment_fault_test.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c -o segment_fault_sanitize
+ASAN_OPTIONS=detect_leaks=0 ./segment_fault_sanitize
+PASS Z023 segment policy: OV/UV priority/latch/read grace/comparators, hot debounce/reset/latch, thermal warnings
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -O1 -g -fsanitize=address,undefined supervision_test.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c -o supervision_sanitize
+ASAN_OPTIONS=detect_leaks=0 ./supervision_sanitize
+PASS Z023 core: replay, deadlines, wrap, exhaustion, sticky faults, scan coverage/generation/outcomes
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -I../z022/fake -I../../../include -O1 -g -fsanitize=address,undefined adapter_test.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c ../../../drivers/ams/supervision_zephyr.c -o adapter_sanitize
+ASAN_OPTIONS=detect_leaks=0 ./adapter_sanitize
+PASS Z023 production supervisor adapter: explicit owners, ISR, publication handoff, scan and shadow progress
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -fanalyzer -c ../../../lib/ams_core/faults/ams_supervision.c -o supervision.o
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -fanalyzer -c ../../../lib/ams_core/faults/ams_segment_fault.c -o segment_fault.o
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -I../z022/fake -I../../../include -fanalyzer -c ../../../drivers/ams/supervision_zephyr.c -o adapter.o
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z023'
+
+Z023 optional diagnostics hooks
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z023'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -I../z022/fake -I../../../include -DCONFIG_AMS_Z023_SUPERVISION_VALIDATION=1 -O2 current_hook_test.c ../../../lib/ams_core/measurement/ams_measurement_pipeline.c ../../../lib/ams_core/measurement/ams_current_window.c ../../../lib/ams_core/measurement/ams_measurement.c ../../../lib/ams_core/current/ams_current_sensor.c ../../../lib/ams_core/faults/ams_current_fault.c ../../../lib/ams_core/estimator/ams_segment_consumer.c ../../../lib/ams_core/estimator/ams_soc_ekf.c ../../../lib/ams_core/estimator/ams_estimator_lut.c ../../../drivers/ams/measurement_pipeline_zephyr.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c ../../../drivers/ams/supervision_zephyr.c -lm -o current_hook_test
+./current_hook_test
+PASS Z022 production adapter: current/voltage ownership, boundary before temperature publication, failure withdrawal, no duplicate publish
+PASS Z023 actual current-worker hooks
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -I../adbms_spi/fake_zephyr -I../../../include -I../../../drivers/ams -DCONFIG_AMS_Z022_MEASUREMENT_VALIDATION=1 -DCONFIG_AMS_Z019_RECOVERY_VALIDATION=1 -DCONFIG_AMS_Z020_BALANCE_DISABLED_VALIDATION=1 -DCONFIG_AMS_Z018_TEMP_VALIDATION=1 -DCONFIG_AMS_Z018_AUX2_DIAGNOSTIC=1 -DCONFIG_AMS_Z018_THERM_OW_DIAGNOSTIC=1 -DCONFIG_AMS_Z023_SUPERVISION_VALIDATION=1 -O2 monitor_hook_test.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c ../../../drivers/ams/supervision_zephyr.c ../../../lib/ams_core/adbms/ams_balance_shadow.c ../adbms_spi/fake_zephyr/fake_zephyr_spi.c ../../../drivers/ams/adbms_time_zephyr.c ../../../drivers/ams/adbms_monitor_zephyr.c -o monitor_hook_test
+./monitor_hook_test
+PASS Z017/Z018/Z019 Zephyr monitor adapter: owner-only String-B seam, cooperative timing, copied snapshot
+PASS Z023 actual monitor hook waits for publication disposition
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z023'
+
+Z023 ThreadSanitizer
+make: Entering directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z023'
+cc -std=c11 -Wall -Wextra -Werror -pedantic -I../../../lib/ams_core/include -Iconcurrent_fake -I../../../include -O1 -g -fsanitize=thread concurrency_test.c ../../../lib/ams_core/faults/ams_supervision.c ../../../lib/ams_core/faults/ams_segment_fault.c ../../../drivers/ams/supervision_zephyr.c -pthread -o concurrency_tsan
+./concurrency_tsan
+PASS Z023 concurrent production adapter: 50000 current and 10000 monitor handoffs
+make: Leaving directory '/workspace/scratch/ab79b60650ff/resume_z024/DER27-AMS-zephyr/tests/unit/z023'
+
+Z023 behavioral negative controls
+PASS behavioral mutant 1/16: supervision_work = !monitor.recovery.terminal;
+PASS behavioral mutant 2/16: r->sequence==UINT64_MAX
+PASS behavioral mutant 3/16: r->sequence<=s->actor[actor].sequence
+PASS behavioral mutant 4/16: {200U,3000U,3000U}
+PASS behavioral mutant 5/16: r->history|=faults
+PASS behavioral mutant 6/16: if(s->positions&(1U<<position))return false;
+PASS behavioral mutant 7/16: s->voltage.valid=false;
+PASS behavioral mutant 8/16: s->inhibit=true;
+PASS behavioral mutant 9/16: max>=4200U
+PASS behavioral mutant 10/16: pending+100U
+PASS behavioral mutant 11/16: || !pending
+PASS behavioral mutant 12/16: if(ams_supervision_commit(&decision,a,&records[a],now))
+PASS behavioral mutant 13/16: memset(&scan,0,sizeof(scan));temp_complete=false;
+PASS behavioral mutant 14/16: if(!ams_z023_owner(AMS_SUP_CURRENT))return;
+PASS behavioral mutant 15/16: ams_z023_current_complete(faults);
+PASS behavioral mutant 16/16: ams_bms_ok_force_low_direct();
+PASS Z023 behavioral mutations: 16/16 rejected after compilation
+
+Inherited Z022 campaign
+Z022 source
+Z022 mutations
+Z022 production pipeline/adapter
+Z022 monitor boundary hook
+Current window regression
+Pinned store concurrency regression
+Inherited Z021 through Z018 campaign
+PASS executed Z022 campaign

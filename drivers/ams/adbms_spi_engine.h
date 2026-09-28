@@ -21,6 +21,9 @@ typedef enum {
     AMS_ADBMS_SPI_RESULT_TIMEOUT,
     AMS_ADBMS_SPI_RESULT_RECOVERY_FAILED,
     AMS_ADBMS_SPI_RESULT_INTERNAL_FAULT,
+    /* Timing-source failure is used by the private wake primitive. The
+     * transfer engine itself never fabricates this result. */
+    AMS_ADBMS_SPI_RESULT_CLOCK_ERROR,
 } ams_adbms_spi_result_t;
 
 /*

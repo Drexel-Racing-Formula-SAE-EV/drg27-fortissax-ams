@@ -8,13 +8,13 @@ static uint64_t clock_us;
 static unsigned wakes,reads;
 static bool fail_clock,fail_io,corrupt;
 static uint8_t response[8]={0,6};
-static bool now(void *c,uint64_t *v){(void)c;*v=clock_us;return !fail_clock;}
-static bool wake(void *c,bool cold){(void)c;wakes++;clock_us+=cold?9000:2000;return !fail_io;}
-static bool read_io(void *c,const uint8_t cmd[4],uint8_t rx[8]){
+static ams_adbms_result_t now(void *c,uint64_t *v){(void)c;*v=clock_us;return fail_clock?AMS_ADBMS_RESULT_CLOCK:AMS_ADBMS_RESULT_OK;}
+static ams_adbms_result_t wake(void *c,bool cold){(void)c;wakes++;clock_us+=cold?9000:2000;return fail_io?AMS_ADBMS_RESULT_TRANSPORT_IO:AMS_ADBMS_RESULT_OK;}
+static ams_adbms_result_t read_io(void *c,const uint8_t cmd[4],uint8_t rx[8]){
  (void)c;reads++;
  assert(cmd[0]==0 && (cmd[1]==2 || cmd[1]==0x2c));
  assert((((unsigned)cmd[2]<<8)|cmd[3])==Pec15_Calc(2,(uint8_t *)cmd));
- memcpy(rx,response,8);if(corrupt)rx[0]^=1;clock_us+=300;return !fail_io;
+ memcpy(rx,response,8);if(corrupt)rx[0]^=1;clock_us+=300;return fail_io?AMS_ADBMS_RESULT_TRANSPORT_IO:AMS_ADBMS_RESULT_OK;
 }
 static void counter(unsigned n){response[6]=(uint8_t)(n<<2);uint16_t p=pec10_calc(1,6,response);response[6]|=(uint8_t)(p>>8);response[7]=(uint8_t)p;}
 int main(void){
@@ -30,7 +30,7 @@ int main(void){
  assert(ams_link_read(&l,&io,AMS_LINK_SID,true,&out)==AMS_LINK_SESSION_EXPIRED);
  assert(!reads && !wakes && !out.valid);
  assert(ams_link_read(&l,&io,AMS_LINK_SID,false,&out)==AMS_LINK_OK);
- assert(out.valid && wakes==1 && reads==1 && l.counter_valid);
+ assert(out.valid && wakes==1 && reads==1 && l.counter.known);
  for(unsigned n=0;n<64;n++){
   counter(n);
   ams_link_result_t expected=n?AMS_LINK_COUNTER:AMS_LINK_OK;
@@ -40,7 +40,7 @@ int main(void){
  }
  counter(0);assert(ams_link_read(&l,&io,AMS_LINK_CFGA,true,&out)==AMS_LINK_COUNTER);
  corrupt=true;assert(ams_link_read(&l,&io,AMS_LINK_SID,true,&out)==AMS_LINK_PEC);
- assert(!out.valid && !l.counter_valid && !l.session_valid);corrupt=false;
+ assert(!out.valid && !l.counter.known && !l.session_valid);corrupt=false;
  assert(ams_link_read(&l,&io,AMS_LINK_SID,false,&out)==AMS_LINK_OK);
  clock_us+=2999;assert(ams_link_read(&l,&io,AMS_LINK_SID,true,&out)==AMS_LINK_OK);
  clock_us+=3000;unsigned before=reads;

@@ -116,6 +116,38 @@ def main() -> int:
     git_status = git_output(repo, "status", "--porcelain")
     git_dirty = None if git_status is None else bool(git_status)
 
+    z016_profile = "CONFIG_AMS_Z016_LINK_PROBE=y" in config.splitlines()
+    z017_profile = "CONFIG_AMS_Z017_CELL_VALIDATION=y" in config.splitlines()
+    z018_profile = "CONFIG_AMS_Z018_TEMP_VALIDATION=y" in config.splitlines()
+    if sum((z016_profile,z017_profile,z018_profile)) > 1:
+        raise SystemExit("invalid manifest input: multiple ADBMS profiles")
+    migration_stage = "Z-018" if z018_profile else ("Z-017" if z017_profile else ("Z-016" if z016_profile else "Z-015"))
+    adbms_runtime_profile = "z018_temp_validation" if z018_profile else ("z017_cell_validation" if z017_profile else (
+        "z016_string_b_link_probe" if z016_profile else "base_no_transfer"))
+    z019_profile = "CONFIG_AMS_Z019_RECOVERY_VALIDATION=y" in config.splitlines()
+    if z019_profile and not z018_profile:
+        raise SystemExit("Z019 requires the Z018 acquisition profile")
+    if z019_profile:
+        migration_stage = "Z-019"
+        adbms_runtime_profile = "z019_recovery_validation"
+    z020_profile = "CONFIG_AMS_Z020_BALANCE_DISABLED_VALIDATION=y" in config.splitlines()
+    if z020_profile and not z019_profile:
+        raise SystemExit("Z020 requires Z019 recovery and zero-state audits")
+    if z020_profile:
+        migration_stage = "Z-020"
+        adbms_runtime_profile = "z020_balance_disabled_validation"
+    z022_profile = "CONFIG_AMS_Z022_MEASUREMENT_VALIDATION=y" in config.splitlines()
+    if z022_profile and not z020_profile: raise SystemExit("Z022 requires Z020")
+    if z022_profile:
+        migration_stage = "Z-022"
+        adbms_runtime_profile = "z022_single_smb_measurement_validation"
+    z023_profile = "CONFIG_AMS_Z023_SUPERVISION_VALIDATION=y" in config.splitlines()
+    if z023_profile and not z022_profile: raise SystemExit("Z023 requires Z022")
+    if z023_profile:
+        migration_stage = "Z-023"
+        adbms_runtime_profile = "z023_shadow_supervision_validation"
+    z017_profile = z017_profile or z018_profile
+
     artifact_sizes = {}
 
     for name in ("zephyr.elf", "zephyr.bin", "zephyr.hex"):
@@ -126,7 +158,19 @@ def main() -> int:
 
     manifest = {
         "schema_version": 1,
-        "migration_stage": "Z-015",
+        "z023_supervision": {"enabled": z023_profile, "shadow_only": True,
+            "explicit_owner_binding": True, "progress_timeout_ms": [200, 3000, 3000],
+            "temperature_positions_required": 8, "safety_evidence_promoted": False,
+            "single_segment_electrical_policy": True, "hardware_validated": False},
+        "z022_publication": {"enabled": z022_profile, "populated_segments": 1 if z022_profile else 0,
+            "missing_segments_invalid": True, "current_window_lock_before_boundary": True,
+            "estimator_execution_enabled": z022_profile, "safety_heartbeat_promoted": False, "estimator_scope": "segment-local raw-C advisory", "current_fault_mode": "startup-precharge"},
+        "z020_balance": {"profile_enabled": z020_profile,
+            "shadow_only": True, "active_balance_authority": False,
+            "start_mv": 4100, "delta_strictly_greater_mv": 20,
+            "max_candidates": 4, "selection_order": "ascending cell index",
+            "zero_state_audit": z019_profile},
+        "migration_stage": migration_stage,
         "oracle": {
             "package": "v2.6.27",
             "firmware": "0.5.30",
@@ -150,6 +194,26 @@ def main() -> int:
                 in config
             ),
         },
+        "protocol_recovery": {
+            "enabled": z019_profile, "audit": "each owner release before acquisition",
+            "exact_readback": ["SID", "CFGA_with_MUTE_ST", "CFGB", "PWMA_zero", "PWMB_zero"],
+            "repair_attempts_per_incident": 1, "failure_latches_until_reboot": True,
+            "fresh_15_cell_epoch_required": True, "old_temperature_history_invalidated": True,
+            "hash_is_diagnostic_only": True, "safety_authority": False,
+        },
+        "temperature_acquisition": {
+            "enabled": z018_profile, "sensor_count": 24, "mux_addresses": [76,77,78],
+            "sensors_per_release": 3, "releases_per_scan": 8,
+            "mux_settle_us": 3000, "aux_wait_us": 4000, "capture_guard_us": 1000,
+            "aux2_enabled": "CONFIG_AMS_Z018_AUX2_DIAGNOSTIC=y" in config.splitlines(),
+            "open_wire_enabled": "CONFIG_AMS_Z018_THERM_OW_DIAGNOSTIC=y" in config.splitlines(),
+            "diagnostics_advisory_only": True, "restore_required_before_acquisition": True,
+            "thermistor": "NTCLE350E4103FHB0 / v2.6.27 generated 281-point LUT",
+            "reference_v": 5.0, "retention_ms": 12000, "max_misses": 10,
+            "jump_deci_c": 250, "rate_deci_c_per_s": 50, "iir_alpha": "1/8",
+            "hardware_previously_validated_by_user": True,
+            "zephyr_temperature_physical_validation_performed": False,
+        },
         "migration_capabilities": {
             "bms_ok_platform_adapter_present": "CONFIG_AMS_CAP_BMS_OK_PLATFORM_ADAPTER_PRESENT=y" in config,
             "current_adc_adapter_present": "CONFIG_AMS_CAP_CURRENT_ADC_ADAPTER_PRESENT=y" in config,
@@ -158,7 +222,9 @@ def main() -> int:
             "adbms_spi_adapter_present": "CONFIG_AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT=y" in config,
             "adbms_spi_physical_validated": "CONFIG_AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED=y" in config,
             "adbms_actor_live": "CONFIG_AMS_CAP_ADBMS_ACTOR_LIVE=y" in config,
+            "adbms_monitor_acquisition_live": "CONFIG_AMS_CAP_ADBMS_MONITOR_ACQUISITION_LIVE=y" in config,
             "adbms_safety_evidence": "CONFIG_AMS_CAP_ADBMS_SAFETY_EVIDENCE=y" in config,
+            "temperature_acquisition_live": "CONFIG_AMS_CAP_TEMPERATURE_ACQUISITION_LIVE=y" in config.splitlines(),
             "temperature_safety_evidence": "CONFIG_AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE=y" in config,
             "can_adapter_present": "CONFIG_AMS_CAP_CAN_ADAPTER_PRESENT=y" in config,
             "can_actor_live": "CONFIG_AMS_CAP_CAN_ACTOR_LIVE=y" in config,
@@ -187,7 +253,12 @@ def main() -> int:
             "application_owns_direct_mcu_registers": False,
             "application_owns_gpio_devicetree_mapping": False,
             "normal_bms_ok_gpio_owner": "drivers/ams/bms_ok_zephyr.c",
-            "approved_direct_register_owner": "boards/drexel/der26_ams/ams_fail_low_stm32.c",
+            "approved_direct_mcu_owners": [
+                "boards/drexel/der26_ams/ams_fail_low_stm32.c",
+                "drivers/ams/adbms_spi_stm32.c",
+                "drivers/ams/current_adc_stm32.c",
+                "drivers/ams/fan_pwm_zephyr.c",
+            ],
             "pre_kernel_fail_low_registration_owned_by_board_layer": True,
             "typed_devicetree_consumers": True,
             "zephyr_user_ams_hardware_contracts": False,
@@ -218,6 +289,11 @@ def main() -> int:
             "adbms_spi_dma_transport": False,
             "adbms_spi_async_transport": False,
             "adbms_spi_owner_rpc_required_before_diagnostics": True,
+            "adbms_runtime_profile": adbms_runtime_profile,
+            "adbms_z017_single_owner": z017_profile,
+            "adbms_z017_string_b_only": z017_profile,
+            "adbms_z017_monitor_ic_count": 1 if z017_profile else 0,
+            "adbms_z017_monitored_cell_count": 15 if z017_profile else 0,
         },
         "board_contract": {
             "mcu": "STM32F767ZIT6",
@@ -360,7 +436,8 @@ def main() -> int:
         },
         "adbms_spi": {
             "oracle": "DER26 AMS v2.6.27 / FW0.5.30",
-            "stage": "Z-015 transport substrate only",
+            "stage": migration_stage,
+            "runtime_profile": adbms_runtime_profile,
             "implementation": "private STM32F767 bounded synchronous polling backend",
             "generic_zephyr_spi_enabled": "CONFIG_SPI=y" in config,
             "stock_spi6_dt_enabled": dts_enabled(dts, "spi6:"),
@@ -384,21 +461,61 @@ def main() -> int:
             "recovery": "CS_high_then_SPI6_RCC_reset_reconfigure_readback",
             "timeout_is_terminal_by_default": False,
             "recovery_failure_latches_faulted": True,
-            "runtime_transfer_callers": 1 if "CONFIG_AMS_Z016_LINK_PROBE=y" in config.splitlines() else 0,
-            "linked_runtime_transfer_entrypoints_required_absent": "CONFIG_AMS_Z016_LINK_PROBE=y" not in config.splitlines(),
+            "runtime_transfer_callers": 1 if (z016_profile or z017_profile) else 0,
+            "linked_runtime_transfer_entrypoints_required_absent": not (z016_profile or z017_profile),
             "link_probe_profile": "String B / PE4 / one SMB / 6822 eval jumper",
-            "link_probe_enabled": "CONFIG_AMS_Z016_LINK_PROBE=y" in config.splitlines(),
+            "link_probe_enabled": z016_profile,
             "s_redundancy_enabled": False,
             "balancing_enabled": False,
             "apm_enabled": False,
             "integrity_violation_counter": "saturating",
-            "startup_initializes_without_transfer": True,
-            "wake_api_present": False,
-            "adbms_actor_live": False,
+            "startup_initializes_without_transfer": not (z016_profile or z017_profile),
+            "wake_api_present": z016_profile or z017_profile,
+            "adbms_actor_live": z017_profile,
+            "monitor_acquisition_live": z017_profile,
             "adbms_safety_evidence": False,
             "physical_validation_complete": False,
             "future_cli_requires_owner_rpc": True,
             "freertos_recursive_mutex_ported": False,
+        },
+        "adbms_monitor": {
+            "enabled": z017_profile,
+            "profile": "BENCH Validation 1-SMB / AMS_BUILD_PROFILE=5" if z017_profile else None,
+            "route": "String B / PE4 only" if z017_profile else None,
+            "physical_logical_monitor_count": 1 if z017_profile else 0,
+            "register_cell_channels_read": 16 if z017_profile else 0,
+            "monitored_cells": 15 if z017_profile else 0,
+            "voltage_authority_inside_driver": "raw_C" if z017_profile else None,
+            "avg8_role": "independent_advisory" if z017_profile else None,
+            "iir_role": "independent_advisory" if z017_profile else None,
+            "iir_fc": 3 if z017_profile else None,
+            "iir_readiness": "two_complete_filtered_epochs_at_least_100ms_apart" if z017_profile else None,
+            "adcv_current_board_hex": "03e0" if z017_profile else None,
+            "adcv_baseline_hex": "0364" if z017_profile else None,
+            "reference_prewait_us": 3000 if z017_profile else None,
+            "conversion_wait_us": 17000 if z017_profile else None,
+            "snapshot_settle_us": 10 if z017_profile else None,
+            "max_epoch_attempts": 2 if z017_profile else 0,
+            "reissue_adcv_on_epoch_retry": False,
+            "ccts_policy": "must_be_nonzero" if z017_profile else None,
+            "startup_post_max_attempts": 2 if z017_profile else 0,
+            "post_restore_failure_policy": "terminal_for_initialization" if z017_profile else None,
+            "startup_balance_inhibit": "MUTE_then_DCC_timer_PWM_zero_then_readback" if z017_profile else None,
+            "unmute_exposed": False,
+            "balance_nonzero_write_exposed": False,
+            "snapshot_uncertainty_requires_cleanup_before_retry": True if z017_profile else False,
+            "cell_plausibility_mv": [500, 5000] if z017_profile else None,
+            "retained_max_age_ms": 2500 if z017_profile else None,
+            "retained_max_consecutive_misses": 2 if z017_profile else None,
+            "jump_threshold_mv": 250 if z017_profile else None,
+            "unchanged_count_diagnostic": 120 if z017_profile else None,
+            "bms_ok_authority": False,
+            "balancing_authority": False,
+            "temperature_integrated": False,
+            "apm_integrated": False,
+            "estimator_measurement_integrated": False,
+            "watchdog_safety_heartbeat_promoted": False,
+            "physical_validation_complete": False,
         },
         "current_adc": {
             "oracle": "DER26 AMS v2.6.27 / FW0.5.30",

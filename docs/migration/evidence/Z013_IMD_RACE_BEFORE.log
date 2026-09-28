@@ -1,0 +1,78 @@
+==================
+WARNING: ThreadSanitizer: data race (pid=13)
+  Write of size 4 at 0x000000404100 by thread T1:
+    #0 ams_imd_capture_publish lib/ams_core/imd/ams_imd.c:99 (imd_before_tsan+0x401778) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+    #1 writer tests/unit/imd/imd_concurrency_test.c:14 (imd_before_tsan+0x401366) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+  Previous read of size 4 at 0x000000404100 by main thread:
+    #0 imd_capture_snapshot lib/ams_core/imd/ams_imd.c:129 (imd_before_tsan+0x4018a9) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+    #1 ams_imd_read_at lib/ams_core/imd/ams_imd.c:172 (imd_before_tsan+0x4018a9)
+    #2 main tests/unit/imd/imd_concurrency_test.c:26 (imd_before_tsan+0x40144f) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+  Location is global 'state' of size 56 at 0x0000004040e0 (imd_before_tsan+0x404100)
+
+  Thread T1 (tid=15, running) created by main thread at:
+    #0 pthread_create ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:1022 (libtsan.so.2+0x5ac1a) (BuildId: 2a13a7710e361d06f7babbea53065ca2be93f738)
+    #1 main tests/unit/imd/imd_concurrency_test.c:23 (imd_before_tsan+0x4013df) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+SUMMARY: ThreadSanitizer: data race lib/ams_core/imd/ams_imd.c:99 in ams_imd_capture_publish
+==================
+==================
+WARNING: ThreadSanitizer: data race (pid=13)
+  Write of size 4 at 0x000000404108 by thread T1:
+    #0 ams_imd_capture_publish lib/ams_core/imd/ams_imd.c:102 (imd_before_tsan+0x40178f) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+    #1 writer tests/unit/imd/imd_concurrency_test.c:14 (imd_before_tsan+0x401366) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+  Previous read of size 4 at 0x000000404108 by main thread:
+    #0 imd_capture_snapshot lib/ams_core/imd/ams_imd.c:137 (imd_before_tsan+0x4018c6) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+    #1 ams_imd_read_at lib/ams_core/imd/ams_imd.c:172 (imd_before_tsan+0x4018c6)
+    #2 main tests/unit/imd/imd_concurrency_test.c:26 (imd_before_tsan+0x40144f) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+  Location is global 'state' of size 56 at 0x0000004040e0 (imd_before_tsan+0x404108)
+
+  Thread T1 (tid=15, running) created by main thread at:
+    #0 pthread_create ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:1022 (libtsan.so.2+0x5ac1a) (BuildId: 2a13a7710e361d06f7babbea53065ca2be93f738)
+    #1 main tests/unit/imd/imd_concurrency_test.c:23 (imd_before_tsan+0x4013df) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+SUMMARY: ThreadSanitizer: data race lib/ams_core/imd/ams_imd.c:102 in ams_imd_capture_publish
+==================
+==================
+WARNING: ThreadSanitizer: data race (pid=13)
+  Write of size 4 at 0x000000404110 by thread T1:
+    #0 ams_imd_capture_publish lib/ams_core/imd/ams_imd.c:104 (imd_before_tsan+0x4017a9) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+    #1 writer tests/unit/imd/imd_concurrency_test.c:14 (imd_before_tsan+0x401366) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+  Previous read of size 4 at 0x000000404110 by main thread:
+    #0 imd_capture_snapshot lib/ams_core/imd/ams_imd.c:139 (imd_before_tsan+0x4018e3) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+    #1 ams_imd_read_at lib/ams_core/imd/ams_imd.c:172 (imd_before_tsan+0x4018e3)
+    #2 main tests/unit/imd/imd_concurrency_test.c:26 (imd_before_tsan+0x40144f) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+  Location is global 'state' of size 56 at 0x0000004040e0 (imd_before_tsan+0x404110)
+
+  Thread T1 (tid=15, running) created by main thread at:
+    #0 pthread_create ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:1022 (libtsan.so.2+0x5ac1a) (BuildId: 2a13a7710e361d06f7babbea53065ca2be93f738)
+    #1 main tests/unit/imd/imd_concurrency_test.c:23 (imd_before_tsan+0x4013df) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+SUMMARY: ThreadSanitizer: data race lib/ams_core/imd/ams_imd.c:104 in ams_imd_capture_publish
+==================
+==================
+WARNING: ThreadSanitizer: data race (pid=13)
+  Write of size 1 at 0x0000004040fd by thread T1:
+    #0 ams_imd_capture_publish lib/ams_core/imd/ams_imd.c:110 (imd_before_tsan+0x4017e7) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+    #1 writer tests/unit/imd/imd_concurrency_test.c:14 (imd_before_tsan+0x401366) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+  Previous read of size 1 at 0x0000004040fd by main thread:
+    #0 imd_capture_snapshot lib/ams_core/imd/ams_imd.c:140 (imd_before_tsan+0x4018f3) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+    #1 ams_imd_read_at lib/ams_core/imd/ams_imd.c:172 (imd_before_tsan+0x4018f3)
+    #2 main tests/unit/imd/imd_concurrency_test.c:26 (imd_before_tsan+0x40144f) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+  Location is global 'state' of size 56 at 0x0000004040e0 (imd_before_tsan+0x4040fd)
+
+  Thread T1 (tid=15, running) created by main thread at:
+    #0 pthread_create ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:1022 (libtsan.so.2+0x5ac1a) (BuildId: 2a13a7710e361d06f7babbea53065ca2be93f738)
+    #1 main tests/unit/imd/imd_concurrency_test.c:23 (imd_before_tsan+0x4013df) (BuildId: 99134f5e537acd3b88245191030e8328429861bf)
+
+SUMMARY: ThreadSanitizer: data race lib/ams_core/imd/ams_imd.c:110 in ams_imd_capture_publish
+==================
+ThreadSanitizer: reported 4 warnings
+PASS IMD concurrent tuple publication: 100000 writes/reads

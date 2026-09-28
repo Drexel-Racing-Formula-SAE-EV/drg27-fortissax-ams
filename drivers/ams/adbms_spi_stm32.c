@@ -460,7 +460,9 @@ fail:
     return ret;
 }
 
-#ifdef CONFIG_AMS_Z016_LINK_PROBE
+#if (defined(CONFIG_AMS_Z016_LINK_PROBE) && CONFIG_AMS_Z016_LINK_PROBE) || \
+    (defined(CONFIG_AMS_Z017_CELL_VALIDATION) && CONFIG_AMS_Z017_CELL_VALIDATION) || \
+    (defined(CONFIG_AMS_Z018_TEMP_VALIDATION) && CONFIG_AMS_Z018_TEMP_VALIDATION)
 #include "adbms_time_internal.h"
 static k_tid_t link_owner;
 bool ams_adbms_spi_bind_owner(void)
@@ -475,24 +477,39 @@ static bool link_owner_valid(void)
 {
  return !k_is_in_isr() && link_owner != NULL && link_owner==k_current_get();
 }
-bool ams_adbms_spi_wake_b(bool cold)
+ams_adbms_spi_result_t ams_adbms_spi_wake_b(bool cold)
 {
- if (!link_owner_valid()) return false;
- if (!atomic_cas(&platform_state,AMS_ADBMS_SPI_PLATFORM_READY,
-                 AMS_ADBMS_SPI_PLATFORM_ACTIVE)) return false;
- bool ok=force_both_cs_inactive()==0;
- LL_SPI_Disable(spi6);
- for (unsigned train=0; ok && train<(cold?2U:1U); ++train) {
-  ok=backend_set_cs(NULL,AMS_ADBMS_SPI_STRING_B,true)==0;
-  if (ok) ok=ams_adbms_time_delay(1000U);
-  /* Cleanup is unconditional, including an interrupted/failed low phase. */
-  if (force_both_cs_inactive()!=0) ok=false;
-  if (ok) ok=ams_adbms_time_delay(1000U);
+ ams_adbms_spi_result_t result=AMS_ADBMS_SPI_RESULT_OK;
+ if (!link_owner_valid()) {
+  atomic_inc_saturating(&platform_integrity_violation_count);
+  return AMS_ADBMS_SPI_RESULT_INTERNAL_FAULT;
  }
- if (force_both_cs_inactive()!=0) ok=false;
- atomic_set(&platform_last_error,ok?0:-EIO);
- atomic_set(&platform_state,ok?AMS_ADBMS_SPI_PLATFORM_READY:AMS_ADBMS_SPI_PLATFORM_FAULTED);
- return ok;
+ if (!atomic_cas(&platform_state,AMS_ADBMS_SPI_PLATFORM_READY,
+                 AMS_ADBMS_SPI_PLATFORM_ACTIVE)) {
+  atomic_inc_saturating(&platform_integrity_violation_count);
+  return atomic_get(&platform_state)==AMS_ADBMS_SPI_PLATFORM_FAULTED
+      ? AMS_ADBMS_SPI_RESULT_RECOVERY_FAILED
+      : AMS_ADBMS_SPI_RESULT_INTERNAL_FAULT;
+ }
+ if (force_both_cs_inactive()!=0) result=AMS_ADBMS_SPI_RESULT_RECOVERY_FAILED;
+ LL_SPI_Disable(spi6);
+ for (unsigned train=0; result==AMS_ADBMS_SPI_RESULT_OK && train<(cold?2U:1U); ++train) {
+  if (backend_set_cs(NULL,AMS_ADBMS_SPI_STRING_B,true)!=0)
+   result=AMS_ADBMS_SPI_RESULT_IO_ERROR;
+  if (result==AMS_ADBMS_SPI_RESULT_OK && !ams_adbms_time_delay(1000U))
+   result=AMS_ADBMS_SPI_RESULT_CLOCK_ERROR;
+  /* Cleanup is unconditional, including an interrupted/failed low phase. */
+  if (force_both_cs_inactive()!=0) result=AMS_ADBMS_SPI_RESULT_RECOVERY_FAILED;
+  if (result==AMS_ADBMS_SPI_RESULT_OK && !ams_adbms_time_delay(1000U))
+   result=AMS_ADBMS_SPI_RESULT_CLOCK_ERROR;
+ }
+ if (force_both_cs_inactive()!=0) result=AMS_ADBMS_SPI_RESULT_RECOVERY_FAILED;
+ atomic_set(&platform_last_result,(atomic_val_t)result);
+ atomic_set(&platform_last_error,result==AMS_ADBMS_SPI_RESULT_OK?0:
+     result==AMS_ADBMS_SPI_RESULT_CLOCK_ERROR?-EAGAIN:-EIO);
+ atomic_set(&platform_state,result==AMS_ADBMS_SPI_RESULT_OK
+     ?AMS_ADBMS_SPI_PLATFORM_READY:AMS_ADBMS_SPI_PLATFORM_FAULTED);
+ return result;
 }
 #endif
 
@@ -504,7 +521,9 @@ static ams_adbms_spi_result_t run_transfer(bool read,
                                             size_t rx_len)
 {
     ams_adbms_spi_result_t result;
-#ifdef CONFIG_AMS_Z016_LINK_PROBE
+#if (defined(CONFIG_AMS_Z016_LINK_PROBE) && CONFIG_AMS_Z016_LINK_PROBE) || \
+    (defined(CONFIG_AMS_Z017_CELL_VALIDATION) && CONFIG_AMS_Z017_CELL_VALIDATION) || \
+    (defined(CONFIG_AMS_Z018_TEMP_VALIDATION) && CONFIG_AMS_Z018_TEMP_VALIDATION)
     if (!link_owner_valid() || string != AMS_ADBMS_SPI_STRING_B) {
         atomic_inc_saturating(&platform_integrity_violation_count);
         return AMS_ADBMS_SPI_RESULT_INTERNAL_FAULT;

@@ -1,7 +1,18 @@
+#include <ams_private/supervision_owner.h>
 #ifdef CONFIG_AMS_Z016_LINK_PROBE
 #include <ams_platform/adbms_link_probe.h>
 #endif
+#if defined(CONFIG_AMS_Z017_CELL_VALIDATION) || defined(CONFIG_AMS_Z018_TEMP_VALIDATION)
+#include <ams_platform/adbms_monitor.h>
+#endif
 #include "ams_threads.h"
+#ifdef CONFIG_AMS_Z023_SUPERVISION_VALIDATION
+#include <ams_platform/supervision.h>
+#include "ams_z023_safety.h"
+#endif
+#ifdef CONFIG_AMS_Z022_MEASUREMENT_VALIDATION
+#include <ams_platform/measurement_pipeline.h>
+#endif
 
 #include <ams_core/ams_fan_control.h>
 #include <ams_core/ams_imd.h>
@@ -26,13 +37,18 @@
 
 /*
  * --------------------------------------------------------------------------
+ * Z022 profile adds current sampling and measurement publication. The baseline
+ * descriptions below apply when that explicit profile is disabled. Safety
+ * heartbeat evidence remains unpromoted.
+ *
  * Z-014 AMS runtime/watchdog contract
  * --------------------------------------------------------------------------
  *
- * Z-015 keeps the Z-014 watchdog/runtime safety boundary unchanged while the
- * private ADBMS SPI6 adapter is prepared at startup. The ADBMS thread is dormant in the base profile.
- * Z016's explicit profile executes its finite String B link probe in that
- * same thread; neither profile emits ADBMS heartbeat/safety evidence. IMD was promoted in Z-013
+ * Z-015 keeps the watchdog/runtime safety boundary unchanged while the private
+ * SPI6 adapter is prepared at startup. The base ADBMS thread remains dormant;
+ * Z016 runs its finite read-only String-B link probe, and Z017 runs the one-SMB
+ * initialization/POST/cell-acquisition monitor in that same owner thread. None
+ * of these profiles emits ADBMS heartbeat/safety evidence. IMD was promoted in Z-013
  * to the real 10 Hz PA5/TIM2 PWM-input + PC5 OK_HS workload. Current ADC
  * hardware remains initialized but the current worker still does not acquire
  * samples until Z-022 proves mutex/publication ordering.
@@ -220,17 +236,22 @@ BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_BMS_OK_PLATFORM_ADAPTER_PRESENT),
              "Z-014 requires normal BMS_OK platform adapter presence");
 BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_CURRENT_ADC_ADAPTER_PRESENT),
              "Z-014 requires current ADC adapter presence");
-BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CURRENT_ACTOR_LIVE),
-             "current actor remains deferred at Z-014");
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_CURRENT_ACTOR_LIVE) == IS_ENABLED(CONFIG_AMS_Z022_MEASUREMENT_VALIDATION),
+             "current actor requires the Z022 publication profile");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CURRENT_SAFETY_EVIDENCE),
              "placeholder current must not be safety evidence");
 BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SPI_ADAPTER_PRESENT),
              "Z-015 requires the private ADBMS SPI6 adapter");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SPI_PHYSICAL_VALIDATED),
              "Z-015 must not claim physical SPI6 validation");
-BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_ADBMS_ACTOR_LIVE) &&
-             !IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SAFETY_EVIDENCE),
-             "ADBMS actor/evidence remain deferred at Z-015");
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_ADBMS_ACTOR_LIVE) ==
+             (IS_ENABLED(CONFIG_AMS_Z017_CELL_VALIDATION) || IS_ENABLED(CONFIG_AMS_Z018_TEMP_VALIDATION)),
+             "ADBMS actor liveness must exactly match the Z017 acquisition profile");
+BUILD_ASSERT(IS_ENABLED(CONFIG_AMS_CAP_ADBMS_MONITOR_ACQUISITION_LIVE) ==
+             (IS_ENABLED(CONFIG_AMS_Z017_CELL_VALIDATION) || IS_ENABLED(CONFIG_AMS_Z018_TEMP_VALIDATION)),
+             "monitor-acquisition capability must exactly match Z017");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_ADBMS_SAFETY_EVIDENCE),
+             "Z017 acquisition is diagnostic only, never watchdog safety evidence");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_TEMPERATURE_SAFETY_EVIDENCE),
              "temperature safety evidence remains deferred at Z-014");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_AMS_CAP_CAN_ADAPTER_PRESENT) &&
@@ -726,12 +747,36 @@ static void periodic_placeholder_thread(void *p1,
          * migration phase.
          */
 
+#ifdef CONFIG_AMS_Z022_MEASUREMENT_VALIDATION
+        if (thread == &threads[AMS_THREAD_CURRENT]) { ams_z022_current_step(); }
+        if (thread == &threads[AMS_THREAD_ESTIMATOR]) { ams_z022_estimator_step(); }
+        if (thread == &threads[AMS_THREAD_ADBMS]) { ams_z022_begin_release(); }
+#endif
 #ifdef CONFIG_AMS_Z016_LINK_PROBE
         if (thread == &threads[AMS_THREAD_ADBMS]) {
             ams_adbms_link_probe_step();
         }
 #endif
+#if defined(CONFIG_AMS_Z017_CELL_VALIDATION) || defined(CONFIG_AMS_Z018_TEMP_VALIDATION)
+        if (thread == &threads[AMS_THREAD_ADBMS]) {
+            static bool z017_init_attempted;
+            static bool z017_ready;
 
+            if (!z017_init_attempted) {
+                /* Initialization/POST may span multiple nominal periods. The
+                 * absolute scheduler below skips those releases rather than
+                 * issuing a catch-up burst. No endless reinitialization loop. */
+                z017_init_attempted = true;
+                z017_ready = ams_adbms_monitor_platform_init_owner();
+            } else if (z017_ready) {
+                ams_adbms_monitor_platform_step((uint32_t)start_ms);
+            }
+        }
+#endif
+
+#ifdef CONFIG_AMS_Z022_MEASUREMENT_VALIDATION
+        if (thread == &threads[AMS_THREAD_ADBMS]) { ams_z022_publish_release(); }
+#endif
         elapsed_cycles =
             k_cycle_get_32() - start_cycles;
 
@@ -1349,6 +1394,10 @@ static void safety_supervisor_thread(void *p1,
             runtime_update_stale_flags();
         }
 
+#ifdef CONFIG_AMS_Z023_SUPERVISION_VALIDATION
+        ams_z023_safety_cycle();
+        /* Shadow only: no safety heartbeat credit until separately qualified. */
+#endif
         /* Capture watchdog heartbeat evidence as one coherent monitor
          * transaction. Workers can complete concurrently, but a supervisor
          * decision is based on exactly one stale-mask snapshot. */
@@ -1815,6 +1864,11 @@ int ams_threads_start(void)
      * highest-priority supervisor; the startup epoch above already includes
      * thread-construction time.
      */
+#ifdef CONFIG_AMS_Z023_SUPERVISION_VALIDATION
+    if (!ams_z023_bind(&current_thread, &adbms_thread, &safety_thread)) {
+        return -EINVAL;
+    }
+#endif
     atomic_set(&runtime_started, 1);
 
     /*

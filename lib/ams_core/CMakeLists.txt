@@ -1,11 +1,25 @@
 add_library(ams_core STATIC
+    can/ams_can_tx_scheduler.c
+    can/ams_can_transport.c
+    can/ams_can_codec.c
+    adbms/ams_z021_support.c
+    adbms/ams_adbms_protocol.c
+    adbms/ams_temp_image.c
+    adbms/ams_thermistor.c
+    adbms/ams_balance_shadow.c
+    adbms/ams_cell_image.c
+    adbms/ams_adbms_monitor.c
     adbms/ams_adbms_link.c
     common/ams_core_time.c
     common/ams_core_contract.c
+    measurement/ams_measurement_pipeline.c
     measurement/ams_measurement.c
     measurement/ams_current_window.c
     current/ams_current_sensor.c
     faults/ams_current_fault.c
+    faults/ams_supervision.c
+    faults/ams_segment_fault.c
+    estimator/ams_segment_consumer.c
     estimator/ams_estimator_lut.c
     estimator/ams_soc_ekf.c
     soh/ams_soh.c

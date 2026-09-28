@@ -12,6 +12,8 @@ get_filename_component(
 )
 
 zephyr_library_named(ams_platform)
+zephyr_library_sources_ifdef(CONFIG_AMS_Z023_SUPERVISION_VALIDATION supervision_zephyr.c)
+zephyr_library_sources_ifdef(CONFIG_AMS_Z022_MEASUREMENT_VALIDATION measurement_pipeline_zephyr.c)
 
 zephyr_library_sources(
     bms_ok_zephyr.c
@@ -30,3 +32,6 @@ zephyr_library_include_directories(
 
 zephyr_library_sources_ifdef(CONFIG_AMS_Z016_LINK_PROBE
     adbms_time_zephyr.c adbms_link_probe.c)
+
+zephyr_library_sources_ifdef(CONFIG_AMS_CAP_ADBMS_MONITOR_ACQUISITION_LIVE
+    adbms_time_zephyr.c adbms_monitor_zephyr.c)

@@ -5,22 +5,33 @@
 #include "adbms_time_internal.h"
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
-static bool now_us(void *ctx,uint64_t *us)
+static ams_adbms_result_t now_us(void *ctx,uint64_t *us)
 {
- (void)ctx;return ams_adbms_time_now(us);
+ (void)ctx;return ams_adbms_time_now(us)?AMS_ADBMS_RESULT_OK:AMS_ADBMS_RESULT_CLOCK;
 }
-static bool wake_link(void *ctx,bool cold)
+static ams_adbms_result_t wake_link(void *ctx,bool cold)
 {
  (void)ctx;
- if (!ams_adbms_spi_wake_b(cold)) return false;
+ ams_adbms_spi_result_t r=ams_adbms_spi_wake_b(cold);
+ if (r==AMS_ADBMS_SPI_RESULT_CLOCK_ERROR) return AMS_ADBMS_RESULT_CLOCK;
+ if (r==AMS_ADBMS_SPI_RESULT_TIMEOUT) return AMS_ADBMS_RESULT_TRANSPORT_TIMEOUT;
+ if (r!=AMS_ADBMS_SPI_RESULT_OK) {
+  if (ams_adbms_spi_platform_status().state==AMS_ADBMS_SPI_PLATFORM_FAULTED)
+   return AMS_ADBMS_RESULT_TRANSPORT_TERMINAL;
+  return r==AMS_ADBMS_SPI_RESULT_INTERNAL_FAULT?AMS_ADBMS_RESULT_OWNER:AMS_ADBMS_RESULT_TRANSPORT_IO;
+ }
  if (cold) k_sleep(K_MSEC(5));
- return true;
+ return AMS_ADBMS_RESULT_OK;
 }
-static bool read_link(void *ctx,const uint8_t cmd[4],uint8_t rx[8])
+static ams_adbms_result_t read_link(void *ctx,const uint8_t cmd[4],uint8_t rx[8])
 {
  (void)ctx;
- return ams_adbms_spi_write_read(AMS_ADBMS_SPI_STRING_B,cmd,4U,rx,8U)
-        ==AMS_ADBMS_SPI_RESULT_OK;
+ ams_adbms_spi_result_t r = ams_adbms_spi_write_read(AMS_ADBMS_SPI_STRING_B,cmd,4U,rx,8U);
+ if (r == AMS_ADBMS_SPI_RESULT_OK) return AMS_ADBMS_RESULT_OK;
+ if (r == AMS_ADBMS_SPI_RESULT_TIMEOUT) return AMS_ADBMS_RESULT_TRANSPORT_TIMEOUT;
+ if (ams_adbms_spi_platform_status().state == AMS_ADBMS_SPI_PLATFORM_FAULTED)
+  return AMS_ADBMS_RESULT_TRANSPORT_TERMINAL;
+ return AMS_ADBMS_RESULT_TRANSPORT_IO;
 }
 void ams_adbms_link_probe_step(void)
 {
